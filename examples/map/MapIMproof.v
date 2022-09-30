@@ -247,7 +247,7 @@ Section SIMMODSEM.
       { rewrite Z.sub_diag. ss. }
       mAssert (OwnM ((a, 0%Z) |-> (repeat (Vint 0) (x - x) ++ repeat Vundef x))) with "A1".
       { rewrite Nat.sub_diag. ss. }
-      revert ctx1 ACC mr_src1.
+      revert fr1 mr_src1 ACC.
       cut (x <= x).
       2:{ lia. }
       generalize x at 1 4 5 7 13. intros n. induction n; i.
@@ -302,8 +302,8 @@ Section SIMMODSEM.
         { eapply STBINCLM. stb_tac. ss. }
         { eapply OrdArith.lt_from_nat. instantiate (1:=n). lia. }
         icall_open (Some (_, _, _)) with "A1".
-        { iModIntro. iExists _. iFrame. iPureIntro. rewrite Z.div_mul; ss.
-          f_equal. f_equal. f_equal. lia.
+        { iModIntro. iSplits; iFrame; iSplits; ss. iPureIntro.
+          rewrite Z.div_mul; ss. f_equal. f_equal. f_equal. lia.
         }
         { ss. }
         steps. mDesAll. subst. steps.
@@ -352,7 +352,7 @@ Section SIMMODSEM.
       replace ((a0 + (z * 8) `div` 8)%Z) with ((a0 + Z.to_nat z)%Z); auto.
       2:{ rewrite Z_div_mult; ss. lia. }
       icall_open _ with "A1".
-      { iModIntro. instantiate (1:=Some (_, _, _)). ss. iExists _. iSplit; eauto. }
+      { iModIntro. instantiate (1:=Some (_, _, _)). ss. iSplits; eauto. }
       { ss. }
       ss. mDesAll. subst. steps. astop. steps.
       iret _; ss. iModIntro. iSplit; ss.

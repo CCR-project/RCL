@@ -17,7 +17,7 @@ From ExtLib Require Import
      Data.Map.FMapAList.
 
 Require Import STB ProofMode.
-Require Import HTactics2.
+Require Import HTactics2 HSim2 ISim2 IProofMode2.
 
 Set Implicit Arguments.
 
@@ -37,128 +37,72 @@ Section SIMMODSEM.
     @mk_wf
       _
       unit
-      (fun _ _ st_tgt => ⌜True⌝%I)
+      (fun _ _ st_tgt => OwnM fblack)
   .
 
   Theorem correct: refines2 [Mult0.Mult (fun _ => to_stb GlobalStb0)] [Mult1.Mult (fun _ => to_stb GlobalStb1)].
   Proof.
     eapply adequacy_local2. econs; ss.
     i. econstructor 1 with (wf:=wf) (le:=top2); ss; et; swap 2 3.
-    { esplits. econs; ss. eapply to_semantic. iIntros "H". iSplits; ss. }
+    { esplits. rp; [econs|..]; try refl; cycle 1.
+      { repeat f_equal. rewrite URA.unit_idl; ss. }
+      eapply to_semantic. iIntros "H". iSplits; ss. }
 
     econs; [|ss].
-
-    {
-      (*** init ***)
-      init.
-      rename mp_tgt into mpr_tgt.
-      assert(exists mp_src mp_tgt (mr_src mr_tgt: Σ),
-                mrp_src = Any.pair mp_src mr_src↑ ∧ mpr_tgt = Any.pair mp_tgt mr_tgt↑).
-      { inv WF. esplits; et. } des; clarify.
-      (*** init ***)
-
-
-
-      harg. mDesAll; clarify. steps.
-      harg_tgt.
-      { iFrame. iSplits; et. instantiate (1:=True%I); ss. }
-
+    { econs; r; ss. startproof.
+      (*** given src aux var, choose tgt aux var ***)
+      intro n. exists n. esplits; eauto.
+      (*** we have "SI * P_src" ***)
+      iIntros. iDes. subst.
+      (*** prove "P_tgt" ***)
+      iModIntro. iFrame. iSplits; ss.
+      (*** and proceed the proof. ***)
       steps.
-
-
-      hret _; ss.
-      { iDestruct "Q" as "[[A B] %]". iModIntro. iFrame. iSplits; et. }
-      { iDestruct "Q" as "[_ %]". clarify. iPureIntro. r. esplits; et. }
+      (*** at the end, prove "Q_tgt -* (Q_src * SI)" ***)
+      iIntros. iDes. iFrame; ss.
     }
 
     econs; [|ss].
-    {
-      (*** init ***)
-      init.
-      rename mp_tgt into mpr_tgt.
-      assert(exists mp_src mp_tgt (mr_src mr_tgt: Σ),
-                mrp_src = Any.pair mp_src mr_src↑ ∧ mpr_tgt = Any.pair mp_tgt mr_tgt↑).
-      { inv WF. esplits; et. } des; clarify.
-      (*** init ***)
+    { econs; r; ss. startproof.
+      i. esplits; eauto.
+      iIntros. iDes. subst. iFrame.
+      (*** It is important that the goal contains update modality in the goal "#=> (P_tgt ∗ ...)".
+           This allows update on (SI * P_src) together, not just P_src. ***)
+      unfold inv_with. iDes.
+      iDestruct (OwnM_Upd with "[A A0]") as ">A0".
+      { eapply f01_update. }
+      { iCombine "A A0" as "A". iFrame. }
+      iDestruct "A0" as "[A A0]".
+      iFrame. iModIntro. iSplits; et.
 
+      (*** when calling a function, given tgt aux var, choose src aux var. ***)
+      steps. iSplits; ss. iIntros. iSplits; ss.
+      (*** we get "Q_tgt" ***)
+      iIntros; iDes.
+      (*** and prove "SI * Q_src * ..." ***)
+      iFrame. iSplits; ss. iIntros; iDes. subst. iFrame. iSplits; ss.
 
+      (*** now calling a function which has different conditions on src/tgt. the rules are the same. ***)
+      steps. iSplits; ss. iIntros. iSplits; ss. iIntros. iFrame. iSplits; ss.
+      iIntros. iDes; subst.
 
-      harg. mDesAll; clarify. steps.
-      mAssert _ with "PRE" as "PRE".
-      { iApply (OwnM_Upd with "PRE"). eapply f01_update. }
-      mUpd "PRE".
-
-      harg_tgt.
-      { iModIntro. iFrame. iSplits; et. iAssumption. }
-
-      unfold ccallU. steps. stb_tac; clarify. force_l; stb_tac; clarify. steps.
-
-
-      hcall _ _.
-      { iModIntro. iDestruct "P" as "%". iDestruct "FR" as "[A [B %]]". iSplits; ss; et. iFrame.
-        iSplits; ss; et. iAssumption. }
-      { i. iIntros "H". ss. iDestruct "H" as "[A %]". eauto. }
-      mDesAll. clarify. steps. force_l; stb_tac; ss; clarify. steps.
-
-
-
-      hpost_tgt.
-      { iModIntro. iFrame. iSplits; et. iAssumption. }
-      steps. rewrite _UNWRAPU. steps. stb_tac. clarify.
-
-
-
-      hcall _ _.
-      { iModIntro. iDestruct "FR" as "[A %]".
-        iDestruct "P" as "[% %]". iSplits; ss; et. instantiate (1:=True%I). iFrame. ss. }
-      { i. iIntros "H". ss. }
-      clear_fast. mDesAll. clarify. steps.
-
-
-
-      hpost_tgt.
-      { iModIntro. iFrame. iSplits; et. iAssumption. } 
-      steps. rewrite _UNWRAPU0. steps.
-
-
-      hret _; ss.
-      { iDestruct "Q" as "[[A B] %]". iPoseProof (OwnM_Upd with "A") as "A".
-        { eapply f23_update. }
-        iMod "A". iModIntro. iSplits; ss; et. iFrame. }
-      { iDestruct "Q" as "[_ %]". iPureIntro. clarify. r. esplits; et. }
+      (*** returning, same as above. ***)
+      iSplits; ss. steps. iIntros; iDes.
+      unfold inv_with. iDes.
+      iDestruct (OwnM_Upd with "[A0 A1]") as ">A1".
+      { eapply f23_update. }
+      { iCombine "A0 A1" as "A0". iFrame. }
+      iDestruct "A1" as "[A1 A0]".
+      iFrame. iModIntro. iSplits; ss.
     }
 
     econs; [|ss].
-    {
-      (*** init ***)
-      init.
-      rename mp_tgt into mpr_tgt.
-      assert(exists mp_src mp_tgt (mr_src mr_tgt: Σ),
-                mrp_src = Any.pair mp_src mr_src↑ ∧ mpr_tgt = Any.pair mp_tgt mr_tgt↑).
-      { inv WF. esplits; et. } des; clarify.
-      (*** init ***)
-
-
-
-
-      harg. mDesAll; clarify. steps.
-      harg_tgt.
-      { iFrame. iSplits; et. instantiate (1:=True%I). ss. }
-
-      unfold ccallU. steps.
-      hAPC _.
-      { instantiate (1:=True%I). et. }
-      { r. i. autounfold with stb in *; autorewrite with stb in *. ss. rewrite ! eq_rel_dec_correct in *. des_ifs.
-        - r in PURE. des. ss.
-        - r in PURE. des. ss.
-      }
-      steps.
-
-      hret _; ss.
-      { iDestruct "Q" as "[[A B] %]". clarify. iModIntro. iFrame; ss. }
-      { iDestruct "Q" as "[[A B] %]". clarify. iPureIntro. r. esplits; et. }
+    { econs; r; ss. startproof.
+      i. esplits; eauto.
+      iIntros. iDes. iFrame. iModIntro. iSplits; ss. steps.
+      iApply isim_apc_both. iFrame. iIntros.
+      steps. iIntros. iDes. subst. iFrame; ss.
     }
-
   Unshelve. all: ss. all: try exact 0.
   Qed.
 
