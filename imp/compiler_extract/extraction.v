@@ -23,7 +23,7 @@ Require Import Imp2Asm.
 (* Require Import ImpMem2. *)
 (* Require Import ImpLink. *)
 Require Import StackImp EchoImp EchoMainImp ClientImp.
-Require Import MWAppImp MWCImp MWMapImp.
+(* Require Import MWAppImp MWCImp MWMapImp. *)
 (************************************)
 
 Extract Constant excluded_middle_informative => "true".
@@ -182,7 +182,7 @@ Separate Extraction
    (* imp_mem2_prog *)
    (* imp_linkF_prog imp_linkG_prog imp_linkMain_prog *)
    Stack_prog Echo_prog EchoMain_prog Client_prog
-   Appprog MWprog Map_prog
+   (* Appprog MWprog Map_prog *)
 .
 
 Cd "../..".
