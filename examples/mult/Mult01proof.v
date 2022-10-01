@@ -78,7 +78,7 @@ Section SIMMODSEM.
       (*** when calling a function, given tgt aux var, choose src aux var. ***)
       steps. iSplits; ss. iIntros. iSplits; ss.
       (*** we get "Q_tgt" ***)
-      iIntros; iDes.
+      iIntros; iDes. subst.
       (*** and prove "SI * Q_src * ..." ***)
       iFrame. iSplits; ss. iIntros; iDes. subst. iFrame. iSplits; ss.
 

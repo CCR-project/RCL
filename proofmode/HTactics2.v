@@ -25,21 +25,51 @@ Set Implicit Arguments.
 Section AUX.
   Context `{Σ: GRA.t}.
 
-  Variant is_simple (fsp: fspec): Prop :=
-  | is_simple_intro
-      (PRE: forall mn x varg varg_tgt, ⊢ fsp.(precond) mn x varg varg_tgt -* ⌜varg = varg_tgt⌝)
-      (POST: forall mn x vret vret_tgt, ⊢ fsp.(postcond) mn x vret vret_tgt -* ⌜vret = vret_tgt⌝)
+  (* Variant is_simple (fsp: fspec): Prop := *)
+  (* | is_simple_intro *)
+  (*     (PRE: forall mn x varg varg_tgt, ⊢ fsp.(precond) mn x varg varg_tgt -* ⌜varg = varg_tgt⌝) *)
+  (*     (POST: forall mn x vret vret_tgt, ⊢ fsp.(postcond) mn x vret vret_tgt -* ⌜vret = vret_tgt⌝) *)
+  (* . *)
+
+  (* Lemma mk_simple_is_simple: forall X DPQ, is_simple (mk_simple (X:=X) DPQ). *)
+  (* Proof. *)
+  (*   i. econs; ss. *)
+  (*   - i. iIntros "[H %]". ss. *)
+  (*   - i. iIntros "[H %]". ss. *)
+  (* Qed. *)
+  Variant is_irr (fsp: fspec): Prop :=
+  | is_irr_intro
+      (PRE: forall mn x varg0 varg1 varg_tgt, fsp.(precond) mn x varg0 varg_tgt ⊣⊢ fsp.(precond) mn x varg1 varg_tgt)
+      (POST: forall mn x vret0 vret1 vret_tgt, fsp.(postcond) mn x vret0 vret_tgt ⊣⊢ fsp.(postcond) mn x vret1 vret_tgt)
   .
 
-  Lemma mk_simple_is_simple: forall X DPQ, is_simple (mk_simple (X:=X) DPQ).
+  Definition mk_irr {X: Type} (DPQ: X -> ord * (Any.t -> iProp) * (Any.t -> iProp)): fspec :=
+    mk_fspec (fst ∘ fst ∘ DPQ)
+             (fun _ x _ a => (((snd ∘ fst ∘ DPQ) x a: iProp))%I)
+             (fun _ x _ a => (((snd ∘ DPQ) x a: iProp))%I)
+  .
+
+  Lemma mk_irr_is_irr: forall X DPQ, is_irr (mk_irr (X:=X) DPQ).
   Proof.
     i. econs; ss.
-    - i. iIntros "[H %]". ss.
-    - i. iIntros "[H %]". ss.
   Qed.
+
 End AUX.
 
 
+
+(***
+Note: in below lemmas, argp and retp are both ∀ quantified.
+Q: They should be dual and one should be ∃?
+A: No:
+parg <- choose(); pret := f(parg); vret_src <- take();
+parg <- choose(); pret := f(parg); vret_tgt <- take();
+In both cases, ∀ appears in either source or target, and we need to deal with it;
+thus the reasoning principle should also be ∀ quantified.
+Specifically, "parg <- choose()" in the target will give you ∀ quantified parg, and
+"pret <- take()" in the source will give you ∀ quantified pret.
+
+***)
 
 Section MODE.
 
@@ -210,7 +240,6 @@ Section MODE.
         (fsp_tgt: fspec)
         mr_tgt0 mp_tgt0 k_tgt k_src
         fn tbr_src tbr_tgt o_src o_tgt arg_src arg_tgt
-        (SIMPLE: is_simple fsp_tgt)
         (R: A -> Any.t -> Any.t -> iProp)
         (eqr: Any.t -> Any.t -> Any.t -> Any.t -> Prop)
 
@@ -226,14 +255,14 @@ Section MODE.
           exists I FR,
             (<<ACC: current_iPropL (fr_src0 ⋅ mr_src0 ⋅ mr_tgt0) [("I", I)] >>) /\
             (<<UPDATABLE: bi_entails I (OwnT (fr_tgt0) ** OwnT (mr_tgt0) **
-                              (fsp_tgt.(precond) (Some mn) x_tgt arg_tgt arg_tgt
+                              (∀ argp, fsp_tgt.(precond) (Some mn) x_tgt arg_tgt argp
                                  ==∗ (FR ** (∃ a1, R a1 mp_src0 mp_tgt0 ** ⌜le a0 a1⌝) **
-                                         (fsp_src.(precond) (Some mn) x_src arg_src arg_tgt: iProp))))>>) /\
+                                         (fsp_src.(precond) (Some mn) x_src arg_src argp: iProp))))>>) /\
             (<<POST: forall (ret_src ret_tgt: Any.t) (mp_src1 mp_tgt1 : Any.t),
             exists J,
-              (<<UPDATABLE: (FR ** (∃ a1, R a1 mp_src1 mp_tgt1 ** ⌜le a0 a1⌝) **
-                                          fsp_src.(postcond) (Some mn) x_src ret_src ret_tgt) ==∗
-                            (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt ret_tgt ** J)>>) /\
+              (<<UPDATABLE: ∀ retp, (FR ** (∃ a1, R a1 mp_src1 mp_tgt1 ** ⌜le a0 a1⌝) **
+                                          fsp_src.(postcond) (Some mn) x_src ret_src retp) ==∗
+                            (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J)>>) /\
                 (<<SIM: forall fr_src1 fr_tgt1 mr_src1 mr_tgt1
                               (ACC: current_iPropL (fr_src1 ⋅ (mr_tgt1 ⋅ mr_src1))
                                                    [("J", J); ("TF", OwnT fr_tgt1); ("TM", OwnT mr_tgt1)]),
@@ -266,11 +295,7 @@ Section MODE.
     mAssert (_) with "A1".
     { iStopProof. eapply from_semantic; eauto. }
     mAssert (#=> _) with "A A3".
-    { assert(x1 = arg_tgt).
-      { sym. mAssertPure _; [|eassumption]. inv SIMPLE. iApply PRE; eauto. }
-      subst.
-      iSpecialize ("A" with "A3").
-      iMod "A". iModIntro. iAssumption.
+    { iSpecialize ("A" with "A3"). iMod "A". iModIntro. iAssumption.
     }
     mUpd "A1". mDesAll.
 
@@ -310,7 +335,8 @@ Section MODE.
       instantiate (1:=ri_src ⋅ fr_src ⋅ fr_tgt ⋅ mr_tgt). r_wf x6.
     }
     eapply current_iProp_entail in ACC; cycle 1.
-    { etrans; try eassumption. iIntros "H". iDestruct "H" as "[A [B [C _]]]". iFrame. iSplits; et.
+    { specialize (UPDATABLE0 ret_tgt).
+      etrans; try eassumption. iIntros "H". iDestruct "H" as "[A [B [C _]]]". iFrame. iSplits; et.
       iPureIntro. etrans; eauto. }
     inv ACC. rr in IPROP. repeat (autorewrite with iprop in IPROP; autounfold with iprop in IPROP; ss).
     des. subst.
@@ -350,7 +376,6 @@ Section MODE.
         (le: A -> A -> Prop)
         (eqr: Any.t -> Any.t -> Any.t -> Any.t -> Prop)
         (R: A -> Any.t -> Any.t -> iProp)
-        (SIMPL: forall mn x vret vret_tgt, ⊢ Qt mn x vret vret_tgt -* ⌜vret = vret_tgt⌝)
 
         fr_src fr_tgt
 
@@ -358,12 +383,12 @@ Section MODE.
         (ACC: current_iPropL (fr_src ⋅ (mr_tgt ⋅ mr_src)) [("I", I)])
         (UPDATABLE:
           bi_entails I (OwnT (fr_tgt) ** OwnT (mr_tgt) **
-                             (Qt mn xt vret_tgt vret_tgt
+                             (∀ retp, Qt mn xt vret_tgt retp
                                  ==∗ ((∃ a, R a mp_src mp_tgt ** ⌜le a0 a⌝)
-                                        ** (Qs mn xs vret_src vret_tgt: iProp)))))
-        (EQ: forall mr_src mr_tgt a (WLE: le a0 a)
+                                        ** (Qs mn xs vret_src retp: iProp)))))
+        (EQ: forall mr_src mr_tgt a retp (WLE: le a0 a)
                     (WF: mk_wf R a ((Any.pair mp_src mr_src), (Any.pair mp_tgt mr_tgt))),
-            eqr (Any.pair mp_src mr_src) (Any.pair mp_tgt mr_tgt) vret_tgt vret_tgt)
+            eqr (Any.pair mp_src mr_src) (Any.pair mp_tgt mr_tgt) retp retp)
     :
       gpaco8 (_sim_itree (mk_wf R) le) (cpn8 (_sim_itree (mk_wf R) le)) r rg _ _ eqr m n a0
              (Any.pair mp_src (mr_tgt ⋅ mr_src)↑, (HoareFunRet Qs mn xs (fr_src, vret_src)))
@@ -381,9 +406,6 @@ Section MODE.
     mUpd "A2". mDesAll.
     mAssert _ with "A2".
     { iStopProof. eapply from_semantic; eauto. }
-    assert(x = vret_tgt).
-    { sym. mAssertPure _; [|eassumption]. iApply SIMPL; et. }
-    subst.
     mAssert (#=> _) with "A A4".
     { iSpecialize ("A" with "A4"). iAssumption. }
     mUpd "A2". mDesAll.
@@ -439,10 +461,11 @@ Section MODE.
   Definition is_possibly_pure (fsp: fspec): Prop := exists x, is_pure (fsp.(measure) x).
 
   Definition stb_pure_incl (stb_tgt stb_src: string -> option fspec): Prop :=
-    forall fn fsp (FIND: stb_tgt fn = Some fsp) (PURE: is_possibly_pure fsp), stb_src fn = Some fsp
+    forall fn fsp (FIND: stb_tgt fn = Some fsp) (PURE: is_possibly_pure fsp),
+      stb_src fn = Some fsp /\ is_irr fsp
   .
 
-  (*** TODO: stb_pure_incl is too strong. we should use stb_pure_incl2 instead ***)
+  (*** TODO: stb_pure_incl is too strong? maybe relax it into stb_pure_incl2 ***)
   Definition stb_pure_incl2 (stb_tgt stb_src: string -> option fspec): Prop :=
     forall fn fsp_tgt (FIND: stb_tgt fn = Some fsp_tgt) x_tgt (PURE: is_pure (fsp_tgt.(measure) x_tgt)),
       exists fsp_src x_src, (<<FIND: stb_src fn = Some fsp_src>>) /\
@@ -489,7 +512,6 @@ Section MODE.
         stb_src stb_tgt o_src o_tgt
         (LE: ord_le o_tgt o_src)
         (STBINCL: stb_pure_incl stb_tgt stb_src)
-        (SIMPL: forall fn fsp_tgt (IN: stb_tgt fn = Some fsp_tgt), is_simple fsp_tgt)
         (*** TODO: we should be able to remove the above condition. ***)
         (ARG: forall
             (mr_src1 mr_tgt1: Σ) (mp_src1 mp_tgt1 : Any.t)
@@ -520,8 +542,9 @@ Section MODE.
         destruct (classic (is_possibly_pure f)); cycle 1.
         { unfold HoareCall. unfold mput, mget. steps. des. contradict H0. r. eauto. }
 
-        assert(STB: stb_src s = Some f).
+        assert(STB: stb_src s = Some f /\ is_irr f).
         { eapply STBINCL; et. }
+        des.
         force_l. eexists (_, _). steps. rewrite STB. steps. instantiate (1:=t).
 
         mDesAll.
@@ -530,14 +553,13 @@ Section MODE.
         { eapply ord_lt_le_lt; eauto. }
         { replace (fr_src0 ⋅ mr_src0 ⋅ mr_tgt0) with (fr_src0 ⋅ (mr_tgt0 ⋅ mr_src0)) by r_solve.
           eapply current_iProp_entail; eauto.
-          iIntros "[A [B [C [D _]]]]". iFrame. iIntros "H". iFrame. iModIntro.
+          iIntros "[A [B [C [D _]]]]". iFrame. iIntros. iFrame. iModIntro.
           iSplitL "D"; try iAssumption. iSplits; eauto. }
         i.
         esplits; eauto.
-        { iIntros "[[A B] C]".
-          iAssert (⌜ret_src = ret_tgt⌝)%I as "%".
-          { exploit SIMPL; eauto. intro T. inv T. iApply POST; et. }
-          subst. iFrame. iCombine "A B" as "A". eauto. }
+        { i. iIntros "[[A B] C]".
+          inv STB0. iDestruct (POST with "C") as "C".
+          iFrame. iCombine "A B" as "A". eauto. }
         i. steps.
         move CIH at bottom.
         deflag. gbase. mDesAll. eapply (CIH); et.

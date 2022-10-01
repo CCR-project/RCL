@@ -394,16 +394,16 @@ Ltac des_eqs :=
 Ltac startproof :=
   apply isim_fun_to_tgt;
   [typeclasses eauto
-  |autounfold with stb in *; autorewrite with stb in *; cbn; i; des_eqs; econs;
-   cbn; i; des_ifs; iIntros; iDes; des; eauto
-  |cbn; autounfold with stb in *; autorewrite with stb in *;
-   match goal with
-   | |- context[_ = Some ?x] =>
-       repeat multimatch goal with
-              | |- context[(?y, ?z)] => match z with | x => exists y end
-              end
-   end;
-   refl
+  (* |autounfold with stb in *; autorewrite with stb in *; cbn; i; des_eqs; econs; *)
+  (*  cbn; i; des_ifs; iIntros; iDes; des; eauto *)
+  (* |cbn; autounfold with stb in *; autorewrite with stb in *; *)
+  (*  match goal with *)
+  (*  | |- context[_ = Some ?x] => *)
+  (*      repeat multimatch goal with *)
+  (*             | |- context[(?y, ?z)] => match z with | x => exists y end *)
+  (*             end *)
+  (*  end; *)
+  (*  refl *)
   |cbn; autounfold with stb in *; autorewrite with stb in *; ii; ss; des_eqs;
    match goal with
    | [H: is_possibly_pure _ |- _] => rr in H; des; ss
