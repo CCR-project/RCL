@@ -143,30 +143,30 @@ Section MODE.
   .
   Proof.
     inv WF. apply_all_once Any.pair_inj. des. subst. apply_all_once Any.upcast_inj. des; subst. clear_fast.
-    unfold HoareFunArg, mput, mget, assume, guarantee.
+    unfold HoareFunArg, ASSUME, ASSERT, mput, mget, assume, guarantee.
     repeat (ired_both; apply sim_itreeC_spec; econs). intro x_src.
-    repeat (ired_both; apply sim_itreeC_spec; econs). intro arg_src.
     repeat (ired_both; apply sim_itreeC_spec; econs). intro fr_src.
     repeat (ired_both; apply sim_itreeC_spec; econs). intro VALID.
+    repeat (ired_both; apply sim_itreeC_spec; econs). intro arg_src.
     repeat (ired_both; apply sim_itreeC_spec; econs). intro PRE.
     specialize (ARG arg_src x_src). des.
     repeat (ired_both; apply sim_itreeC_spec; econs). exists x_tgt.
-    repeat (ired_both; apply sim_itreeC_spec; econs). exists arg_tgt.
-    uipropall. exploit RSRC; et.
+    exploit RSRC; et.
     { eapply URA.wf_mon. instantiate (1:=fr_src ⋅ mr_tgt). r_wf VALID. }
     i; des.
+    uipropall.
     specialize (SEP (fr_src ⋅ mr_src')). exploit SEP; et.
     { eapply URA.wf_mon. instantiate (1:=mr_tgt). r_wf VALID. }
     { esplits; try eassumption; try refl; revgoals. r_solve. }
     i; des. subst. rename b into fr_src'. rename a0 into fr_tgt.
-    (* rr in x4. des. subst. rename ctx into mr_tgt_spur. *)
     repeat (ired_both; apply sim_itreeC_spec; econs). exists fr_tgt.
-    repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits.
-    { eapply URA.updatable_wf; et.
+    repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; eauto.
+    { eapply URA.updatable_wf; et. rewrite ! URA.unit_id.
       replace (fr_src ⋅ (mr_tgt ⋅ mr_src')) with ((fr_src ⋅ mr_src') ⋅ mr_tgt) by r_solve.
       eapply URA.updatable_add; et; try refl.
       etrans; et. eapply URA.extends_updatable.
       exists (fr_src'). r_solve. }
+    repeat (ired_both; apply sim_itreeC_spec; econs). exists arg_tgt.
     repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et.
     ired_both.
     eapply SIM.
@@ -180,6 +180,7 @@ Section MODE.
       iStopProof. eapply from_semantic; et.
     }
     mUpd "A". mDesAll. mRename "A1" into "TM". mRename "A2" into "TF". mRename "A" into "FR". ss.
+    rewrite ! URA.unit_id.
     replace (fr_src ⋅ (mr_tgt ⋅ mr_src')) with (fr_src ⋅ mr_src' ⋅ mr_tgt) by r_solve. ss.
   Qed.
 
@@ -248,10 +249,10 @@ Section MODE.
                        (HoareCall mn tbr_tgt o_tgt fsp_tgt fn arg_tgt) fr_tgt0 >>= k_tgt)
   .
   Proof.
-    subst. unfold HoareCall at 2, mput, mget, assume, guarantee.
+    subst. unfold HoareCall at 2, ASSUME, ASSERT, mput, mget, assume, guarantee.
     steps.
     rename c into mr_tgt1. rename c0 into ro_tgt. rename c1 into fr_tgt.
-    rename x0 into x_tgt. des. specialize (POST x_tgt (conj x3 (conj x0 x4))). des.
+    rename x into x_tgt. des. specialize (POST x_tgt (conj x3 (conj x4 x5))). des.
     eapply (current_iPropL_entail "I") in ACC; et. unfold alist_add in ACC; ss.
     mDesAll.
     mAssert (Own (fr_tgt0 ⋅ mr_tgt0))%I with "I A1" as "H".
@@ -277,20 +278,20 @@ Section MODE.
     inv ACC. rr in IPROP. repeat (autorewrite with iprop in IPROP; autounfold with iprop in IPROP; ss).
     des. subst. rename a2 into mr_src1. rename a3 into fr_src.
     rename a4 into ro_src. rename a5 into fr_tgt_. rename a6 into mr_tgt_.
-    unfold HoareCall at 1, mput, mget, assume, guarantee.
+    unfold HoareCall at 1, ASSUME, ASSERT, mput, mget, assume, guarantee.
     steps.
+    repeat (ired_both; apply sim_itreeC_spec; econs). esplits; et.
     repeat (ired_both; apply sim_itreeC_spec; econs). exists (ro_src, (fr_src ⋅ fr_tgt), (mr_tgt1 ⋅ mr_src1)).
     repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits.
     { replace (fr_src0 ⋅ (mr_tgt0 ⋅ mr_src0)) with (fr_src0 ⋅ mr_src0 ⋅ mr_tgt0) by r_solve. etrans; et.
       rr in IPROP6. rr in IPROP8. des. subst.
       eapply URA.extends_updatable. exists (b3 ⋅ ctx0 ⋅ ctx); r_solve. }
     repeat (ired_both; apply sim_itreeC_spec; econs). esplits; et.
-    repeat (ired_both; apply sim_itreeC_spec; econs). esplits; et.
     repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et.
     repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et.
     repeat (ired_both; apply sim_itreeC_spec; econs). econs; et.
     bar.
-    i. steps. rename x5 into ri_src. rename t into mp_src2. rename c into mr_src2.
+    i. steps. rename x into ri_src. rename t into mp_src2. rename c into mr_src2.
     rename x7 into ret_src. rename vret into ret_tgt.
     inv WF. rewrite Any.pair_split in *. clarify. rewrite Any.upcast_downcast in *. clarify.
     move POST at bottom.
@@ -370,7 +371,7 @@ Section MODE.
              (Any.pair mp_tgt mr_tgt↑, (HoareFunRet Qt mn xt (fr_tgt, vret_tgt)))
   .
   Proof.
-    subst. unfold HoareFunRet, mput, mget, guarantee.
+    subst. unfold HoareFunRet, ASSUME, ASSERT, mput, mget, guarantee.
     steps.
     rename c0 into ro_tgt. rename c into mr_tgt0. rename c1 into residue.
     eapply current_iPropL_entail with (Hn:="I") in ACC; et. ss. unfold alist_add in *. ss.
@@ -381,7 +382,7 @@ Section MODE.
     mUpd "A2". mDesAll.
     mAssert _ with "A2".
     { iStopProof. eapply from_semantic; eauto. }
-    assert(x = vret_tgt).
+    assert(x0 = vret_tgt).
     { sym. mAssertPure _; [|eassumption]. iApply SIMPL; et. }
     subst.
     mAssert (#=> _) with "A A4".
@@ -390,11 +391,11 @@ Section MODE.
     inv ACC. rr in IPROP. repeat (autorewrite with iprop in IPROP; autounfold with iprop in IPROP; ss).
     des. subst.
     rename a1 into mr_src0. rename a2 into ro_src. rename a3 into mr_tgt0_. rename a4 into residue_.
-    repeat (ired_both; apply sim_itreeC_spec; econs). esplits.
     repeat (ired_both; apply sim_itreeC_spec; econs). eexists (ro_src, ε, mr_tgt0 ⋅ mr_src0).
     repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits.
     { etrans; et. eapply URA.extends_updatable.
       rr in IPROP4. des; subst. exists (ctx ⋅ b2 ⋅ residue_). rewrite URA.unit_id. r_solve. }
+    repeat (ired_both; apply sim_itreeC_spec; econs). esplits.
     repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; eauto.
     steps. eapply EQ; et. econs; et.
   Qed.
@@ -518,7 +519,7 @@ Section MODE.
       - steps. eapply gpaco8_mon; et.
       - steps. force_l. exists x0. steps. force_l; ss. steps.
         destruct (classic (is_possibly_pure f)); cycle 1.
-        { unfold HoareCall. unfold mput, mget. steps. des. contradict H0. r. eauto. }
+        { unfold HoareCall. unfold ASSUME, ASSERT, mput, mget. steps. des. contradict H0. r. eauto. }
 
         assert(STB: stb_src s = Some f).
         { eapply STBINCL; et. }
