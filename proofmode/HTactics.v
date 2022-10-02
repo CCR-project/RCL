@@ -245,7 +245,7 @@ Section HLEMMAS.
              (mp_tgt0, trigger (Call fn varg_tgt) >>= k_tgt)
   .
   Proof.
-    subst. unfold HoareCall, mput, mget, assume, guarantee.
+    subst. unfold HoareCall, ASSUME, ASSERT, mput, mget, assume, guarantee.
     ired_both. apply sim_itreeC_spec. econs.
     hexploit (WEAKER x). i. des.
     assert (exists mr_src0' rarg_src fr_src0',
@@ -267,10 +267,10 @@ Section HLEMMAS.
       replace (b0 ⋅ (r1 ⋅ a2)) with (b0 ⋅ a2 ⋅ r1) by r_solve.
       eapply URA.updatable_add; et. rewrite URA.add_comm; ss.
     }
-    des. exists (rarg_src, fr_src0', mr_src0').
-    repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits.
+    des. exists x_tgt.
+    repeat (ired_both; apply sim_itreeC_spec; econs). exists (rarg_src, fr_src0', mr_src0').
+    repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; eauto.
     { replace (rarg_src ⋅ fr_src0' ⋅ mr_src0') with (mr_src0' ⋅ (rarg_src ⋅ fr_src0')) by r_solve. ss. }
-    repeat (ired_both; apply sim_itreeC_spec; econs). exists x_tgt.
     repeat (ired_both; apply sim_itreeC_spec; econs). exists varg_tgt.
     repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; eauto.
     repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; eauto.
@@ -458,15 +458,15 @@ Section HLEMMAS.
   .
   Proof.
     inv WF.
-    unfold HoareFunArg, mput, mget, assume, guarantee.
+    unfold HoareFunArg, ASSUME, ASSERT, mput, mget, assume, guarantee.
     repeat (ired_both; apply sim_itreeC_spec; econs). intro x.
-    repeat (ired_both; apply sim_itreeC_spec; econs). intro varg_src.
     repeat (ired_both; apply sim_itreeC_spec; econs). intros rarg_src.
     repeat (ired_both; apply sim_itreeC_spec; econs). intros VALID.
+    repeat (ired_both; apply sim_itreeC_spec; econs). intro varg_src.
     repeat (ired_both; apply sim_itreeC_spec; econs). intro PRE.
     ired_both. eapply ARG; et.
     red. econs; ss; cycle 1.
-    { instantiate (1:=rarg_src ⋅ mr_src). refl. }
+    { instantiate (1:=rarg_src ⋅ mr_src). rewrite URA.unit_id. refl. }
     { ss. rr. uipropall. esplits; et.
       { rewrite URA.unit_id. et. }
       { eapply RSRC; et. eapply URA.wf_mon. instantiate (1:=(rarg_src)). r_wf VALID. }
@@ -500,9 +500,7 @@ Section HLEMMAS.
              (mp_tgt, (Ret vret_tgt))
   .
   Proof.
-    subst. unfold HoareFunRet, mput, mget, guarantee.
-    repeat (ired_both; apply sim_itreeC_spec; econs). exists vret_tgt.
-    repeat (ired_both; apply sim_itreeC_spec; econs).
+    subst. unfold HoareFunRet, ASSUME, ASSERT, mput, mget, guarantee.
     assert (exists mr_src1 rret_src,
                (<<UPDATABLE: URA.updatable (fr0 ⋅ mr_src) (mr_src1 ⋅ rret_src)>>) /\
                (<<RSRC: R a mp_src mp_tgt mr_src1>>) /\
@@ -513,9 +511,11 @@ Section HLEMMAS.
       i. des. subst. exists a1, b. splits; et.
       etrans; et.
     }
-    des. exists (rret_src, ε, mr_src1).
+    des.
+    repeat (ired_both; apply sim_itreeC_spec; econs). exists (rret_src, ε, mr_src1).
     repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits.
     { rewrite URA.unit_id. replace (rret_src ⋅ mr_src1) with (mr_src1 ⋅ rret_src) by r_solve. ss. }
+    repeat (ired_both; apply sim_itreeC_spec; econs). eexists.
     repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et.
     repeat (ired_both; apply sim_itreeC_spec; econs).
     eapply EQ; et. econs; et.

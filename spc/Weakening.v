@@ -78,7 +78,7 @@ Section PROOF.
     destruct e.
     { resub. destruct h. steps.
       hexploit stb_stronger; et. i. des. rewrite FINDSRC. steps.
-      Local Transparent HoareCall. unfold HoareCall, mput, mget. Local Opaque HoareCall.
+      Local Transparent HoareCall. unfold HoareCall, ASSUME, ASSERT, mput, mget. Local Opaque HoareCall.
       steps. specialize (WEAKER x (Some mn)). des.
       assert(T: URA.updatable (fr_src ⋅ mr) (fr_tgt ⋅ mr)).
       { eapply URA.updatable_add; et. refl. }
@@ -93,9 +93,10 @@ Section PROOF.
         eapply URA.updatable_add; try refl.
         eapply URA.updatable_add; try refl. r. eauto.
       }
-      des. force_l. exists (rarg_src, c1, c).
-      steps. force_l; et. { etrans; et. }
-      steps. force_l. exists x_tgt.
+      des. force_l. exists x_tgt.
+      steps. force_l; et. exists (rarg_src, c1, c).
+      steps. force_l; et.
+      { etrans; et. }
       steps. force_l. exists x0.
       steps. force_l; et.
       steps. force_l; et.
@@ -156,28 +157,29 @@ Section PROOF.
               (mrs_tgt, fun_to_tgt mn stb_tgt (mk_specbody fsp_tgt body) arg).
   Proof.
     red in WF. des. subst.
-    Local Transparent HoareFun. unfold fun_to_tgt, HoareFun, mput, mget. Local Opaque HoareFun.
+    Local Transparent HoareFun. unfold fun_to_tgt, HoareFun, ASSUME, ASSERT, mput, mget. Local Opaque HoareFun.
     destruct arg as [mn_caller varg_tgt]. ss. des. clarify.
-    ginit. steps.
+    ginit. steps. rewrite URA.unit_id in *.
     hexploit (fsp_weaker x mn_caller). i. des.
     assert (exists rarg_tgt,
-               (<<PRETGT: precond fsp_tgt mn_caller x_tgt x0 varg_tgt rarg_tgt>>) /\
+               (<<PRETGT: precond fsp_tgt mn_caller x_tgt x1 varg_tgt rarg_tgt>>) /\
                (<<VALIDTGT: URA.wf (mr ⋅ rarg_tgt)>>) /\
-               (<<UPD: URA.updatable x1 rarg_tgt>>)).
-    { hexploit PRE. i. uipropall. hexploit (H x1); et.
+               (<<UPD: URA.updatable x0 rarg_tgt>>)).
+    { hexploit PRE. i. uipropall. hexploit (H x0); et.
       { eapply URA.wf_mon; et. }
       i. des. esplits; et. eapply URA.updatable_wf; et. rewrite URA.add_comm.
       eapply URA.updatable_add; et. refl.
     }
     des. force_r. exists x_tgt.
-    steps. force_r. exists x0.
-    steps. force_r. exists (rarg_tgt).
+    steps. force_r. exists rarg_tgt.
     steps. force_r; et.
+    { r_wf VALIDTGT. }
+    steps. force_r. exists x1.
     steps. force_r; et.
     steps. deflag. guclo lbindC_spec. econs.
     { gfinal. right. r in MEASURE. des_ifs.
-      - eapply weakening_itree; ss.
-      - eapply weakening_itree; ss.
+      - eapply weakening_itree; ss. rewrite URA.unit_id; ss.
+      - eapply weakening_itree; ss. rewrite URA.unit_id; ss.
     }
     i. ss. des; clarify. steps.
     assert(T: URA.updatable (fr_src ⋅ mr0) (c0 ⋅ c1 ⋅ c)).
@@ -193,12 +195,12 @@ Section PROOF.
       replace (c0 ⋅ c1 ⋅ c) with ((c0 ⋅ c1) ⋅ c) by r_solve.
       eapply URA.updatable_add; et; try refl. etrans; et. eapply URA.extends_updatable. exists c1; r_solve.
     }
-    des. force_l. exists x2.
-    steps. force_l. exists (rret_src, ε, c).
-    steps. force_l; et.
+    des. force_l. exists (rret_src, ε, c).
+    steps. force_l. 
     { rewrite URA.unit_id. etrans; et. eapply URA.updatable_add; et; try refl. etrans; et.
       eapply URA.extends_updatable. exists c1; r_solve.
     }
+    steps. force_l; et. exists x2.
     steps. force_l; et.
     steps. red. esplits; et. red. esplits; et.
     Unshelve. all: ss. all: try exact 0.
