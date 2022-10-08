@@ -330,7 +330,7 @@ Section SIM.
             (⌜measure fsp_src x_src = ord_top⌝) ∧
             (∀ argp, (fsp_tgt.(precond) (Some mn) x_tgt arg_tgt argp)
               -* ((inv_with le I w0 st_src st_tgt ∗ fsp_src.(precond) (Some mn) x_src arg_src argp)
-                    ∗ (∀ st_src st_tgt ret_src ret_tgt retp,
+                    ∗ (∀ st_src st_tgt retp ret_src, ∃ ret_tgt,
                           {{"INV": inv_with le I w0 st_src st_tgt}}
                             -* {{"POST": (fsp_src.(postcond) (Some mn) x_src ret_src retp)}}
                             -* (((fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp))
@@ -355,14 +355,16 @@ Section SIM.
       - eapply current_iProp_frame_own; eauto. eapply current_iProp_entail; eauto. start_ipm_proof.
         iIntros; iFrame.
         iIntros (argp) "A". iDestruct ("H" with "A") as "[[A B] C]". iFrame. eauto.
-      - i. esplits; eauto.
-        + iIntros (retp) "[[A B] C]". iDestruct ("A" with "[B] [C]") as "A"; eauto.
-        + i. eapply current_iProp_frame_own_rev in ACC. des.
-          inv ACC1. ss.
-          assert(T: URA.updatable fmr1 (r1 ⋅ OwnT0)).
-          { etrans; et. eapply URA.updatable_add; eauto. refl. }
-          guclo hupdC_spec. econs; try apply IPROP; et.
-          { eapply URA.updatable_wf; try apply ACC; eauto. }
+      - i. iIntros "[[A B] C]". iDestruct ("A" $! _ _ _ _) as (ret_tgt) "A".
+        iDestruct ("A" with "[B] [C]") as "[B C]"; eauto. iModIntro. iSplits; eauto.
+        { iFrame. iAssumption. }
+        iPureIntro.
+        i. eapply current_iProp_frame_own_rev in ACC. des.
+        inv ACC1. ss.
+        assert(T: URA.updatable fmr1 (r1 ⋅ OwnT0)).
+        { etrans; et. eapply URA.updatable_add; eauto. refl. }
+        guclo hupdC_spec. econs; try apply IPROP; et.
+        { eapply URA.updatable_wf; try apply ACC; eauto. }
     }
   Qed.
 
@@ -381,7 +383,7 @@ Section SIM.
             (⌜is_pure (measure fsp_src x_src)⌝) ∧
             (∀ argp, (fsp_tgt.(precond) (Some mn) x_tgt arg_tgt argp)
               -* ((inv_with le I w0 st_src st_tgt ∗ fsp_src.(precond) (Some mn) x_src arg_src argp)
-                    ∗ (∀ st_src st_tgt ret_src ret_tgt retp,
+                    ∗ (∀ st_src st_tgt ret_src retp, ∃ ret_tgt,
                           {{"INV": inv_with le I w0 st_src st_tgt}}
                             -* {{"POST": (fsp_src.(postcond) (Some mn) x_src ret_src retp)}}
                             -* (((fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp))
@@ -406,14 +408,16 @@ Section SIM.
       - eapply current_iProp_frame_own; eauto. eapply current_iProp_entail; eauto. start_ipm_proof.
         iIntros; iFrame.
         iIntros (argp) "A". iDestruct ("H" with "A") as "[[A B] C]". iFrame. eauto.
-      - i. esplits; eauto.
-        + iIntros (retp) "[[A B] C]". iDestruct ("A" with "[B] [C]") as "A"; eauto.
-        + i. eapply current_iProp_frame_own_rev in ACC. des.
-          inv ACC1. ss.
-          assert(T: URA.updatable fmr1 (r1 ⋅ OwnT0)).
-          { etrans; et. eapply URA.updatable_add; eauto. refl. }
-          guclo hupdC_spec. econs; try apply IPROP; et.
-          { eapply URA.updatable_wf; try apply ACC; eauto. }
+      - i. iIntros "[[A B] C]". iDestruct ("A" $! _ _ _ _) as (ret_tgt) "A".
+        iDestruct ("A" with "[B] [C]") as "[B C]"; eauto. iModIntro. iSplits; eauto.
+        { iFrame. iAssumption. }
+        iPureIntro.
+        i. eapply current_iProp_frame_own_rev in ACC. des.
+        inv ACC1. ss.
+        assert(T: URA.updatable fmr1 (r1 ⋅ OwnT0)).
+        { etrans; et. eapply URA.updatable_add; eauto. refl. }
+        guclo hupdC_spec. econs; try apply IPROP; et.
+        { eapply URA.updatable_wf; try apply ACC; eauto. }
     }
   Qed.
 

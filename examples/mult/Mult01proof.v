@@ -80,11 +80,11 @@ Section SIMMODSEM.
       (*** we get "Q_tgt" ***)
       iIntros; iDes. subst.
       (*** and prove "SI * Q_src * ..." ***)
-      iFrame. iSplits; ss. iIntros; iDes. subst. iFrame. iSplits; ss.
+      iFrame. iSplits; ss. iIntros; iDes. iSplits; ss. iIntros. iDes. subst. iFrame. iSplits; ss.
 
       (*** now calling a function which has different conditions on src/tgt. the rules are the same. ***)
       steps. iSplits; ss. iIntros. iSplits; ss. iIntros. iFrame. iSplits; ss.
-      iIntros. iDes; subst.
+      iIntros. iSplits. iIntros. iDes; subst. iSplits; et.
 
       (*** returning, same as above. ***)
       iSplits; ss. steps. iIntros; iDes.
