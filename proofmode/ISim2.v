@@ -328,12 +328,12 @@ Section SIM.
         (⌜o_src = ord_top⌝ ∧
           ∀ (x_tgt: fsp_tgt.(meta)), ∃ (x_src: fsp_src.(meta)),
             (⌜measure fsp_src x_src = ord_top⌝) ∧
-            ((fsp_tgt.(precond) (Some mn) x_tgt arg_tgt arg_tgt)
-              -* ((inv_with le I w0 st_src st_tgt ∗ fsp_src.(precond) (Some mn) x_src arg_src arg_tgt)
-                    ∗ (∀ st_src st_tgt ret_src ret_tgt,
+            (∀ argp, (fsp_tgt.(precond) (Some mn) x_tgt arg_tgt argp)
+              -* ((inv_with le I w0 st_src st_tgt ∗ fsp_src.(precond) (Some mn) x_src arg_src argp)
+                    ∗ (∀ st_src st_tgt retp ret_src, ∃ ret_tgt,
                           {{"INV": inv_with le I w0 st_src st_tgt}}
-                            -* {{"POST": (fsp_src.(postcond) (Some mn) x_src ret_src ret_tgt)}}
-                            -* (((fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt ret_tgt))
+                            -* {{"POST": (fsp_src.(postcond) (Some mn) x_src ret_src retp)}}
+                            -* (((fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp))
                                   ∗ isim (g, g, true, true) Q None (st_src, ktr_src ret_src)
                                   (st_tgt, ktr_tgt ret_tgt))
                       )))
@@ -354,15 +354,17 @@ Section SIM.
       esplits; eauto.
       - eapply current_iProp_frame_own; eauto. eapply current_iProp_entail; eauto. start_ipm_proof.
         iIntros; iFrame.
-        iIntros "A". iDestruct ("H" with "A") as "[[A B] C]". iFrame. eauto.
-      - i. esplits; eauto.
-        + iIntros "[[A B] C]". iDestruct ("A" with "[B] [C]") as "A"; eauto.
-        + i. eapply current_iProp_frame_own_rev in ACC. des.
-          inv ACC1. ss.
-          assert(T: URA.updatable fmr1 (r1 ⋅ OwnT0)).
-          { etrans; et. eapply URA.updatable_add; eauto. refl. }
-          guclo hupdC_spec. econs; try apply IPROP; et.
-          { eapply URA.updatable_wf; try apply ACC; eauto. }
+        iIntros (argp) "A". iDestruct ("H" with "A") as "[[A B] C]". iFrame. eauto.
+      - i. iIntros "[[A B] C]". iDestruct ("A" $! _ _ _ _) as (ret_tgt) "A".
+        iDestruct ("A" with "[B] [C]") as "[B C]"; eauto. iModIntro. iSplits; eauto.
+        { iFrame. iAssumption. }
+        iPureIntro.
+        i. eapply current_iProp_frame_own_rev in ACC. des.
+        inv ACC1. ss.
+        assert(T: URA.updatable fmr1 (r1 ⋅ OwnT0)).
+        { etrans; et. eapply URA.updatable_add; eauto. refl. }
+        guclo hupdC_spec. econs; try apply IPROP; et.
+        { eapply URA.updatable_wf; try apply ACC; eauto. }
     }
   Qed.
 
@@ -379,12 +381,12 @@ Section SIM.
         (∀ (x_tgt: fsp_tgt.(meta)), ∃ (x_src: fsp_src.(meta)),
             (⌜ord_lt (measure fsp_src x_src) o_src⌝) ∧
             (⌜is_pure (measure fsp_src x_src)⌝) ∧
-            ((fsp_tgt.(precond) (Some mn) x_tgt arg_tgt arg_tgt)
-              -* ((inv_with le I w0 st_src st_tgt ∗ fsp_src.(precond) (Some mn) x_src arg_src arg_tgt)
-                    ∗ (∀ st_src st_tgt ret_src ret_tgt,
+            (∀ argp, (fsp_tgt.(precond) (Some mn) x_tgt arg_tgt argp)
+              -* ((inv_with le I w0 st_src st_tgt ∗ fsp_src.(precond) (Some mn) x_src arg_src argp)
+                    ∗ (∀ st_src st_tgt ret_src retp, ∃ ret_tgt,
                           {{"INV": inv_with le I w0 st_src st_tgt}}
-                            -* {{"POST": (fsp_src.(postcond) (Some mn) x_src ret_src ret_tgt)}}
-                            -* (((fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt ret_tgt))
+                            -* {{"POST": (fsp_src.(postcond) (Some mn) x_src ret_src retp)}}
+                            -* (((fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp))
                                   ∗ isim (g, g, true, true) Q (Some fuel1) (st_src, itr_src)
                                   (st_tgt, ktr_tgt ret_tgt))
                       )))
@@ -405,15 +407,17 @@ Section SIM.
       esplits; eauto.
       - eapply current_iProp_frame_own; eauto. eapply current_iProp_entail; eauto. start_ipm_proof.
         iIntros; iFrame.
-        iIntros "A". iDestruct ("H" with "A") as "[[A B] C]". iFrame. eauto.
-      - i. esplits; eauto.
-        + iIntros "[[A B] C]". iDestruct ("A" with "[B] [C]") as "A"; eauto.
-        + i. eapply current_iProp_frame_own_rev in ACC. des.
-          inv ACC1. ss.
-          assert(T: URA.updatable fmr1 (r1 ⋅ OwnT0)).
-          { etrans; et. eapply URA.updatable_add; eauto. refl. }
-          guclo hupdC_spec. econs; try apply IPROP; et.
-          { eapply URA.updatable_wf; try apply ACC; eauto. }
+        iIntros (argp) "A". iDestruct ("H" with "A") as "[[A B] C]". iFrame. eauto.
+      - i. iIntros "[[A B] C]". iDestruct ("A" $! _ _ _ _) as (ret_tgt) "A".
+        iDestruct ("A" with "[B] [C]") as "[B C]"; eauto. iModIntro. iSplits; eauto.
+        { iFrame. iAssumption. }
+        iPureIntro.
+        i. eapply current_iProp_frame_own_rev in ACC. des.
+        inv ACC1. ss.
+        assert(T: URA.updatable fmr1 (r1 ⋅ OwnT0)).
+        { etrans; et. eapply URA.updatable_add; eauto. refl. }
+        guclo hupdC_spec. econs; try apply IPROP; et.
+        { eapply URA.updatable_wf; try apply ACC; eauto. }
     }
   Qed.
 
@@ -1757,9 +1761,7 @@ Section ADEQUACY.
         (fsp_src fsp_tgt: fspecbody) x y st_src st_tgt
         (EQ: x = y)
         (WF: mk_wf wf w (st_src, st_tgt))
-        (SIMPL: forall fn fsp_tgt (IN: stb_tgt fn = Some fsp_tgt), is_simple fsp_tgt)
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
-        (SIMPL2: forall mn x vret vret_tgt, ⊢ postcond fsp_tgt mn x vret vret_tgt -* ⌜vret = vret_tgt⌝)
         (ISIM: forall x_src, exists x_tgt,
             (<<OLE: ord_le (measure fsp_tgt x_tgt) (measure fsp_src x_src)>>) /\
             forall w mn_caller arg_src arg_tgt st_src st_tgt,
@@ -1768,8 +1770,9 @@ Section ADEQUACY.
                  le wf mn stb_src stb_tgt (fsp_src.(measure) x_src)
                  (bot10, bot10, true, true)
                  (fun st_src st_tgt ret_src ret_tgt =>
-                    (fsp_tgt.(postcond) mn_caller x_tgt ret_tgt ret_tgt) ==∗
-                   (inv_with le wf w st_src st_tgt) ** (fsp_src.(postcond) mn_caller x_src ret_src ret_tgt))%I
+                    ∀ retp,
+                    (fsp_tgt.(postcond) mn_caller x_tgt ret_tgt retp) ==∗
+                   (inv_with le wf w st_src st_tgt) ** (fsp_src.(postcond) mn_caller x_src ret_src retp))%I
                  None
                  (st_src, match fsp_src.(measure) x_src with
                           | ord_pure _ => _ <- trigger hAPC;; trigger (Choose Any.t)
@@ -1804,8 +1807,6 @@ Section ADEQUACY.
   Lemma isim_fun_to_tgt
         wf mn stb_src stb_tgt
         (fsp_src fsp_tgt: fspecbody)
-        (SIMPL: forall fn fsp_tgt (IN: stb_tgt fn = Some fsp_tgt), is_simple fsp_tgt)
-        (SIMPL2: (exists fn, stb_tgt fn = Some (fsp_tgt.(fsb_fspec))))
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
         (ISIM: forall x_src, exists x_tgt,
             (<<OLE: ord_le (measure fsp_tgt x_tgt) (measure fsp_src x_src)>>) /\
@@ -1815,8 +1816,9 @@ Section ADEQUACY.
                  le wf mn stb_src stb_tgt (fsp_src.(measure) x_src)
                  (bot10, bot10, true, true)
                  (fun st_src st_tgt ret_src ret_tgt =>
-                    (fsp_tgt.(postcond) mn_caller x_tgt ret_tgt ret_tgt) ==∗
-                   (inv_with le wf w st_src st_tgt) ** (fsp_src.(postcond) mn_caller x_src ret_src ret_tgt))%I
+                    ∀ retp,
+                    (fsp_tgt.(postcond) mn_caller x_tgt ret_tgt retp) ==∗
+                   (inv_with le wf w st_src st_tgt) ** (fsp_src.(postcond) mn_caller x_src ret_src retp))%I
                  None
                  (st_src, match fsp_src.(measure) x_src with
                           | ord_pure _ => _ <- trigger hAPC;; trigger (Choose Any.t)
@@ -1830,14 +1832,11 @@ Section ADEQUACY.
       sim_fsem (mk_wf wf) le (fun_to_tgt mn stb_src fsp_src) (fun_to_tgt mn stb_tgt fsp_tgt).
   Proof.
     ii. eapply isim_fun_to_tgt_aux; eauto.
-    { des. - i. eapply SIMPL; eauto. }
   Qed.
 
   Lemma isim_fun_to_tgt_open
         wf mn stb_src stb_tgt
         (ksp_src ksp_tgt: kspecbody)
-        (SIMPL: forall fn fsp_tgt (IN: stb_tgt fn = Some fsp_tgt), is_simple fsp_tgt)
-        (SIMPL2: (exists fn, stb_tgt fn = Some (ksp_tgt.(ksb_fspec))))
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
         (ISIM: forall x_src, exists x_tgt,
             (<<OLE: ord_le (measure ksp_tgt x_tgt) (measure ksp_src x_src)>>) /\
@@ -1847,8 +1846,9 @@ Section ADEQUACY.
                  le wf mn stb_src stb_tgt (ksp_src.(measure) x_src)
                  (bot10, bot10, true, true)
                  (fun st_src st_tgt ret_src ret_tgt =>
-                    (ksp_tgt.(postcond) mn_caller x_tgt ret_tgt ret_tgt) ==∗
-                   (inv_with le wf w st_src st_tgt) ** (ksp_src.(postcond) mn_caller x_src ret_src ret_tgt))%I
+                    ∀ retp,
+                    (ksp_tgt.(postcond) mn_caller x_tgt ret_tgt retp) ==∗
+                   (inv_with le wf w st_src st_tgt) ** (ksp_src.(postcond) mn_caller x_src ret_src retp))%I
                  None
                  (st_src, match ksp_src.(measure) x_src with
                           | ord_pure _ => _ <- trigger hAPC;; trigger (Choose Any.t)
@@ -1876,18 +1876,16 @@ Section ADEQUACY.
     apply sim_itreeC_spec. apply sim_itreeC_take_src. intros b.
     apply sim_itreeC_spec. apply sim_itreeC_take_tgt. exists b.
     destruct b.
-    { gfinal. right. eapply isim_fun_to_tgt_aux; eauto. ss. des. eapply SIMPL; eauto. }
+    { gfinal. right. eapply isim_fun_to_tgt_aux; eauto. }
     { gfinal. right. eapply isim_fun_to_tgt_aux; eauto. i. ss. exists tt. esplits; eauto.
       i. iIntros "[H0 %]". subst. iSplits; ss. iDestruct (CONTEXT with "H0") as ">H0".
-      iModIntro. iSplits; et. iApply isim_wand; eauto. iFrame. eauto.
+      iModIntro. iSplits; et. iApply isim_wand; eauto. iFrame. iIntros. subst. eauto.
     }
   Qed.
 
   Lemma isim_fun_to_tgt_open_trivial
         wf mn stb_src stb_tgt
         body_src body_tgt
-        (SIMPL: forall fn fsp_tgt (IN: stb_tgt fn = Some fsp_tgt), is_simple fsp_tgt)
-        (SIMPL2: (exists fn, stb_tgt fn = Some (fspec_trivial)))
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
         (CONTEXT: forall w mn_caller arg st_src st_tgt,
               (inv_with le wf w st_src st_tgt) ==∗
@@ -1907,7 +1905,7 @@ Section ADEQUACY.
     iIntros "[H0 %]". subst. iSplits; ss; et.
     iDestruct (CONTEXT with "H0") as ">H".
     iModIntro. iSplits; et.
-    iApply isim_wand; eauto. iFrame; eauto.
+    iApply isim_wand; eauto. iFrame; eauto. iIntros. subst. eauto.
   Qed.
 
 End ADEQUACY.

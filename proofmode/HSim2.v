@@ -91,7 +91,7 @@ Section SIM.
   Variable stb_src stb_tgt: gname -> option fspec.
   Variable o_src o_tgt: ord.
   Hypothesis OLE: ord_le o_tgt o_src.
-  Hypothesis SIMPLTGT: forall fn fsp_tgt (IN: stb_tgt fn = Some fsp_tgt), is_simple fsp_tgt.
+  (* Hypothesis SIMPLTGT: forall fn fsp_tgt (IN: stb_tgt fn = Some fsp_tgt), is_simple fsp_tgt. *)
   Hypothesis PUREINCL: stb_pure_incl stb_tgt stb_src.
 
   Definition option_Ord_lt (o0 o1: option Ord.t): Prop :=
@@ -202,17 +202,23 @@ Section SIM.
       (PRE: forall (x_tgt: fsp_tgt.(meta)), ∃ x_src FR,
           (<<NPURE: fsp_src.(measure) x_src = ord_top>>)
           /\
-          (<<PRE: current_iProp fmr (Own OwnT ** ((fsp_tgt.(precond) (Some mn) x_tgt arg_tgt arg_tgt) ==∗
+          (<<PRE: current_iProp fmr (Own OwnT ** (∀ argp, (fsp_tgt.(precond) (Some mn) x_tgt arg_tgt argp) ==∗
                                                (FR ** inv_with w0 st_src0 st_tgt0 **
-                                                   fsp_src.(precond) (Some mn) x_src arg_src arg_tgt)))>>)
+                                                   fsp_src.(precond) (Some mn) x_src arg_src argp)))>>)
           /\
-          (<<POST: forall st_src1 st_tgt1 ret_src ret_tgt,
-              exists J,
-                (<<UPD: (FR ** inv_with w0 st_src1 st_tgt1 **
-                                        fsp_src.(postcond) (Some mn) x_src ret_src ret_tgt)
-                         ==∗ (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt ret_tgt ** J)>>) /\
-                  (<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
-                      hsim _ _ OwnT Q fmr1 None true true (st_src1, ktr_src ret_src) (st_tgt1, ktr_tgt ret_tgt)>>)>>)
+          (<<POST: forall st_src1 st_tgt1 ret_src,
+                (<<UPD: ∀ retp, (FR ** inv_with w0 st_src1 st_tgt1 **
+                                        fsp_src.(postcond) (Some mn) x_src ret_src retp)
+                         ==∗ ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
+       ⌜(<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
+            hsim _ _ OwnT Q fmr1 None true true (st_src1, ktr_src ret_src) (st_tgt1, ktr_tgt ret_tgt)>>)⌝)>>)
+                  >>)
+          (* (<<POST: forall st_src1 st_tgt1 ret_src, exists ret_tgt J, *)
+          (*       (<<UPD: ∀ retp, (FR ** inv_with w0 st_src1 st_tgt1 ** *)
+          (*                               fsp_src.(postcond) (Some mn) x_src ret_src retp) *)
+          (*                ==∗ (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J)>>) /\ *)
+          (*         (<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)), *)
+          (*             hsim _ _ OwnT Q fmr1 None true true (st_src1, ktr_src ret_src) (st_tgt1, ktr_tgt ret_tgt)>>)>>) *)
       )
       (MEASURE: o_src = ord_top)
     :
@@ -238,17 +244,17 @@ Section SIM.
           /\
           (<<PURE: is_pure (fsp_src.(measure) x_src)>>)
           /\
-          (<<PRE: current_iProp fmr (Own OwnT ** ((fsp_tgt.(precond) (Some mn) x_tgt arg_tgt arg_tgt) ==∗
+          (<<PRE: current_iProp fmr (Own OwnT ** (∀ argp, (fsp_tgt.(precond) (Some mn) x_tgt arg_tgt argp) ==∗
                                                (FR ** inv_with w0 st_src0 st_tgt0 **
-                                                   fsp_src.(precond) (Some mn) x_src arg_src arg_tgt)))>>)
+                                                   fsp_src.(precond) (Some mn) x_src arg_src argp)))>>)
           /\
-          (<<POST: forall st_src1 st_tgt1 ret_src ret_tgt,
-              exists J,
-                (<<UPD: (FR ** inv_with w0 st_src1 st_tgt1 **
-                                        fsp_src.(postcond) (Some mn) x_src ret_src ret_tgt)
-                         ==∗ (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt ret_tgt ** J)>>) /\
-                  (<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
-                      hsim _ _ OwnT Q fmr1 (Some fuel1) true true (st_src1, itr_src) (st_tgt1, ktr_tgt ret_tgt)>>)>>)
+          (<<POST: forall st_src1 st_tgt1 ret_src,
+                (<<UPD: ∀ retp, (FR ** inv_with w0 st_src1 st_tgt1 **
+                                        fsp_src.(postcond) (Some mn) x_src ret_src retp)
+                         ==∗ ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
+           ⌜(<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
+                hsim _ _ OwnT Q fmr1 (Some fuel1) true true (st_src1, itr_src) (st_tgt1, ktr_tgt ret_tgt)>>)⌝
+                                          )>>)>>)
       )
     :
       _hsim hsim OwnT Q fmr (Some fuel0) f_src f_tgt (st_src0, itr_src) (st_tgt0, trigger (Call fn arg_tgt) >>= ktr_tgt)
@@ -367,17 +373,17 @@ Section SIM.
             (PRE: forall (x_tgt: fsp_tgt.(meta)), exists x_src FR,
           (<<NPURE: fsp_src.(measure) x_src = ord_top>>)
           /\
-          (<<PRE: current_iProp fmr (Own OwnT ** ((fsp_tgt.(precond) (Some mn) x_tgt arg_tgt arg_tgt) ==∗
+          (<<PRE: current_iProp fmr (Own OwnT ** (∀ argp, (fsp_tgt.(precond) (Some mn) x_tgt arg_tgt argp) ==∗
                                                (FR ** inv_with w0 st_src0 st_tgt0 **
-                                                   fsp_src.(precond) (Some mn) x_src arg_src arg_tgt)))>>)
+                                                   fsp_src.(precond) (Some mn) x_src arg_src argp)))>>)
           /\
-          (<<POST: forall st_src1 st_tgt1 ret_src ret_tgt,
-              exists J,
-                (<<UPD: (FR ** inv_with w0 st_src1 st_tgt1 **
-                                        fsp_src.(postcond) (Some mn) x_src ret_src ret_tgt)
-                            ==∗ (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt ret_tgt ** J)>>) /\
-                  (<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
-                      hsim _ _ OwnT Q fmr1 None true true (st_src1, ktr_src ret_src) (st_tgt1, ktr_tgt ret_tgt)>>)>>)
+          (<<POST: forall st_src1 st_tgt1 ret_src,
+                (<<UPD: ∀ retp, (FR ** inv_with w0 st_src1 st_tgt1 **
+                                        fsp_src.(postcond) (Some mn) x_src ret_src retp)
+                         ==∗ ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
+       ⌜(<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
+            hsim _ _ OwnT Q fmr1 None true true (st_src1, ktr_src ret_src) (st_tgt1, ktr_tgt ret_tgt)>>)⌝)>>)
+                  >>)
             )
             (MEASURE: o_src = ord_top),
             P fuel f_src f_tgt (st_src0, trigger (Call fn arg_src) >>= ktr_src) (st_tgt0, trigger (Call fn arg_tgt) >>= ktr_tgt))
@@ -401,17 +407,17 @@ Section SIM.
           /\
           (<<PURE: is_pure (fsp_src.(measure) x_src)>>)
           /\
-          (<<PRE: current_iProp fmr (Own OwnT ** ((fsp_tgt.(precond) (Some mn) x_tgt arg_tgt arg_tgt) ==∗
+          (<<PRE: current_iProp fmr (Own OwnT ** (∀ argp, (fsp_tgt.(precond) (Some mn) x_tgt arg_tgt argp) ==∗
                                                (FR ** inv_with w0 st_src0 st_tgt0 **
-                                                   fsp_src.(precond) (Some mn) x_src arg_src arg_tgt)))>>)
+                                                   fsp_src.(precond) (Some mn) x_src arg_src argp)))>>)
           /\
-          (<<POST: forall st_src1 st_tgt1 ret_src ret_tgt,
-              exists J,
-                (<<UPD: (FR ** inv_with w0 st_src1 st_tgt1 **
-                                        fsp_src.(postcond) (Some mn) x_src ret_src ret_tgt)
-                            ==∗ (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt ret_tgt ** J)>>) /\
-                  (<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
-                      hsim _ _ OwnT Q fmr1 (Some fuel1) true true (st_src1, itr_src) (st_tgt1, ktr_tgt ret_tgt)>>)>>)
+          (<<POST: forall st_src1 st_tgt1 ret_src,
+                (<<UPD: ∀ retp, (FR ** inv_with w0 st_src1 st_tgt1 **
+                                        fsp_src.(postcond) (Some mn) x_src ret_src retp)
+                         ==∗ ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
+           ⌜(<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
+                hsim _ _ OwnT Q fmr1 (Some fuel1) true true (st_src1, itr_src) (st_tgt1, ktr_tgt ret_tgt)>>)⌝
+                                          )>>)>>)
             ),
             P (Some fuel0) f_src f_tgt (st_src0, itr_src) (st_tgt0, trigger (Call fn arg_tgt) >>= ktr_tgt))
         (APCBOTH: forall
@@ -531,10 +537,11 @@ Section SIM.
   Proof.
     ii. induction IN using _hsim_ind2.
     { econs 1; eauto. }
-    { econs 2; eauto. i. specialize (PRE x_tgt). des. esplits; et. i. exploit POST; et. i; des. esplits; et.
-    }
+    { econs 2; eauto. i. specialize (PRE x_tgt). des. esplits; et. i. exploit POST. i. etrans; eauto.
+      iIntros "A". iMod "A". iModIntro. iDestruct "A" as (x y) "[A %B]". iSplits; eauto. }
     { econs 3; eauto. }
-    { des. econs 4; eauto. i. spc PRE. des. esplits; eauto. i. exploit POST; et. i; des. esplits; et. }
+    { des. econs 4; eauto. i. spc PRE. des. esplits; eauto. i. etrans; try apply POST.
+      iIntros "A". iMod "A". iModIntro. iDestruct "A" as (x y) "[A %B]". iSplits; eauto. }
     { econs 5; eauto. }
     { econs 6; eauto. }
     { econs 7; eauto. }
@@ -570,17 +577,17 @@ Section SIM.
             (PRE: forall (x_tgt: fsp_tgt.(meta)), exists x_src FR,
           (<<NPURE: fsp_src.(measure) x_src = ord_top>>)
           /\
-          (<<PRE: current_iProp fmr (Own OwnT ** ((fsp_tgt.(precond) (Some mn) x_tgt arg_tgt arg_tgt) ==∗
+          (<<PRE: current_iProp fmr (Own OwnT ** (∀ argp, (fsp_tgt.(precond) (Some mn) x_tgt arg_tgt argp) ==∗
                                                (FR ** inv_with w0 st_src0 st_tgt0 **
-                                                   fsp_src.(precond) (Some mn) x_src arg_src arg_tgt)))>>)
+                                                   fsp_src.(precond) (Some mn) x_src arg_src argp)))>>)
           /\
-          (<<POST: forall st_src1 st_tgt1 ret_src ret_tgt,
-              exists J,
-                (<<UPD: (FR ** inv_with w0 st_src1 st_tgt1 **
-                                        fsp_src.(postcond) (Some mn) x_src ret_src ret_tgt)
-                            ==∗ (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt ret_tgt ** J)>>) /\
-                  (<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
-                      hsim OwnT Q fmr1 None true true (st_src1, ktr_src ret_src) (st_tgt1, ktr_tgt ret_tgt)>>)>>)
+          (<<POST: forall st_src1 st_tgt1 ret_src,
+                (<<UPD: ∀ retp, (FR ** inv_with w0 st_src1 st_tgt1 **
+                                        fsp_src.(postcond) (Some mn) x_src ret_src retp)
+                         ==∗ ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
+       ⌜(<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
+            hsim OwnT Q fmr1 None true true (st_src1, ktr_src ret_src) (st_tgt1, ktr_tgt ret_tgt)>>)⌝)>>)
+                  >>)
             )
             (MEASURE: o_src = ord_top),
             P fuel f_src f_tgt (st_src0, trigger (Call fn arg_src) >>= ktr_src)
@@ -605,17 +612,17 @@ Section SIM.
           /\
           (<<PURE: is_pure (fsp_src.(measure) x_src)>>)
           /\
-          (<<PRE: current_iProp fmr (Own OwnT ** ((fsp_tgt.(precond) (Some mn) x_tgt arg_tgt arg_tgt) ==∗
+          (<<PRE: current_iProp fmr (Own OwnT ** (∀ argp, (fsp_tgt.(precond) (Some mn) x_tgt arg_tgt argp) ==∗
                                                (FR ** inv_with w0 st_src0 st_tgt0 **
-                                                   fsp_src.(precond) (Some mn) x_src arg_src arg_tgt)))>>)
+                                                   fsp_src.(precond) (Some mn) x_src arg_src argp)))>>)
           /\
-          (<<POST: forall st_src1 st_tgt1 ret_src ret_tgt,
-              exists J,
-                (<<UPD: (FR ** inv_with w0 st_src1 st_tgt1 **
-                                        fsp_src.(postcond) (Some mn) x_src ret_src ret_tgt)
-                            ==∗ (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt ret_tgt ** J)>>) /\
-                  (<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
-                      hsim OwnT Q fmr1 (Some fuel1) true true (st_src1, itr_src) (st_tgt1, ktr_tgt ret_tgt)>>)>>)
+          (<<POST: forall st_src1 st_tgt1 ret_src,
+                (<<UPD: ∀ retp, (FR ** inv_with w0 st_src1 st_tgt1 **
+                                        fsp_src.(postcond) (Some mn) x_src ret_src retp)
+                         ==∗ ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
+           ⌜(<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
+                hsim OwnT Q fmr1 (Some fuel1) true true (st_src1, itr_src) (st_tgt1, ktr_tgt ret_tgt)>>)⌝
+                                          )>>)>>)
             ),
             P (Some fuel0) f_src f_tgt (st_src0, itr_src) (st_tgt0, trigger (Call fn arg_tgt) >>= ktr_tgt))
         (APCBOTH: forall
@@ -710,11 +717,13 @@ Section SIM.
   Proof.
     i. punfold SIM. induction SIM using _hsim_ind2.
     { eapply RET; eauto. }
-    { eapply CALL; eauto. i. hexploit PRE; eauto. i. des. esplits; et. i. exploit POST; et. i; des.
-      esplits; et. i. exploit SIM; et. i. des. pclearbot. eauto. }
+    { eapply CALL; try eassumption. i. hexploit PRE. i; des. esplits; et. i.
+      etrans; try apply POST. iIntros ">A". iModIntro. iDestruct "A" as (x y) "[A %]". iSplits; ss.
+      iPureIntro. ii. exploit H; eauto. i; des. pclearbot. eauto. }
     { eapply APCSTART; eauto. pfold. eauto. }
-    { des. eapply APCSTEP; eauto. i. spc PRE. des. esplits; eauto. i. hexploit POST; eauto. i. des.
-      esplits; eauto. i. exploit SIM; eauto. i; des. pclearbot. eauto. }
+    { des. eapply APCSTEP; eauto. i. spc PRE. des. esplits; eauto. i.
+      etrans; try apply POST. iIntros ">A". iModIntro. iDestruct "A" as (x y) "[A %]". iSplits; ss.
+      iPureIntro. ii. exploit H; eauto. i; des. pclearbot. eauto. }
     { eapply APCBOTH; eauto. i. exploit SIM; eauto. i; des. pclearbot. eauto. }
     { eapply SYSCALL; eauto. i. hexploit POST; eauto. i. pclearbot. eauto. }
     { eapply TAUSRC; eauto. pfold. eauto. }
@@ -756,11 +765,10 @@ Section SIM.
     forall
       f_src f_tgt st_src st_tgt (itr_src: itree (hAPCE +' Es) Any.t) itr_tgt (mr_src mr_tgt: Σ) fr_src fr_tgt
       X_src (x_src: X_src) X_tgt (x_tgt: X_tgt) Q_src Q_tgt mn_caller fuel w0
-      (SIMPL: forall mn x vret vret_tgt, ⊢ Q_tgt mn x vret vret_tgt -* ⌜vret = vret_tgt⌝)
       (SIM: hsim (fr_tgt ⋅ mr_tgt)
                  (fun st_src st_tgt ret_src ret_tgt =>
-                    ((Q_tgt mn_caller x_tgt ret_tgt ret_tgt) ==∗
-                     ((inv_with w0 st_src st_tgt) ** (Q_src mn_caller x_src ret_src ret_tgt)))%I)
+                    (∀ retp, (Q_tgt mn_caller x_tgt ret_tgt retp) ==∗
+                     ((inv_with w0 st_src st_tgt) ** (Q_src mn_caller x_src ret_src retp)))%I)
                  (fr_src ⋅ (mr_tgt ⋅ mr_src))
                  fuel f_src f_tgt (st_src, itr_src) (st_tgt, itr_tgt)),
       paco8 (_sim_itree (mk_wf I) le) bot8 Any.t Any.t (lift_rel (mk_wf I) le w0 (@eq Any.t))
@@ -800,9 +808,12 @@ Section SIM.
           replace (fr_src ⋅ mr_src ⋅ mr_tgt) with (fr_src ⋅ (mr_tgt ⋅ mr_src)) by r_solve. eauto.
           eapply current_iProp_entail in PRE; eauto. iIntros "[[[A B] C] _]". iSplitL; eauto. iFrame.
         }
-        { i. ss. exploit POST; eauto. i; des. esplits; eauto.
+        { i. ss. etrans; try apply POST.
+          iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+          { iFrame. iAssumption. }
+          iPureIntro.
           i. steps. gbase. hexploit CIH; eauto.
-          { eapply SIM; eauto. eapply current_iProp_entail; [eauto|].
+          { eapply C; eauto. eapply current_iProp_entail; [eauto|].
             iIntros "[A [B [C _]]]". iSplitL "B C"; eauto. iSplitL "B"; eauto. }
           i. ss.
         }
@@ -813,9 +824,12 @@ Section SIM.
         { eapply current_iPropL_convert in PRE.
           replace (fr_src ⋅ mr_src ⋅ mr_tgt) with (fr_src ⋅ (mr_tgt ⋅ mr_src)) by r_solve. eauto.
           eapply current_iProp_entail in PRE; eauto. iIntros "[[[A B] C] _]". iSplitL; eauto. iFrame. }
-        { i. ss. exploit POST; eauto. i; des. esplits; eauto.
+        { i. ss. etrans; try apply POST.
+          iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+          { iFrame. iAssumption. }
+          iPureIntro.
           i. steps. gbase. hexploit CIH; eauto.
-          { eapply SIM; eauto. eapply current_iProp_entail; [eauto|].
+          { eapply C; eauto. eapply current_iProp_entail; [eauto|].
             iIntros "[A [B [C _]]]". iSplitL "B C"; eauto. iSplitL "B"; eauto. }
           i. ss.
         }
@@ -860,10 +874,14 @@ Section SIM.
         eapply current_iProp_entail; eauto.
         iIntros "[[A B] C]". iFrame.
       }
-      i. exploit POST; eauto. i; des. esplits; eauto. i. steps. gbase. hexploit CIH; eauto.
-      { eapply SIM; eauto. eapply current_iProp_entail; [eauto|].
+      i. etrans; try apply POST.
+      iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro.
+      i. steps. gbase. hexploit CIH; eauto.
+      { eapply C; eauto. eapply current_iProp_entail; [eauto|].
         iIntros "[A [B [C _]]]". iSplitL "B C"; eauto. iSplitL "B"; eauto. }
-      i; ss.
+      i. ss.
     }
     { destruct fuel.
       - ss. steps. rewrite unfold_APC. steps. force_l. exists true. steps. eapply hAPC2; ss.
@@ -873,10 +891,9 @@ Section SIM.
           instantiate (1:=FR). iFrame.
         + i. steps.
           gbase.
-          hexploit CIH; cycle 1.
+          hexploit CIH.
           { eapply SIM. eapply current_iProp_entail; try apply ACC.
             iIntros "[A [B [C [D _]]]]". iFrame. iSplitL "B"; iFrame. }
-          2:{ eauto. }
           i; ss.
       - ss. steps. eapply hAPC2; ss.
         + eapply current_iProp_entail; eauto.
@@ -885,10 +902,9 @@ Section SIM.
           instantiate (1:=FR). iFrame.
         + i. steps.
           gbase.
-          hexploit CIH; cycle 1.
+          hexploit CIH.
           { eapply SIM. eapply current_iProp_entail; try apply ACC.
             iIntros "[A [B [C [D _]]]]". iFrame. iSplitL "B"; iFrame. }
-          2:{ eauto. }
           i; ss.
     }
     { destruct fuel; steps.
@@ -921,17 +937,17 @@ Section SIM.
     }
     { steps. exploit IHSIM; eauto. }
     { deflag. gbase. eapply CIH; eauto. }
+  Unshelve. all: ss.
   Qed.
 
   Lemma hsim_adequacy `{PreOrder _ le}:
     forall
       f_src f_tgt st_src st_tgt (itr_src: itree (hAPCE +' Es) Any.t) itr_tgt
       mr_src mr_tgt fr_src fr_tgt X_src (x_src: X_src) X_tgt (x_tgt: X_tgt) Q_src Q_tgt mn_caller w0
-      (SIMPL: forall mn x vret vret_tgt, ⊢ Q_tgt mn x vret vret_tgt -* ⌜vret = vret_tgt⌝)
       (SIM: hsim (fr_tgt ⋅ mr_tgt)
                  (fun st_src st_tgt ret_src ret_tgt =>
-                    ((Q_tgt mn_caller x_tgt ret_tgt ret_tgt) ==∗
-                     ((inv_with w0 st_src st_tgt) ** (Q_src mn_caller x_src ret_src ret_tgt)))%I)
+                    (∀ retp, (Q_tgt mn_caller x_tgt ret_tgt retp) ==∗
+                     ((inv_with w0 st_src st_tgt) ** (Q_src mn_caller x_src ret_src retp)))%I)
                  (fr_src ⋅ (mr_tgt ⋅ mr_src))
                  None f_src f_tgt (st_src, itr_src) (st_tgt, itr_tgt)),
       paco8 (_sim_itree (mk_wf I) le) bot8 Any.t Any.t (lift_rel (mk_wf I) le w0 (@eq Any.t))
@@ -1016,12 +1032,17 @@ Section SIM.
     revert x5 ORD. induction SIM using _hsim_ind2; i; clarify.
     { econs 1; eauto. }
     { econs 2; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
-      i. exploit POST; eauto. i; des. esplits; eauto. i. exploit SIM; eauto. eapply rclo10_base. }
+      i. etrans; try apply POST.
+      iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro. i. exploit C; eauto. eapply rclo10_base. }
     { econs 3; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base. auto. }
     { destruct x5; ss. econs 4; eauto. des. esplits; eauto.
       { eapply Ord.lt_le_lt; eauto. }
-      { i. hexploit PRE; eauto. i; des. esplits; eauto. i. exploit POST; eauto. i; des. esplits; eauto.
-        i. eapply rclo10_base. eauto. }
+      { i. specialize (PRE x_tgt). i; des. esplits; eauto. i. etrans; try apply POST.
+      iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro. i. exploit C; eauto. eapply rclo10_base. }
     }
     { econs 5; eauto. i. eapply rclo10_base. auto. }
     { econs 6; eauto. i. eapply rclo10_base. auto. }
@@ -1135,17 +1156,17 @@ Section SIM.
       (SPEC: stb_src fn = Some fsp_src)
       (SPEC: stb_tgt fn = Some fsp_tgt)
       (PRE: forall (x_tgt: fsp_tgt.(meta)),
-          (<<PRE: current_iProp fmr (Own OwnT ** ((fsp_tgt.(precond) (Some mn) x_tgt arg_tgt arg_tgt) ==∗
+          (<<PRE: current_iProp fmr (Own OwnT ** (∀ argp, (fsp_tgt.(precond) (Some mn) x_tgt arg_tgt argp) ==∗
                                                (FR ** inv_with w0 st_src0 st_tgt0 **
-                                                   fsp_src.(precond) (Some mn) x_src arg_src arg_tgt)))>>)
+                                                   fsp_src.(precond) (Some mn) x_src arg_src argp)))>>)
           /\
-          (<<POST: forall st_src1 st_tgt1 ret_src ret_tgt,
-              exists J,
-                (<<UPD: (FR ** inv_with w0 st_src1 st_tgt1 **
-                                        fsp_src.(postcond) (Some mn) x_src ret_src ret_tgt)
-                         ==∗ (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt ret_tgt ** J)>>) /\
-                  (<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
-                      g _ _ OwnT Q fmr1 None true true (st_src1, ktr_src ret_src) (st_tgt1, ktr_tgt ret_tgt)>>)>>)
+          (<<POST: forall st_src1 st_tgt1 ret_src,
+                (<<UPD: ∀ retp, (FR ** inv_with w0 st_src1 st_tgt1 **
+                                        fsp_src.(postcond) (Some mn) x_src ret_src retp)
+                         ==∗ ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
+       ⌜(<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
+            g _ _ OwnT Q fmr1 None true true (st_src1, ktr_src ret_src) (st_tgt1, ktr_tgt ret_tgt)>>)⌝)>>)
+                  >>)
       )
       (MEASURE: o_src = ord_top)
       (NPURE: fsp_src.(measure) x_src = ord_top)
@@ -1170,17 +1191,17 @@ Section SIM.
       (PURE: is_pure (fsp_src.(measure) x_src))
       (FUEL: Ord.lt fuel1 fuel0)
       (PRE: forall (x_tgt: fsp_tgt.(meta)),
-          (<<PRE: current_iProp fmr (Own OwnT ** ((fsp_tgt.(precond) (Some mn) x_tgt arg_tgt arg_tgt) ==∗
+          (<<PRE: current_iProp fmr (Own OwnT ** (∀ argp, (fsp_tgt.(precond) (Some mn) x_tgt arg_tgt argp) ==∗
                                                (FR ** inv_with w0 st_src0 st_tgt0 **
-                                                   fsp_src.(precond) (Some mn) x_src arg_src arg_tgt)))>>)
+                                                   fsp_src.(precond) (Some mn) x_src arg_src argp)))>>)
           /\
-          (<<POST: forall st_src1 st_tgt1 ret_src ret_tgt,
-              exists J,
-                (<<UPD: (FR ** inv_with w0 st_src1 st_tgt1 **
-                                        fsp_src.(postcond) (Some mn) x_src ret_src ret_tgt)
-                         ==∗ (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt ret_tgt ** J)>>) /\
-                  (<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
-                      g _ _ OwnT Q fmr1 (Some fuel1) true true (st_src1, itr_src) (st_tgt1, ktr_tgt ret_tgt)>>)>>)
+          (<<POST: forall st_src1 st_tgt1 ret_src,
+                (<<UPD: ∀ retp, (FR ** inv_with w0 st_src1 st_tgt1 **
+                                        fsp_src.(postcond) (Some mn) x_src ret_src retp)
+                         ==∗ ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
+           ⌜(<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
+                g _ _ OwnT Q fmr1 (Some fuel1) true true (st_src1, itr_src) (st_tgt1, ktr_tgt ret_tgt)>>)⌝
+                                          )>>)>>)
       )
     :
       hsimC r g OwnT Q fmr (Some fuel0) f_src f_tgt (st_src0, itr_src) (st_tgt0, trigger (Call fn arg_tgt) >>= ktr_tgt)
@@ -1283,11 +1304,11 @@ Section SIM.
   Proof.
     ii. inv PR.
     { econs 1; eauto. }
-    { econs 2; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
-      i. exploit POST; eauto. i; des. esplits; eauto. }
+    { econs 2; eauto. i. specialize (PRE x_tgt). des. esplits; et. i. exploit POST. i. etrans; eauto.
+      iIntros "A". iMod "A". iModIntro. iDestruct "A" as (x y) "[A %B]". iSplits; eauto. }
     { econs 3; eauto. }
-    { econs 4; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
-      i. exploit POST; eauto. i; des. esplits; eauto. }
+    { des. econs 4; eauto. i. spc PRE. des. esplits; eauto. i. etrans; try apply POST.
+      iIntros "A". iMod "A". iModIntro. iDestruct "A" as (x y) "[A %B]". iSplits; eauto. }
     { econs 5; eauto. }
     { econs 6; eauto. }
     { econs 7; eauto. }
@@ -1315,11 +1336,17 @@ Section SIM.
     { eapply hsim_indC_mon. }
     i. inv PR.
     { econs 1; eauto. }
-    { econs 2; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto. i. hexploit POST; eauto. i; des.
-      esplits; eauto. i. eapply rclo10_base. eauto. }
+    { econs 2; try eassumption. i. specialize (PRE x_tgt). des. esplits; eauto.
+      i. etrans; try apply POST.
+      iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro. i. exploit C; eauto. i. eapply rclo10_base. eauto. }
     { econs 3; eauto. eapply GF in SIM. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
-    { econs 4; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto. i. hexploit POST; eauto. i; des.
-      esplits; eauto. i. eapply rclo10_base. eauto. }
+    { econs 4; try eassumption. i. specialize (PRE x_tgt). des. esplits; eauto.
+      i. etrans; try apply POST.
+      iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro. i. exploit C; eauto. i. eapply rclo10_base. eauto. }
     { econs 5; eauto. i. eapply rclo10_base. eauto. }
     { econs 6; eauto. i. eapply rclo10_base. eauto. }
     { econs 7; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
@@ -1340,11 +1367,17 @@ Section SIM.
   Proof.
     i. inv PR.
     { gstep. econs 1; eauto. }
-    { gstep. econs 2; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
-      i. hexploit POST; eauto. i; des. esplits; eauto. gbase. eauto. }
+    { gstep. econs 2; try eassumption. i. specialize (PRE x_tgt). des. esplits; eauto.
+      i. etrans; try apply POST.
+      iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro. i. exploit C; eauto. i. gbase. eauto. }
     { guclo hsim_indC_spec. ss. econs 3; eauto. gbase. eauto. }
-    { gstep. econs 4; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
-      i. hexploit POST; eauto. i; des. esplits; eauto. gbase. eauto. }
+    { gstep. econs 4; try eassumption. i. specialize (PRE x_tgt). des. esplits; eauto.
+      i. etrans; try apply POST.
+      iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro. i. exploit C; eauto. i. gbase. eauto. }
     { gstep. econs 5; eauto. des. esplits; eauto. i. gbase. eauto. }
     { gstep. econs 6; eauto. i. gbase. eauto. }
     { guclo hsim_indC_spec. ss. econs 7; eauto. gbase. eauto. }
@@ -1409,14 +1442,18 @@ Section SIM.
       2:{ instantiate (1:=None). destruct fuel; ss. }
       gstep. eapply _hsim_mon; eauto. i. gbase. eapply rclo10_base. auto.
     }
-    { gstep. econs 2; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto. i. hexploit POST; eauto. i; des.
-      esplits; eauto. i.
-      gbase. eapply rclo10_clo_base. left. econs; eauto.
+    { gstep. econs 2; try eassumption. i. specialize (PRE x_tgt). des. esplits; eauto.
+      i. etrans; try apply POST.
+      iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro. i. gbase. eapply rclo10_clo_base. left. econs; eauto.
     }
     { eapply hsimC_uclo. econs 3; eauto. }
-    { gstep. econs 4; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto. i. hexploit POST; eauto. i; des.
-      esplits; eauto. i.
-      gbase. eapply rclo10_clo_base. left. econs; eauto.
+    { gstep. econs 4; try eassumption. i. specialize (PRE x_tgt). des. esplits; eauto.
+      i. etrans; try apply POST.
+      iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro. i. gbase. eapply rclo10_clo_base. left. econs; eauto.
     }
     { des. gstep. econs 5; eauto. esplits; eauto. i.
       hexploit SIM; eauto. i. gbase. eapply rclo10_clo_base. left. econs; eauto.
@@ -1433,6 +1470,7 @@ Section SIM.
     { eapply hsimC_uclo. econs 15; eauto. }
     { eapply hsimC_uclo. econs 16; eauto. }
     { gstep. econs 17; eauto. gbase. eapply rclo10_clo_base. left. econs; eauto. }
+  Unshelve. all: try by ss.
   Qed.
 
   Variant hbind_rightC (r: forall R_src R_tgt
@@ -1535,10 +1573,12 @@ Section SIM.
     }
     { apply f_equal with (f:=_observe) in H0. ss. }
     { apply f_equal with (f:=_observe) in H0. ss. }
-    { des. gstep. econs 4; eauto. esplits; eauto.
+    { des. gstep. econs 4; [..|M]; Mskip eauto.
       { eapply OrdArith.lt_add_r. eauto. }
-      i. hexploit PRE; eauto. i. des. esplits; eauto. i. exploit POST; eauto. i; des. esplits; eauto.
-      i. gbase. eapply rclo10_clo_base. left. econs; eauto.
+      i. specialize (PRE x_tgt). des. esplits; eauto. etrans; try apply POST.
+      iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro. i. gbase. eapply rclo10_clo_base. left. econs; eauto.
     }
     { apply f_equal with (f:=_observe) in H0. ss. }
     { apply f_equal with (f:=_observe) in H0. ss. }
@@ -1588,11 +1628,19 @@ Section SIM.
       eapply current_iProp_entail; eauto.
       iIntros "[A B]". iFrame. iStopProof. eauto.
     }
-    { econs 2; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto. i. hexploit POST; eauto.
-      i; des. esplits; eauto. i. eapply rclo10_clo_base. econs; eauto. }
+    { econs 2; try eassumption.
+      i. specialize (PRE x_tgt). des. esplits; eauto. etrans; try apply POST.
+      iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro. i. eapply rclo10_clo_base. econs; eauto.
+    }
     { econs 3; eauto. }
-    { econs 4; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto. i. hexploit POST; eauto.
-      i; des. esplits; eauto. i. eapply rclo10_clo_base. econs; eauto. }
+    { econs 4; try eassumption.
+      i. specialize (PRE x_tgt). des. esplits; eauto. etrans; try apply POST.
+      iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro. i. eapply rclo10_clo_base. econs; eauto.
+    }
     { econs 5; eauto. des. esplits; eauto. i. hexploit SIM; eauto. i. eapply rclo10_clo_base. econs; eauto. }
     { econs 6; eauto. i. eapply rclo10_clo_base. econs; eauto. }
     { econs 7; eauto. }
@@ -1645,21 +1693,20 @@ Section SIM.
       { eapply URA.updatable_wf; et. }
       eapply current_iProp_entail; eauto. iIntros "[A B]". iFrame. eauto.
     }
-    { econs 2; eauto. i. hexploit PRE0; eauto. i; des. esplits; eauto.
+    { econs 2; eauto. i. hexpl PRE0; eauto. esplits; [eauto|..].
       { eapply current_iProp_updatable; et. eapply current_iProp_frame_own; eauto.
         { eapply URA.updatable_wf; et. }
         eapply current_iProp_entail.
         { eauto. }
         iIntros "[A B] C". iSplitL "A"; [iAssumption|].
-        iIntros "D". iDestruct ("B" with "D") as "B". iMod "B". iModIntro. iDestruct "B" as "[[A B] D]".
+        iIntros (argp) "D". iDestruct ("B" with "D") as "B". iMod "B". iModIntro. iDestruct "B" as "[[A B] D]".
         iCombine "A C" as "A". iFrame. iAssumption.
       }
-      { i. exploit POST; eauto. i; des. esplits; eauto.
-        { iIntros "[[[H0 H1] H2] H3]". iDestruct (UPD0 with "[H0 H2 H3]") as "H".
-          { iFrame. }
-          iMod "H". iModIntro. iDestruct "H" as "[A B]". iCombine "H1 B" as "B". iFrame. iAssumption.
-        }
-        i. eapply rclo10_clo_base.
+      { i. iIntros "[[[H0 H1] H2] H3]". iDestruct (POST with "[H0 H2 H3]") as "A".
+        { iFrame. }
+        iMod "A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+        { iFrame. iCombine "H1 B" as "B". iAssumption. }
+        iPureIntro. i. eapply rclo10_clo_base.
         eapply current_iProp_entail in ACC; cycle 1.
         { iIntros "[H0 [H1 H2]]". iCombine "H0 H2" as "H". instantiate (1:= _ ** _).
           iSplitL "H1"; iAssumption. }
@@ -1668,23 +1715,23 @@ Section SIM.
       }
     }
     { econs 3; eauto. }
-    { econs 4; eauto. i. hexploit PRE0; eauto. i; des. esplits; eauto.
+    { econs 4; eauto. i. hexpl PRE0; eauto. esplits; eauto.
       { eapply current_iProp_updatable; et. eapply current_iProp_frame_own; eauto.
         { eapply URA.updatable_wf; et. }
         eapply current_iProp_entail.
         { eauto. }
         iIntros "[A B] C". iSplitL "A"; [iAssumption|].
-        iIntros "D". iDestruct ("B" with "D") as "B". iMod "B". iModIntro. iDestruct "B" as "[[A B] D]".
+        iIntros (argp) "D". iDestruct ("B" with "D") as "B". iMod "B". iModIntro. iDestruct "B" as "[[A B] D]".
         iCombine "A C" as "A". iFrame. iAssumption.
       }
-      { i. exploit POST; eauto. i; des. esplits; eauto.
-        { iIntros "[[[H0 H1] H2] H3]". iDestruct (UPD0 with "[H0 H2 H3]") as "H".
-          { iFrame. }
-          iMod "H". iModIntro. iDestruct "H" as "[A B]". iCombine "H1 B" as "B". iFrame. iAssumption.
-        }
-        i. eapply rclo10_clo_base.
+      { i. iIntros "[[[H0 H1] H2] H3]". iDestruct (POST with "[H0 H2 H3]") as "A".
+        { iFrame. }
+        iMod "A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+        { iFrame. iCombine "H1 B" as "B". iAssumption. }
+        iPureIntro. i. eapply rclo10_clo_base.
         eapply current_iProp_entail in ACC; cycle 1.
-        { iIntros "[H0 [H1 H2]]". iCombine "H1 H0 H2" as "H". iAssumption. }
+        { iIntros "[H0 [H1 H2]]". iCombine "H0 H2" as "H". instantiate (1:= _ ** _).
+          iSplitL "H1"; iAssumption. }
         eapply current_iProp_frame_own_rev in ACC. des.
         econs; et.
       }
@@ -1803,14 +1850,18 @@ Section SIM.
     { econs 1; eauto. eapply current_iProp_updatable; et. }
     { econs 2; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
       { eapply current_iProp_updatable; et. }
-      i. exploit POST; eauto. i; des. esplits; eauto.
-      i. eapply rclo10_clo_base. econs; eauto; try refl. apply ACC.
+      i. etrans; try apply POST.
+      iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro. i. eapply rclo10_clo_base. econs; eauto; try refl. apply ACC.
     }
     { econs 3; eauto. }
     { econs 4; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
       { eapply current_iProp_updatable; et. }
-      i. exploit POST; eauto. i; des. esplits; eauto.
-      i. eapply rclo10_clo_base. econs; eauto; try refl. apply ACC.
+      i. etrans; try apply POST.
+      iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro. i. eapply rclo10_clo_base. econs; eauto; try refl. apply ACC.
     }
     { econs 5; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
       { eapply current_iProp_updatable; et. }

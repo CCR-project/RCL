@@ -22,64 +22,43 @@ Let _memRA: URA.t := (mblock ==> Z ==> (Excl.t val))%ra.
 
 
 
-Section TUNNEL.
-  Context `{Σ: GRA.t}.
-  Definition mk_tunneled {X: Type} (DPQ: X -> ((ord * (Any.t -> iProp)) * (Any.t -> iProp))): fspec :=
-    (* mk_fspec (fun _ x y a o => (((fst ∘ PQ) x a o: iProp) ∧ ⌜y = tt↑⌝)%I) *)
-    (*          (fun _ x z a => (((snd ∘ PQ) x a: iProp) ∧ ⌜z = tt↑⌝)%I) *)
-    mk_fspec (fun x => match x with | Some x => (fst ∘ fst ∘ DPQ) x | _ => ord_top end)
-             (fun _ x y a =>
-                match x with
-                | Some x => (((snd ∘ fst ∘ DPQ) x a ∗ ⌜y = a⌝))%I
-                | _ => ⌜y = a⌝%I: iProp
-                end)
-             (fun _ x z a =>
-                match x with
-                | Some x => (((snd ∘ DPQ) x a ∗ ⌜z = a⌝))%I
-                | _ => ⌜z = a⌝%I: iProp
-                end)
-  .
-
-End TUNNEL.
-
-
-
 Section PROOF.
   Context `{@GRA.inG memRA Σ}.
 
   Definition alloc_spec: fspec :=
-    (mk_tunneled (fun sz => (
+    (mk_tunneled (mk_simple2
+                    (fun sz => (
                       (ord_pure 0),
                       (fun varg => (⌜varg = [Vint (Z.of_nat sz)]↑ /\ (8 * (Z.of_nat sz) < modulus_64)%Z⌝)%I),
                       (fun vret => (∃ b, ⌜vret = (Vptr b 0)↑⌝ **
                                                            OwnM ((b, 0%Z) |-> (List.repeat Vundef sz)))%I)
-    ))).
+    )))).
 
   Definition free_spec: fspec :=
-    (mk_tunneled (fun '(b, ofs) => (
+    (mk_tunneled (mk_simple2 (fun '(b, ofs) => (
                       (ord_pure 0),
                       (fun varg => (∃ v, ⌜varg = ([Vptr b ofs])↑⌝ ** OwnM ((b, ofs) |-> [v]))%I),
                       (fun vret => ⌜vret = (Vint 0)↑⌝%I)
-    ))).
+    )))).
 
   Definition load_spec: fspec :=
-    (mk_tunneled (fun '(b, ofs, v) => (
+    (mk_tunneled (mk_simple2 (fun '(b, ofs, v) => (
                       (ord_pure 0),
                       (fun varg => ⌜varg = ([Vptr b ofs])↑⌝ ** OwnM ((b, ofs) |-> [v])),
                       (fun vret => OwnM ((b, ofs) |-> [v]) ** ⌜vret = v↑⌝)
-    ))).
+    )))).
 
   Definition store_spec: fspec :=
-    (mk_tunneled
+    (mk_tunneled (mk_simple2
        (fun '(b, ofs, v_new) => (
             (ord_pure 0),
             (fun varg =>
                (∃ v_old, ⌜varg = ([Vptr b ofs ; v_new])↑⌝ ** OwnM ((b, ofs) |-> [v_old]))%I),
             (fun vret => OwnM ((b, ofs) |-> [v_new]) ** ⌜vret = (Vint 0)↑⌝)
-    ))).
+    )))).
 
   Definition cmp_spec: fspec :=
-    (mk_tunneled
+    (mk_tunneled (mk_simple2
        (fun '(result, resource) => (
             (ord_pure 0),
           (fun varg =>
@@ -92,7 +71,7 @@ Section PROOF.
             ** OwnM(resource)
           ),
           (fun vret => OwnM(resource) ** ⌜vret = (if result then Vint 1 else Vint 0)↑⌝)
-    ))).
+    )))).
 
 End PROOF.
 

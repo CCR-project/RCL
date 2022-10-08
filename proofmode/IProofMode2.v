@@ -159,6 +159,9 @@ Ltac iDes' l :=
       | (⌜_⌝ ∗ _)%I =>
           let str := constr:(("[% " ++ ident ++ "]")%string) in
           iDestruct ident as str
+      | (⌜_⌝ ∧ ⌜_⌝)%I =>
+          let str := constr:(("[% %]")%string) in
+          iDestruct ident as str
       | (⌜_⌝ ∧ _)%I =>
           let str := constr:(("[% " ++ ident ++ "]")%string) in
           iDestruct ident as str
@@ -379,34 +382,38 @@ Goal let (a, b) := (1, 0) in a = 1. simpl. Abort.
 Goal forall (x: nat * nat), let (a, b) := x in a = 1. i. des_pairs. Abort.
 Goal forall (x: nat * nat), (let (a, b) := x in a = 1) -> False. i. des_pairs. Abort.
 
+Ltac subst_option :=
+  repeat (match goal with
+          | [ H: Some _ = Some _ |- _ ] => injection H; clear H; intro H
+          | [ H: None = Some _ |- _ ] => inversion H
+          | [ H: Some _ = None |- _ ] => inversion H
+          end; subst).
 Ltac des_eqs :=
   repeat match goal with
          | |- context[?x ?[ ?t ] ?y] =>
              let name := fresh "EQ" in
              destruct (x ?[ t ] y) eqn:name;
-             [apply rel_dec_correct in name; clarify|clear name]
+             [apply rel_dec_correct in name; subst_option|clear name]
          | [H: context[?x ?[ ?t ] ?y] |- _] =>
              let name := fresh "EQ" in
              destruct (x ?[ t ] y) eqn:name;
-             [apply rel_dec_correct in name; try (injection H; clear H; i); clarify|clear name]
+             [apply rel_dec_correct in name; subst_option; subst|clear name]
          end.
 
 Ltac startproof :=
   apply isim_fun_to_tgt;
   [typeclasses eauto
-  |autounfold with stb in *; autorewrite with stb in *; cbn; i; des_eqs; econs;
-   cbn; i; des_ifs; iIntros; iDes; des; eauto
-  |cbn; autounfold with stb in *; autorewrite with stb in *;
-   match goal with
-   | |- context[_ = Some ?x] =>
-       repeat multimatch goal with
-              | |- context[(?y, ?z)] => match z with | x => exists y end
-              end
-   end;
-   refl
-  |cbn; autounfold with stb in *; autorewrite with stb in *; ii; ss; des_eqs;
-   match goal with
-   | [H: is_possibly_pure _ |- _] => rr in H; des; ss
-   end
+  (* |autounfold with stb in *; autorewrite with stb in *; cbn; i; des_eqs; econs; *)
+  (*  cbn; i; des_ifs; iIntros; iDes; des; eauto *)
+  (* |cbn; autounfold with stb in *; autorewrite with stb in *; *)
+  (*  match goal with *)
+  (*  | |- context[_ = Some ?x] => *)
+  (*      repeat multimatch goal with *)
+  (*             | |- context[(?y, ?z)] => match z with | x => exists y end *)
+  (*             end *)
+  (*  end; *)
+  (*  refl *)
+  |cbn; autounfold with stb in *; autorewrite with stb in *; ii; ss; des_eqs; ss;
+   (split; [reflexivity|by typeclasses eauto])
   |cbn; unfold cfunN, cfunU, ccallN, ccallU; cbn
   ].
