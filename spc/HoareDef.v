@@ -267,11 +267,70 @@ Section CANCEL.
   (*   apply (list val). *)
   (*   apply (val). *)
   (* Defined. *)
+
+
+  (*** Don't use these two. Use mk_simple2 instead ***)
   Definition mk_simple {X: Type} (DPQ: X -> ord * (Any_tgt -> iProp) * (Any_tgt -> iProp)): fspec :=
     mk_fspec (fst ∘ fst ∘ DPQ)
              (fun _ x y a => (((snd ∘ fst ∘ DPQ) x a: iProp) ∧ ⌜y = a⌝)%I)
              (fun _ x z a => (((snd ∘ DPQ) x a: iProp) ∧ ⌜z = a⌝)%I)
   .
+
+  Definition mk_irr {X: Type} (DPQ: X -> ord * (Any.t -> iProp) * (Any.t -> iProp)): fspec :=
+    mk_fspec (fst ∘ fst ∘ DPQ)
+             (fun _ x _ a => (((snd ∘ fst ∘ DPQ) x a: iProp))%I)
+             (fun _ x _ a => (((snd ∘ DPQ) x a: iProp))%I)
+  .
+
+  Definition mk_simple2 {X: Type} (DPQ: X -> ord * (Any_tgt -> iProp) * (Any_tgt -> iProp)): fspec :=
+    mk_fspec (fst ∘ fst ∘ DPQ)
+             (fun _ x y a => (((snd ∘ fst ∘ DPQ) x a: iProp) ∧ ⌜~is_pure ((fst ∘ fst ∘ DPQ) x) -> y = a⌝)%I)
+             (fun _ x z a => (((snd ∘ DPQ) x a: iProp) ∧ ⌜~is_pure ((fst ∘ fst ∘ DPQ) x) -> z = a⌝)%I)
+  .
+
+  Definition mk_tunneled (fsp: fspec): fspec :=
+    mk_fspec (fun x => match x with | Some x => fsp.(measure) x | _ => ord_top end)
+             (fun mn x y a =>
+                match x with
+                | Some x => (fsp.(precond) mn x y a)%I
+                | _ => ⌜y = a⌝%I: iProp
+                end)
+             (fun mn x z a =>
+                match x with
+                | Some x => (fsp.(postcond) mn x z a)%I
+                | _ => ⌜z = a⌝%I: iProp
+                end)
+  .
+
+  (*** Rename it into wf? ***)
+  Class IsIrr (fsp: fspec): Prop :=
+    mk_IsIrr {
+        is_irr: forall x (PURE: is_pure (fsp.(measure) x)),
+          (<<PRE: forall mn varg0 varg1 varg_tgt, fsp.(precond) mn x varg0 varg_tgt ⊣⊢ fsp.(precond) mn x varg1 varg_tgt>>) /\
+            (<<POST: forall mn vret0 vret1 vret_tgt, fsp.(postcond) mn x vret0 vret_tgt ⊣⊢ fsp.(postcond) mn x vret1 vret_tgt>>)
+      }
+  .
+
+  Global Program Instance mk_irr_IsIrr: ∀ X DPQ, IsIrr (mk_irr (X:=X) DPQ).
+  Next Obligation.
+    i. econs; ss.
+  Qed.
+
+  Global Program Instance mk_simple2_IsIrr: ∀ X DPQ, IsIrr (mk_simple2 (X:=X) DPQ).
+  Next Obligation.
+    i. ss. des_ifs. econs; ss.
+    - ii. iSplit; iIntros "[H %]"; iSplit; ss; iPureIntro; ii; ss.
+    - ii. iSplit; iIntros "[H %]"; iSplit; ss; iPureIntro; ii; ss.
+  Qed.
+
+  Global Program Instance mk_tunneled_IsIrr `{IsIrr fsp}: IsIrr (mk_tunneled fsp).
+  Next Obligation.
+    i. ss. des_ifs. eapply is_irr; ss.
+  Qed.
+
+
+
+
 
   Section INTERP.
   (* Variable stb: gname -> option fspec. *)

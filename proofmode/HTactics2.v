@@ -22,40 +22,6 @@ Set Implicit Arguments.
 
 
 
-Section AUX.
-  Context `{Σ: GRA.t}.
-
-  (* Variant is_simple (fsp: fspec): Prop := *)
-  (* | is_simple_intro *)
-  (*     (PRE: forall mn x varg varg_tgt, ⊢ fsp.(precond) mn x varg varg_tgt -* ⌜varg = varg_tgt⌝) *)
-  (*     (POST: forall mn x vret vret_tgt, ⊢ fsp.(postcond) mn x vret vret_tgt -* ⌜vret = vret_tgt⌝) *)
-  (* . *)
-
-  (* Lemma mk_simple_is_simple: forall X DPQ, is_simple (mk_simple (X:=X) DPQ). *)
-  (* Proof. *)
-  (*   i. econs; ss. *)
-  (*   - i. iIntros "[H %]". ss. *)
-  (*   - i. iIntros "[H %]". ss. *)
-  (* Qed. *)
-  Variant is_irr (fsp: fspec) (x: fsp.(meta)): Prop :=
-  | is_irr_intro
-      (PRE: forall mn varg0 varg1 varg_tgt, fsp.(precond) mn x varg0 varg_tgt ⊣⊢ fsp.(precond) mn x varg1 varg_tgt)
-      (POST: forall mn vret0 vret1 vret_tgt, fsp.(postcond) mn x vret0 vret_tgt ⊣⊢ fsp.(postcond) mn x vret1 vret_tgt)
-  .
-
-  Definition mk_irr {X: Type} (DPQ: X -> ord * (Any.t -> iProp) * (Any.t -> iProp)): fspec :=
-    mk_fspec (fst ∘ fst ∘ DPQ)
-             (fun _ x _ a => (((snd ∘ fst ∘ DPQ) x a: iProp))%I)
-             (fun _ x _ a => (((snd ∘ DPQ) x a: iProp))%I)
-  .
-
-  Lemma mk_irr_is_irr: forall X x DPQ, is_irr (mk_irr (X:=X) DPQ) x.
-  Proof.
-    i. econs; ss.
-  Qed.
-
-End AUX.
-
 
 
 (***
@@ -692,24 +658,10 @@ Section MODE.
 
   Local Transparent APC.
 
-  Definition is_possibly_pure (fsp: fspec): Prop := exists x, is_pure (fsp.(measure) x).
-
+  (*** TODO: also allow weakening? maybe not needed (could be derived)? ***)
   Definition stb_pure_incl (stb_tgt stb_src: string -> option fspec): Prop :=
-    forall fn fsp x (FIND: stb_tgt fn = Some fsp) (PURE: is_pure (fsp.(measure) x)),
-      stb_src fn = Some fsp /\ is_irr fsp x
-  .
-
-  (*** TODO: stb_pure_incl is too strong? maybe relax it into stb_pure_incl2 ***)
-  Definition stb_pure_incl2 (stb_tgt stb_src: string -> option fspec): Prop :=
-    forall fn fsp_tgt (FIND: stb_tgt fn = Some fsp_tgt) x_tgt (PURE: is_pure (fsp_tgt.(measure) x_tgt)),
-      exists fsp_src x_src, (<<FIND: stb_src fn = Some fsp_src>>) /\
-                              (<<PURE: is_pure (fsp_src.(measure) x_src)>>) /\
-                              (<<PRE: forall mn arg_src arg_tgt,
-                                  fsp_src.(precond) mn x_src arg_src arg_tgt ==∗
-                                                    fsp_tgt.(precond) mn x_tgt arg_src arg_tgt>>) /\
-                              (<<POST: forall mn ret_src ret_tgt,
-                                  fsp_tgt.(postcond) mn x_tgt ret_src ret_tgt ==∗
-                                                    fsp_src.(postcond) mn x_src ret_src ret_tgt>>)
+    forall fn fsp (FIND: stb_tgt fn = Some fsp) x (PURE: is_pure (fsp.(measure) x)),
+      stb_src fn = Some fsp /\ IsIrr fsp
   .
 
   Local Transparent HoareCall.
@@ -777,7 +729,7 @@ Section MODE.
         destruct (classic (is_pure (f.(measure) x_tgt))); cycle 1.
         { unfold HoareCall_ at 1. unfold ASSUME, ASSERT, mput, mget. steps. des. contradict H0. eauto. }
 
-        assert(STB: stb_src s = Some f /\ is_irr f x_tgt).
+        assert(STB: stb_src s = Some f /\ IsIrr f).
         { eapply STBINCL; et. }
         des.
         force_l. eexists (_, _). steps. rewrite STB. steps. instantiate (1:=t).

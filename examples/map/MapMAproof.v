@@ -177,7 +177,7 @@ Section SIMMODSEM.
     Local Opaque initial_map black_map map_points_to unallocated.
     econs; [|ss].
     { econs; r; ss. startproof.
-      cbn. unfold MapM.initF, MapA.initF, cfunN, cfunU, ccallN, ccallU. cbn.
+      unfold MapM.initF, MapA.initF, cfunN, cfunU, ccallN, ccallU. cbn.
       i. esplits; ss. i.
       iIntros. iDes. subst. unfold pending. iDes. iFrame. unfold inv_with. iDes.
       { iExFalso. iApply (pending1_unique with "A0 A3"). }
@@ -185,7 +185,7 @@ Section SIMMODSEM.
       iDestruct (initial_map_initialize with "A") as "A". iDes.
       steps. iApply isim_apc_both. iSplitR "A1".
       { unfold inv_with. iSplits; ss. iLeft. iSplits; ss. iFrame. iSplits; et. }
-      iIntros. iDes. steps. iIntros. iDes. iModIntro. iFrame.
+      iIntros. iDes. steps. iIntros. iDes. subst. iModIntro. iFrame. iSplits; ss.
     }
     econs; [|ss].
     { econs; r; ss. startproof.
@@ -233,7 +233,7 @@ Section SIMMODSEM.
       iApply isim_syscall. iIntros. steps. iSplits; ss; et.
       iIntros. iExists (_, _, _). iSplits; ss; et. iIntros. iDes. iSplitR "".
       { unfold inv_with. iFrame. iSplits; ss; et. iLeft. iFrame. iSplits; ss; et. iFrame. iSplits; ss; et. }
-      iIntros. iDes. subst. iFrame. iSplits; ss; et. steps. iIntros. iDes. iModIntro.
+      iIntros. iSplits. iIntros. iDes. subst. iFrame. iSplits; ss; et. steps. iIntros. iDes. iModIntro.
       unfold inv_with. iDes.
       2:{ des; subst. iPoseProof (initial_map_no_points_to with "A1 A0") as "H"; ss. }
       des; subst. iFrame. iSplitR "A0".
