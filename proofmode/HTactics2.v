@@ -37,10 +37,10 @@ Section AUX.
   (*   - i. iIntros "[H %]". ss. *)
   (*   - i. iIntros "[H %]". ss. *)
   (* Qed. *)
-  Variant is_irr (fsp: fspec): Prop :=
+  Variant is_irr (fsp: fspec) (x: fsp.(meta)): Prop :=
   | is_irr_intro
-      (PRE: forall mn x varg0 varg1 varg_tgt, fsp.(precond) mn x varg0 varg_tgt ⊣⊢ fsp.(precond) mn x varg1 varg_tgt)
-      (POST: forall mn x vret0 vret1 vret_tgt, fsp.(postcond) mn x vret0 vret_tgt ⊣⊢ fsp.(postcond) mn x vret1 vret_tgt)
+      (PRE: forall mn varg0 varg1 varg_tgt, fsp.(precond) mn x varg0 varg_tgt ⊣⊢ fsp.(precond) mn x varg1 varg_tgt)
+      (POST: forall mn vret0 vret1 vret_tgt, fsp.(postcond) mn x vret0 vret_tgt ⊣⊢ fsp.(postcond) mn x vret1 vret_tgt)
   .
 
   Definition mk_irr {X: Type} (DPQ: X -> ord * (Any.t -> iProp) * (Any.t -> iProp)): fspec :=
@@ -49,7 +49,7 @@ Section AUX.
              (fun _ x _ a => (((snd ∘ DPQ) x a: iProp))%I)
   .
 
-  Lemma mk_irr_is_irr: forall X DPQ, is_irr (mk_irr (X:=X) DPQ).
+  Lemma mk_irr_is_irr: forall X x DPQ, is_irr (mk_irr (X:=X) DPQ) x.
   Proof.
     i. econs; ss.
   Qed.
@@ -231,6 +231,174 @@ Section MODE.
     { i. rr in x0. uipropall. }
   Qed.
 
+  (*** Just for proof reuse. ***)
+  Definition HoareCall_
+             (mn: mname)
+             (tbr: bool)
+             (ord_cur: ord)
+             (fsp: fspec) (x: fsp.(meta)):
+    gname -> Any.t -> stateT (Σ) (itree Es) Any.t :=
+    fun fn varg_src fr0 =>
+
+      '(fr1, varg_tgt) <- (ASSERT (fsp.(precond) (Some mn) x) varg_src fr0);;
+
+      let ord_next := fsp.(measure) x in
+      _ <- guarantee(ord_lt ord_next ord_cur /\ (tbr = true -> is_pure ord_next) /\ (tbr = false -> ord_next = ord_top));;
+
+      vret_tgt <- trigger (Call fn varg_tgt);;
+
+      ASSUME (fsp.(postcond) (Some mn) x) vret_tgt fr1
+  .
+
+  Lemma HoareCall_spec: forall mn tbr ord_cur fsp fn varg fr0,
+      HoareCall mn tbr ord_cur fsp fn varg fr0 =
+        x <- trigger (Choose (fsp.(meta)));; HoareCall_ mn tbr ord_cur fsp x fn varg fr0
+  .
+  Proof.
+    unfold HoareCall, HoareCall_. grind.
+  Qed.
+
+  Lemma hcall_clo2_
+        (fsp_src: fspec)
+
+        A (a0: shelve__ A)
+
+        (le: A -> A -> Prop) mn r rg a n m mr_src0 mp_src0
+        `{PreOrder _ le}
+        (fsp_tgt: fspec)
+        mr_tgt0 mp_tgt0 k_tgt k_src
+        fn tbr_src tbr_tgt o_src o_tgt arg_src arg_tgt
+        (R: A -> Any.t -> Any.t -> iProp)
+        (eqr: Any.t -> Any.t -> Any.t -> Any.t -> Prop)
+
+        fr_src0 fr_tgt0
+
+        x_src x_tgt
+        (ORD: (<<PURE: ord_lt (fsp_src.(measure) x_src) o_src /\
+               (tbr_src = true -> is_pure (fsp_src.(measure) x_src)) /\
+                 (tbr_src = false -> (fsp_src.(measure) x_src) = ord_top)>>))
+        (POST:
+          exists I FR,
+            (<<ACC: current_iPropL (fr_src0 ⋅ mr_src0 ⋅ mr_tgt0) [("I", I)] >>) /\
+            (<<UPDATABLE: bi_entails I (OwnT (fr_tgt0) ** OwnT (mr_tgt0) **
+                              (∀ argp, fsp_tgt.(precond) (Some mn) x_tgt arg_tgt argp
+                                 ==∗ (FR ** (∃ a1, R a1 mp_src0 mp_tgt0 ** ⌜le a0 a1⌝) **
+                                         (fsp_src.(precond) (Some mn) x_src arg_src argp: iProp))))>>) /\
+            (<<POST: forall (ret_src: Any.t) (mp_src1 mp_tgt1 : Any.t),
+              (<<UPDATABLE: ∀ retp, (FR ** (∃ a1, R a1 mp_src1 mp_tgt1 ** ⌜le a0 a1⌝) **
+                                          fsp_src.(postcond) (Some mn) x_src ret_src retp) ==∗
+                            ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
+                   ⌜(<<SIM: forall fr_src1 fr_tgt1 mr_src1 mr_tgt1
+                              (ACC: current_iPropL (fr_src1 ⋅ (mr_tgt1 ⋅ mr_src1))
+                                                   [("J", J); ("TF", OwnT fr_tgt1); ("TM", OwnT mr_tgt1)]),
+                gpaco8 (_sim_itree (mk_wf R) le) (cpn8 (_sim_itree (mk_wf R) le)) rg rg _ _ eqr true true a
+                       (Any.pair mp_src1 (mr_tgt1 ⋅ mr_src1)↑, k_src (fr_src1, ret_src))
+                       (Any.pair mp_tgt1 mr_tgt1↑, k_tgt (fr_tgt1, ret_tgt))>>)⌝)>>)
+                >>))
+    :
+      gpaco8 (_sim_itree (mk_wf R) le) (cpn8 (_sim_itree (mk_wf R) le)) r rg _ _ eqr m n a
+             (Any.pair mp_src0 (mr_tgt0 ⋅ mr_src0)↑,
+                       (HoareCall_ mn tbr_src o_src fsp_src x_src fn arg_src) fr_src0 >>= k_src)
+             (Any.pair mp_tgt0 mr_tgt0↑,
+                       (HoareCall_ mn tbr_tgt o_tgt fsp_tgt x_tgt fn arg_tgt) fr_tgt0 >>= k_tgt)
+  .
+  Proof.
+    subst. unfold HoareCall_ at 2, ASSUME, ASSERT, mput, mget, assume, guarantee.
+    steps.
+    rename c into mr_tgt1. rename c0 into ro_tgt. rename c1 into fr_tgt.
+    des.
+    eapply (current_iPropL_entail "I") in ACC; et. unfold alist_add in ACC; ss.
+    mDesAll.
+    mAssert (Own (fr_tgt0 ⋅ mr_tgt0))%I with "I A1" as "H".
+    { iSplitL "I"; iFrame. }
+    mAssert _ with "H" as "H".
+    { iApply (Own_Upd with "H"); eauto. }
+    mUpd "H".
+    mAssert _ with "H" as "H".
+    { iDestruct "H" as "[[A B] C]". instantiate (1:=_ ** _ ** _).
+      iSplitR "A"; try iAssumption. iSplitR "B"; try iAssumption. }
+    mDesAll.
+    mAssert (_) with "A1".
+    { iStopProof. eapply from_semantic; eauto. }
+    mAssert (#=> _) with "A A3".
+    { iSpecialize ("A" with "A3"). iMod "A". iModIntro. iAssumption.
+    }
+    mUpd "A1". mDesAll.
+
+    inv ACC. rr in IPROP. repeat (autorewrite with iprop in IPROP; autounfold with iprop in IPROP; ss).
+    des. subst. rename a2 into mr_src1. rename a3 into fr_src.
+    rename a4 into ro_src. rename a5 into fr_tgt_. rename a6 into mr_tgt_.
+    unfold HoareCall_ at 1, ASSUME, ASSERT, mput, mget, assume, guarantee.
+    steps.
+    repeat (ired_both; apply sim_itreeC_spec; econs). exists (ro_src, (fr_src ⋅ fr_tgt), (mr_tgt1 ⋅ mr_src1)).
+    repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits.
+    { replace (fr_src0 ⋅ (mr_tgt0 ⋅ mr_src0)) with (fr_src0 ⋅ mr_src0 ⋅ mr_tgt0) by r_solve. etrans; et.
+      rr in IPROP6. rr in IPROP8. des. subst.
+      eapply URA.extends_updatable. exists (b3 ⋅ ctx0 ⋅ ctx); r_solve. }
+    repeat (ired_both; apply sim_itreeC_spec; econs). esplits; et.
+    repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et.
+    repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et.
+    repeat (ired_both; apply sim_itreeC_spec; econs). econs; et.
+    bar.
+    i. steps. rename x5 into ri_src. rename t into mp_src2. rename c into mr_src2.
+    rename x7 into ret_src. rename vret into retp.
+    inv WF. rewrite Any.pair_split in *. clarify. rewrite Any.upcast_downcast in *. clarify.
+    move POST at bottom.
+    specialize (POST ret_src mp_src2 mp_tgt). des.
+    assert(T: URA.wf (ri_src ⋅ fr_src ⋅ mr_src')).
+    { eapply URA.wf_mon; et. instantiate (1:= fr_tgt ⋅ mr_tgt). r_wf x6. }
+    assert(ACC:=current_iPropL_init "A" T).
+    mAssert (_ ∗ _ ∗ _)%I with "A".
+    { iDestruct "A" as "[[A B] C]". iSplitL "A"; try iAssumption. iSplitL "B"; try iAssumption. }
+    mDesAll.
+    mAssert (_) with "A".
+    { iStopProof. eapply from_semantic; et. }
+    mAssert (_) with "A1".
+    { iStopProof. eapply from_semantic; et. }
+    mAssert (_) with "A2".
+    { iStopProof. eapply from_semantic; et. eapply RSRC; et. eapply URA.wf_mon.
+      instantiate (1:=ri_src ⋅ fr_src ⋅ fr_tgt ⋅ mr_tgt). r_wf x6.
+    }
+    specialize (POST retp).
+    eapply current_iProp_entail in ACC; cycle 1.
+    { etrans; try eassumption. iIntros "H". iDestruct "H" as "[A [B [C _]]]". iFrame. iSplits; et.
+      iPureIntro. etrans; eauto. }
+    apply current_iProp_upd in ACC. apply current_iProp_ex in ACC. des. apply current_iProp_ex in ACC. des.
+    rename x5 into ret_tgt. rename x7 into J.
+    inv ACC. rr in IPROP. repeat (autorewrite with iprop in IPROP; autounfold with iprop in IPROP; ss).
+    des. subst.
+    rename a3 into ri_tgt. rename b0 into jr. rename b into unused.
+    assert(WF: URA.wf (ri_tgt ⋅ jr ⋅ (fr_tgt ⋅ mr_tgt))).
+    { eapply URA.updatable_wf; try apply x6.
+      replace (ri_src ⋅ (fr_src ⋅ fr_tgt) ⋅ (mr_tgt ⋅ mr_src')) with
+        ((fr_tgt ⋅ mr_tgt) ⋅ (ri_src ⋅ fr_src ⋅ mr_src')) by r_solve.
+      replace (ri_tgt ⋅ jr ⋅ (fr_tgt ⋅ mr_tgt)) with ((fr_tgt ⋅ mr_tgt) ⋅ (ri_tgt ⋅ jr)) by r_solve.
+      eapply URA.updatable_add; et; try refl. etrans; et. eapply URA.extends_updatable.
+      exists unused; r_solve. }
+    repeat (ired_both; apply sim_itreeC_spec; econs). exists ri_tgt.
+    repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et.
+    { eapply URA.wf_mon. instantiate (1:=jr). r_wf WF. }
+    steps.
+    repeat (ired_both; apply sim_itreeC_spec; econs). exists ret_tgt.
+    repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et.
+    steps.
+    rename IPROP3 into SIM.
+    rr in SIM; repeat (autorewrite with iprop in SIM; autounfold with iprop in SIM; ss). des.
+    eapply SIM.
+    econs; et; cycle 1.
+    { replace (ri_src ⋅ (fr_src ⋅ fr_tgt) ⋅ (mr_tgt ⋅ mr_src'))
+        with ((ri_src ⋅ fr_src ⋅ mr_src') ⋅ (fr_tgt ⋅ mr_tgt)) by r_solve.
+      eapply URA.updatable_add.
+      { etrans; try apply UPD0. eapply URA.extends_updatable.
+        instantiate (1:=ri_tgt ⋅ jr). exists unused; r_solve. } refl. }
+    { eapply to_semantic; cycle 1.
+      { r_wf WF. }
+      iIntros "[[A B] [C D]]". iSplitL "B".
+      { iStopProof. eapply from_semantic; et. }
+      iFrame. iSplitL "A"; iFrame.
+    }
+  Qed.
+
   Lemma hcall_clo2
         (fsp_src: fspec)
 
@@ -278,102 +446,160 @@ Section MODE.
                        (HoareCall mn tbr_tgt o_tgt fsp_tgt fn arg_tgt) fr_tgt0 >>= k_tgt)
   .
   Proof.
-    subst. unfold HoareCall at 2, ASSUME, ASSERT, mput, mget, assume, guarantee.
-    steps.
-    rename c into mr_tgt1. rename c0 into ro_tgt. rename c1 into fr_tgt.
-    rename x into x_tgt. des. specialize (POST x_tgt (conj x3 (conj x4 x5))). des.
-    eapply (current_iPropL_entail "I") in ACC; et. unfold alist_add in ACC; ss.
-    mDesAll.
-    mAssert (Own (fr_tgt0 ⋅ mr_tgt0))%I with "I A1" as "H".
-    { iSplitL "I"; iFrame. }
-    mAssert _ with "H" as "H".
-    { iApply (Own_Upd with "H"); eauto. }
-    mUpd "H".
-    mAssert _ with "H" as "H".
-    { iDestruct "H" as "[[A B] C]". instantiate (1:=_ ** _ ** _).
-      iSplitR "A"; try iAssumption. iSplitR "B"; try iAssumption. }
-    mDesAll.
-    mAssert (_) with "A1".
-    { iStopProof. eapply from_semantic; eauto. }
-    mAssert (#=> _) with "A A3".
-    { iSpecialize ("A" with "A3"). iMod "A". iModIntro. iAssumption.
-    }
-    mUpd "A1". mDesAll.
-
-    inv ACC. rr in IPROP. repeat (autorewrite with iprop in IPROP; autounfold with iprop in IPROP; ss).
-    des. subst. rename a2 into mr_src1. rename a3 into fr_src.
-    rename a4 into ro_src. rename a5 into fr_tgt_. rename a6 into mr_tgt_.
-    unfold HoareCall at 1, ASSUME, ASSERT, mput, mget, assume, guarantee.
-    steps.
-    repeat (ired_both; apply sim_itreeC_spec; econs). esplits; et.
-    repeat (ired_both; apply sim_itreeC_spec; econs). exists (ro_src, (fr_src ⋅ fr_tgt), (mr_tgt1 ⋅ mr_src1)).
-    repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits.
-    { replace (fr_src0 ⋅ (mr_tgt0 ⋅ mr_src0)) with (fr_src0 ⋅ mr_src0 ⋅ mr_tgt0) by r_solve. etrans; et.
-      rr in IPROP6. rr in IPROP8. des. subst.
-      eapply URA.extends_updatable. exists (b3 ⋅ ctx0 ⋅ ctx); r_solve. }
-    repeat (ired_both; apply sim_itreeC_spec; econs). esplits; et.
-    repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et.
-    repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et.
-    repeat (ired_both; apply sim_itreeC_spec; econs). econs; et.
-    bar.
-    i. steps. rename x into ri_src. rename t into mp_src2. rename c into mr_src2.
-    rename x7 into ret_src. rename vret into retp.
-    inv WF. rewrite Any.pair_split in *. clarify. rewrite Any.upcast_downcast in *. clarify.
-    move POST at bottom.
-    specialize (POST ret_src mp_src2 mp_tgt). des.
-    assert(T: URA.wf (ri_src ⋅ fr_src ⋅ mr_src')).
-    { eapply URA.wf_mon; et. instantiate (1:= fr_tgt ⋅ mr_tgt). r_wf x6. }
-    assert(ACC:=current_iPropL_init "A" T).
-    mAssert (_ ∗ _ ∗ _)%I with "A".
-    { iDestruct "A" as "[[A B] C]". iSplitL "A"; try iAssumption. iSplitL "B"; try iAssumption. }
-    mDesAll.
-    mAssert (_) with "A".
-    { iStopProof. eapply from_semantic; et. }
-    mAssert (_) with "A1".
-    { iStopProof. eapply from_semantic; et. }
-    mAssert (_) with "A2".
-    { iStopProof. eapply from_semantic; et. eapply RSRC; et. eapply URA.wf_mon.
-      instantiate (1:=ri_src ⋅ fr_src ⋅ fr_tgt ⋅ mr_tgt). r_wf x6.
-    }
-    specialize (POST retp).
-    eapply current_iProp_entail in ACC; cycle 1.
-    { etrans; try eassumption. iIntros "H". iDestruct "H" as "[A [B [C _]]]". iFrame. iSplits; et.
-      iPureIntro. etrans; eauto. }
-    apply current_iProp_upd in ACC. apply current_iProp_ex in ACC. des. apply current_iProp_ex in ACC. des.
-    rename x into ret_tgt. rename x7 into J.
-    inv ACC. rr in IPROP. repeat (autorewrite with iprop in IPROP; autounfold with iprop in IPROP; ss).
-    des. subst.
-    rename a3 into ri_tgt. rename b0 into jr. rename b into unused.
-    assert(WF: URA.wf (ri_tgt ⋅ jr ⋅ (fr_tgt ⋅ mr_tgt))).
-    { eapply URA.updatable_wf; try apply x6.
-      replace (ri_src ⋅ (fr_src ⋅ fr_tgt) ⋅ (mr_tgt ⋅ mr_src')) with
-        ((fr_tgt ⋅ mr_tgt) ⋅ (ri_src ⋅ fr_src ⋅ mr_src')) by r_solve.
-      replace (ri_tgt ⋅ jr ⋅ (fr_tgt ⋅ mr_tgt)) with ((fr_tgt ⋅ mr_tgt) ⋅ (ri_tgt ⋅ jr)) by r_solve.
-      eapply URA.updatable_add; et; try refl. etrans; et. eapply URA.extends_updatable.
-      exists unused; r_solve. }
-    repeat (ired_both; apply sim_itreeC_spec; econs). exists ri_tgt.
-    repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et.
-    { eapply URA.wf_mon. instantiate (1:=jr). r_wf WF. }
-    steps.
-    repeat (ired_both; apply sim_itreeC_spec; econs). exists ret_tgt.
-    repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et.
-    steps.
-    rename IPROP3 into SIM.
-    rr in SIM; repeat (autorewrite with iprop in SIM; autounfold with iprop in SIM; ss). des.
-    eapply SIM.
-    econs; et; cycle 1.
-    { replace (ri_src ⋅ (fr_src ⋅ fr_tgt) ⋅ (mr_tgt ⋅ mr_src'))
-        with ((ri_src ⋅ fr_src ⋅ mr_src') ⋅ (fr_tgt ⋅ mr_tgt)) by r_solve.
-      eapply URA.updatable_add.
-      { etrans; try apply UPD0. eapply URA.extends_updatable.
-        instantiate (1:=ri_tgt ⋅ jr). exists unused; r_solve. } refl. }
-    { eapply to_semantic; cycle 1.
-      { r_wf WF. }
-      iIntros "[[A B] [C D]]". iSplitL "B".
-      { iStopProof. eapply from_semantic; et. }
-      iFrame. iSplitL "A"; iFrame.
-    }
+    rewrite ! HoareCall_spec.
+    steps. rename x into x_tgt.
+    destruct (classic (ord_lt (measure fsp_tgt x_tgt) o_tgt
+                       ∧ (tbr_tgt = true → is_pure (measure fsp_tgt x_tgt))
+                       ∧ (tbr_tgt = false → measure fsp_tgt x_tgt = ord_top))); cycle 1.
+    { unfold HoareCall_ at 2. steps. unfold ASSERT, mput, mget. steps. }
+    spc POST. spc POST. des.
+    force_l. exists x_src.
+    eapply hcall_clo2_; eauto.
   Qed.
+
+  (* Lemma hcall_clo2 *)
+  (*       (fsp_src: fspec) *)
+
+  (*       A (a0: shelve__ A) *)
+
+  (*       (le: A -> A -> Prop) mn r rg a n m mr_src0 mp_src0 *)
+  (*       `{PreOrder _ le} *)
+  (*       (fsp_tgt: fspec) *)
+  (*       mr_tgt0 mp_tgt0 k_tgt k_src *)
+  (*       fn tbr_src tbr_tgt o_src o_tgt arg_src arg_tgt *)
+  (*       (R: A -> Any.t -> Any.t -> iProp) *)
+  (*       (eqr: Any.t -> Any.t -> Any.t -> Any.t -> Prop) *)
+
+  (*       fr_src0 fr_tgt0 *)
+
+  (*       (POST: forall x_tgt (PURE: ord_lt (fsp_tgt.(measure) x_tgt) o_tgt *)
+  (*                                  /\ (tbr_tgt = true -> is_pure (fsp_tgt.(measure) x_tgt)) *)
+  (*                                  /\ (tbr_tgt = false -> (fsp_tgt.(measure) x_tgt) = ord_top)), *)
+  (*         exists x_src, *)
+  (*           (<<PURE: ord_lt (fsp_src.(measure) x_src) o_src /\ *)
+  (*              (tbr_src = true -> is_pure (fsp_src.(measure) x_src)) /\ *)
+  (*                (tbr_src = false -> (fsp_src.(measure) x_src) = ord_top)>>) /\ *)
+  (*         exists I FR, *)
+  (*           (<<ACC: current_iPropL (fr_src0 ⋅ mr_src0 ⋅ mr_tgt0) [("I", I)] >>) /\ *)
+  (*           (<<UPDATABLE: bi_entails I (OwnT (fr_tgt0) ** OwnT (mr_tgt0) ** *)
+  (*                             (∀ argp, fsp_tgt.(precond) (Some mn) x_tgt arg_tgt argp *)
+  (*                                ==∗ (FR ** (∃ a1, R a1 mp_src0 mp_tgt0 ** ⌜le a0 a1⌝) ** *)
+  (*                                        (fsp_src.(precond) (Some mn) x_src arg_src argp: iProp))))>>) /\ *)
+  (*           (<<POST: forall (ret_src: Any.t) (mp_src1 mp_tgt1 : Any.t), *)
+  (*             (<<UPDATABLE: ∀ retp, (FR ** (∃ a1, R a1 mp_src1 mp_tgt1 ** ⌜le a0 a1⌝) ** *)
+  (*                                         fsp_src.(postcond) (Some mn) x_src ret_src retp) ==∗ *)
+  (*                           ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J ** *)
+  (*                  ⌜(<<SIM: forall fr_src1 fr_tgt1 mr_src1 mr_tgt1 *)
+  (*                             (ACC: current_iPropL (fr_src1 ⋅ (mr_tgt1 ⋅ mr_src1)) *)
+  (*                                                  [("J", J); ("TF", OwnT fr_tgt1); ("TM", OwnT mr_tgt1)]), *)
+  (*               gpaco8 (_sim_itree (mk_wf R) le) (cpn8 (_sim_itree (mk_wf R) le)) rg rg _ _ eqr true true a *)
+  (*                      (Any.pair mp_src1 (mr_tgt1 ⋅ mr_src1)↑, k_src (fr_src1, ret_src)) *)
+  (*                      (Any.pair mp_tgt1 mr_tgt1↑, k_tgt (fr_tgt1, ret_tgt))>>)⌝)>>) *)
+  (*               >>)) *)
+  (*   : *)
+  (*     gpaco8 (_sim_itree (mk_wf R) le) (cpn8 (_sim_itree (mk_wf R) le)) r rg _ _ eqr m n a *)
+  (*            (Any.pair mp_src0 (mr_tgt0 ⋅ mr_src0)↑, *)
+  (*                      (HoareCall mn tbr_src o_src fsp_src fn arg_src) fr_src0 >>= k_src) *)
+  (*            (Any.pair mp_tgt0 mr_tgt0↑, *)
+  (*                      (HoareCall mn tbr_tgt o_tgt fsp_tgt fn arg_tgt) fr_tgt0 >>= k_tgt) *)
+  (* . *)
+  (* Proof. *)
+  (*   subst. unfold HoareCall at 2, ASSUME, ASSERT, mput, mget, assume, guarantee. *)
+  (*   steps. *)
+  (*   rename c into mr_tgt1. rename c0 into ro_tgt. rename c1 into fr_tgt. *)
+  (*   rename x into x_tgt. des. specialize (POST x_tgt (conj x3 (conj x4 x5))). des. *)
+  (*   eapply (current_iPropL_entail "I") in ACC; et. unfold alist_add in ACC; ss. *)
+  (*   mDesAll. *)
+  (*   mAssert (Own (fr_tgt0 ⋅ mr_tgt0))%I with "I A1" as "H". *)
+  (*   { iSplitL "I"; iFrame. } *)
+  (*   mAssert _ with "H" as "H". *)
+  (*   { iApply (Own_Upd with "H"); eauto. } *)
+  (*   mUpd "H". *)
+  (*   mAssert _ with "H" as "H". *)
+  (*   { iDestruct "H" as "[[A B] C]". instantiate (1:=_ ** _ ** _). *)
+  (*     iSplitR "A"; try iAssumption. iSplitR "B"; try iAssumption. } *)
+  (*   mDesAll. *)
+  (*   mAssert (_) with "A1". *)
+  (*   { iStopProof. eapply from_semantic; eauto. } *)
+  (*   mAssert (#=> _) with "A A3". *)
+  (*   { iSpecialize ("A" with "A3"). iMod "A". iModIntro. iAssumption. *)
+  (*   } *)
+  (*   mUpd "A1". mDesAll. *)
+
+  (*   inv ACC. rr in IPROP. repeat (autorewrite with iprop in IPROP; autounfold with iprop in IPROP; ss). *)
+  (*   des. subst. rename a2 into mr_src1. rename a3 into fr_src. *)
+  (*   rename a4 into ro_src. rename a5 into fr_tgt_. rename a6 into mr_tgt_. *)
+  (*   unfold HoareCall at 1, ASSUME, ASSERT, mput, mget, assume, guarantee. *)
+  (*   steps. *)
+  (*   repeat (ired_both; apply sim_itreeC_spec; econs). esplits; et. *)
+  (*   repeat (ired_both; apply sim_itreeC_spec; econs). exists (ro_src, (fr_src ⋅ fr_tgt), (mr_tgt1 ⋅ mr_src1)). *)
+  (*   repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits. *)
+  (*   { replace (fr_src0 ⋅ (mr_tgt0 ⋅ mr_src0)) with (fr_src0 ⋅ mr_src0 ⋅ mr_tgt0) by r_solve. etrans; et. *)
+  (*     rr in IPROP6. rr in IPROP8. des. subst. *)
+  (*     eapply URA.extends_updatable. exists (b3 ⋅ ctx0 ⋅ ctx); r_solve. } *)
+  (*   repeat (ired_both; apply sim_itreeC_spec; econs). esplits; et. *)
+  (*   repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et. *)
+  (*   repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et. *)
+  (*   repeat (ired_both; apply sim_itreeC_spec; econs). econs; et. *)
+  (*   bar. *)
+  (*   i. steps. rename x into ri_src. rename t into mp_src2. rename c into mr_src2. *)
+  (*   rename x7 into ret_src. rename vret into retp. *)
+  (*   inv WF. rewrite Any.pair_split in *. clarify. rewrite Any.upcast_downcast in *. clarify. *)
+  (*   move POST at bottom. *)
+  (*   specialize (POST ret_src mp_src2 mp_tgt). des. *)
+  (*   assert(T: URA.wf (ri_src ⋅ fr_src ⋅ mr_src')). *)
+  (*   { eapply URA.wf_mon; et. instantiate (1:= fr_tgt ⋅ mr_tgt). r_wf x6. } *)
+  (*   assert(ACC:=current_iPropL_init "A" T). *)
+  (*   mAssert (_ ∗ _ ∗ _)%I with "A". *)
+  (*   { iDestruct "A" as "[[A B] C]". iSplitL "A"; try iAssumption. iSplitL "B"; try iAssumption. } *)
+  (*   mDesAll. *)
+  (*   mAssert (_) with "A". *)
+  (*   { iStopProof. eapply from_semantic; et. } *)
+  (*   mAssert (_) with "A1". *)
+  (*   { iStopProof. eapply from_semantic; et. } *)
+  (*   mAssert (_) with "A2". *)
+  (*   { iStopProof. eapply from_semantic; et. eapply RSRC; et. eapply URA.wf_mon. *)
+  (*     instantiate (1:=ri_src ⋅ fr_src ⋅ fr_tgt ⋅ mr_tgt). r_wf x6. *)
+  (*   } *)
+  (*   specialize (POST retp). *)
+  (*   eapply current_iProp_entail in ACC; cycle 1. *)
+  (*   { etrans; try eassumption. iIntros "H". iDestruct "H" as "[A [B [C _]]]". iFrame. iSplits; et. *)
+  (*     iPureIntro. etrans; eauto. } *)
+  (*   apply current_iProp_upd in ACC. apply current_iProp_ex in ACC. des. apply current_iProp_ex in ACC. des. *)
+  (*   rename x into ret_tgt. rename x7 into J. *)
+  (*   inv ACC. rr in IPROP. repeat (autorewrite with iprop in IPROP; autounfold with iprop in IPROP; ss). *)
+  (*   des. subst. *)
+  (*   rename a3 into ri_tgt. rename b0 into jr. rename b into unused. *)
+  (*   assert(WF: URA.wf (ri_tgt ⋅ jr ⋅ (fr_tgt ⋅ mr_tgt))). *)
+  (*   { eapply URA.updatable_wf; try apply x6. *)
+  (*     replace (ri_src ⋅ (fr_src ⋅ fr_tgt) ⋅ (mr_tgt ⋅ mr_src')) with *)
+  (*       ((fr_tgt ⋅ mr_tgt) ⋅ (ri_src ⋅ fr_src ⋅ mr_src')) by r_solve. *)
+  (*     replace (ri_tgt ⋅ jr ⋅ (fr_tgt ⋅ mr_tgt)) with ((fr_tgt ⋅ mr_tgt) ⋅ (ri_tgt ⋅ jr)) by r_solve. *)
+  (*     eapply URA.updatable_add; et; try refl. etrans; et. eapply URA.extends_updatable. *)
+  (*     exists unused; r_solve. } *)
+  (*   repeat (ired_both; apply sim_itreeC_spec; econs). exists ri_tgt. *)
+  (*   repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et. *)
+  (*   { eapply URA.wf_mon. instantiate (1:=jr). r_wf WF. } *)
+  (*   steps. *)
+  (*   repeat (ired_both; apply sim_itreeC_spec; econs). exists ret_tgt. *)
+  (*   repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et. *)
+  (*   steps. *)
+  (*   rename IPROP3 into SIM. *)
+  (*   rr in SIM; repeat (autorewrite with iprop in SIM; autounfold with iprop in SIM; ss). des. *)
+  (*   eapply SIM. *)
+  (*   econs; et; cycle 1. *)
+  (*   { replace (ri_src ⋅ (fr_src ⋅ fr_tgt) ⋅ (mr_tgt ⋅ mr_src')) *)
+  (*       with ((ri_src ⋅ fr_src ⋅ mr_src') ⋅ (fr_tgt ⋅ mr_tgt)) by r_solve. *)
+  (*     eapply URA.updatable_add. *)
+  (*     { etrans; try apply UPD0. eapply URA.extends_updatable. *)
+  (*       instantiate (1:=ri_tgt ⋅ jr). exists unused; r_solve. } refl. } *)
+  (*   { eapply to_semantic; cycle 1. *)
+  (*     { r_wf WF. } *)
+  (*     iIntros "[[A B] [C D]]". iSplitL "B". *)
+  (*     { iStopProof. eapply from_semantic; et. } *)
+  (*     iFrame. iSplitL "A"; iFrame. *)
+  (*   } *)
+  (* Qed. *)
 
   Lemma hret_clo2
         A
@@ -469,8 +695,8 @@ Section MODE.
   Definition is_possibly_pure (fsp: fspec): Prop := exists x, is_pure (fsp.(measure) x).
 
   Definition stb_pure_incl (stb_tgt stb_src: string -> option fspec): Prop :=
-    forall fn fsp (FIND: stb_tgt fn = Some fsp) (PURE: is_possibly_pure fsp),
-      stb_src fn = Some fsp /\ is_irr fsp
+    forall fn fsp x (FIND: stb_tgt fn = Some fsp) (PURE: is_pure (fsp.(measure) x)),
+      stb_src fn = Some fsp /\ is_irr fsp x
   .
 
   (*** TODO: stb_pure_incl is too strong? maybe relax it into stb_pure_incl2 ***)
@@ -547,18 +773,24 @@ Section MODE.
       destruct x0.
       - steps. eapply gpaco8_mon; et.
       - steps. force_l. exists x0. steps. force_l; ss. steps.
-        destruct (classic (is_possibly_pure f)); cycle 1.
-        { unfold HoareCall. unfold ASSUME, ASSERT, mput, mget. steps. des. contradict H0. r. eauto. }
+        rewrite ! HoareCall_spec. steps. rename x1 into x_tgt.
+        destruct (classic (is_pure (f.(measure) x_tgt))); cycle 1.
+        { unfold HoareCall_ at 1. unfold ASSUME, ASSERT, mput, mget. steps. des. contradict H0. eauto. }
 
-        assert(STB: stb_src s = Some f /\ is_irr f).
+        assert(STB: stb_src s = Some f /\ is_irr f x_tgt).
         { eapply STBINCL; et. }
         des.
         force_l. eexists (_, _). steps. rewrite STB. steps. instantiate (1:=t).
 
         mDesAll.
-        eapply hcall_clo2; eauto.
-        i. des. exists x_tgt. esplits; eauto; ss.
-        { eapply ord_lt_le_lt; eauto. }
+        rewrite HoareCall_spec. steps. force_l. exists x_tgt.
+        destruct (classic (ord_lt (measure f x_tgt) o_src
+                           ∧ (true = true → is_pure (measure f x_tgt)) ∧
+                             (true = false → measure f x_tgt = ord_top))); cycle 1.
+        { unfold HoareCall_ at 2. unfold ASSUME, ASSERT, mput, mget. steps. des. contradict H1.
+          esplits; eauto.  eapply ord_lt_le_lt; eauto. }
+        eapply hcall_clo2_; eauto.
+        esplits; eauto.
         { replace (fr_src0 ⋅ mr_src0 ⋅ mr_tgt0) with (fr_src0 ⋅ (mr_tgt0 ⋅ mr_src0)) by r_solve.
           eapply current_iProp_entail; eauto.
           iIntros "[A [B [C [D _]]]]". iFrame. iIntros. iFrame. iModIntro.
