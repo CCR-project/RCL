@@ -1829,10 +1829,10 @@ Section ADEQUACY.
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
         (ISIM: forall x_src, exists x_tgt,
             (<<OLE: ord_le (measure fsp_tgt x_tgt) (measure fsp_src x_src)>>) /\
-            forall w mn_caller arg_src arg_tgt st_src st_tgt,
-              (inv_with le wf w st_src st_tgt ** fsp_src.(precond) mn_caller x_src arg_src arg_tgt) ==∗
-              (fsp_tgt.(precond) mn_caller x_tgt arg_tgt arg_tgt ** (∀ OwnT,
-⌜(fsp_tgt.(precond) mn_caller x_tgt arg_tgt arg_tgt OwnT)⌝ -*
+            forall w mn_caller arg_src argp st_src st_tgt, ∃ arg_tgt,
+              (inv_with le wf w st_src st_tgt ** fsp_src.(precond) mn_caller x_src arg_src argp) ==∗
+              (fsp_tgt.(precond) mn_caller x_tgt arg_tgt argp ** (∀ OwnT,
+⌜(fsp_tgt.(precond) mn_caller x_tgt arg_tgt argp OwnT)⌝ -*
                isim
                  le wf mn stb_src stb_tgt (fsp_src.(measure) x_src)
                  (bot10, bot10, true, true)
@@ -1889,10 +1889,10 @@ Section ADEQUACY.
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
         (ISIM: forall x_src, exists x_tgt,
             (<<OLE: ord_le (measure fsp_tgt x_tgt) (measure fsp_src x_src)>>) /\
-            forall w mn_caller arg_src arg_tgt st_src st_tgt,
-              (inv_with le wf w st_src st_tgt ** fsp_src.(precond) mn_caller x_src arg_src arg_tgt) ==∗
-              (fsp_tgt.(precond) mn_caller x_tgt arg_tgt arg_tgt ** (∀ OwnT,
-⌜(fsp_tgt.(precond) mn_caller x_tgt arg_tgt arg_tgt OwnT)⌝ -*
+            forall w mn_caller arg_src argp st_src st_tgt, ∃ arg_tgt,
+              (inv_with le wf w st_src st_tgt ** fsp_src.(precond) mn_caller x_src arg_src argp) ==∗
+              (fsp_tgt.(precond) mn_caller x_tgt arg_tgt argp ** (∀ OwnT,
+⌜(fsp_tgt.(precond) mn_caller x_tgt arg_tgt argp OwnT)⌝ -*
                isim
                  le wf mn stb_src stb_tgt (fsp_src.(measure) x_src)
                  (bot10, bot10, true, true)
@@ -1922,10 +1922,10 @@ Section ADEQUACY.
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
         (ISIM: forall x_src, exists x_tgt,
             (<<OLE: ord_le (measure ksp_tgt x_tgt) (measure ksp_src x_src)>>) /\
-            forall w mn_caller arg_src arg_tgt st_src st_tgt,
-              (inv_with le wf w st_src st_tgt ** ksp_src.(precond) mn_caller x_src arg_src arg_tgt) ==∗
-              (ksp_tgt.(precond) mn_caller x_tgt arg_tgt arg_tgt ** (∀ OwnT,
-⌜(ksp_tgt.(precond) mn_caller x_tgt arg_tgt arg_tgt OwnT)⌝ -*
+            forall w mn_caller arg_src argp st_src st_tgt, ∃ arg_tgt,
+              (inv_with le wf w st_src st_tgt ** ksp_src.(precond) mn_caller x_src arg_src argp) ==∗
+              (ksp_tgt.(precond) mn_caller x_tgt arg_tgt argp ** (∀ OwnT,
+⌜(ksp_tgt.(precond) mn_caller x_tgt arg_tgt argp OwnT)⌝ -*
                isim
                  le wf mn stb_src stb_tgt (ksp_src.(measure) x_src)
                  (bot10, bot10, true, true)
@@ -1963,8 +1963,9 @@ Section ADEQUACY.
     apply sim_itreeC_spec. apply sim_itreeC_take_tgt. exists b.
     destruct b.
     { gfinal. right. eapply isim_fun_to_tgt_aux; eauto. }
-    { gfinal. right. eapply isim_fun_to_tgt_aux; eauto. i. ss. exists tt. esplits; eauto.
-      i. iIntros "[H0 %]". subst. iSplits; ss. iDestruct (CONTEXT with "H0") as ">H0".
+    { gfinal. right. eapply isim_fun_to_tgt_aux; eauto. i. ss.
+      exists tt. esplits; eauto. i. esplits.
+      iIntros "[H0 %]". subst. iSplits; ss. iDestruct (CONTEXT with "H0") as ">H0".
       iModIntro. iSplits; et. iIntros. iApply isim_wand; eauto.
       iSplitR; [|eauto]. iIntros. subst. eauto.
     }
@@ -1989,7 +1990,7 @@ Section ADEQUACY.
       sim_fsem (mk_wf wf) le (KModSem.disclose_ksb_tgt mn stb_src (ksb_trivial body_src))
                (KModSem.disclose_ksb_tgt mn stb_tgt (ksb_trivial body_tgt)).
   Proof.
-    eapply isim_fun_to_tgt_open; ss; eauto. i. esplits; ss; et. i.
+    eapply isim_fun_to_tgt_open; ss; eauto. i. esplits; ss; et. i. esplits.
     iIntros "[H0 %]". subst. iSplits; ss; et.
     iDestruct (CONTEXT with "H0") as ">H".
     iModIntro. iSplits; et.
