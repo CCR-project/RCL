@@ -210,7 +210,7 @@ Section SIM.
                 (<<UPD: ∀ retp, (FR ** inv_with w0 st_src1 st_tgt1 **
                                         fsp_src.(postcond) (Some mn) x_src ret_src retp)
                          ==∗ ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
-       ⌜(<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
+       ⌜(<<SIM: forall fmr1 OwnT (TGT: fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp OwnT) (ACC: current_iProp fmr1 (Own OwnT ** J)),
             hsim _ _ OwnT Q fmr1 None true true (st_src1, ktr_src ret_src) (st_tgt1, ktr_tgt ret_tgt)>>)⌝)>>)
                   >>)
           (* (<<POST: forall st_src1 st_tgt1 ret_src, exists ret_tgt J, *)
@@ -252,7 +252,7 @@ Section SIM.
                 (<<UPD: ∀ retp, (FR ** inv_with w0 st_src1 st_tgt1 **
                                         fsp_src.(postcond) (Some mn) x_src ret_src retp)
                          ==∗ ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
-           ⌜(<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
+           ⌜(<<SIM: forall fmr1 OwnT (TGT: fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp OwnT) (ACC: current_iProp fmr1 (Own OwnT ** J)),
                 hsim _ _ OwnT Q fmr1 (Some fuel1) true true (st_src1, itr_src) (st_tgt1, ktr_tgt ret_tgt)>>)⌝
                                           )>>)>>)
       )
@@ -381,7 +381,7 @@ Section SIM.
                 (<<UPD: ∀ retp, (FR ** inv_with w0 st_src1 st_tgt1 **
                                         fsp_src.(postcond) (Some mn) x_src ret_src retp)
                          ==∗ ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
-       ⌜(<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
+       ⌜(<<SIM: forall fmr1 OwnT (TGT: fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp OwnT) (ACC: current_iProp fmr1 (Own OwnT ** J)),
             hsim _ _ OwnT Q fmr1 None true true (st_src1, ktr_src ret_src) (st_tgt1, ktr_tgt ret_tgt)>>)⌝)>>)
                   >>)
             )
@@ -415,7 +415,7 @@ Section SIM.
                 (<<UPD: ∀ retp, (FR ** inv_with w0 st_src1 st_tgt1 **
                                         fsp_src.(postcond) (Some mn) x_src ret_src retp)
                          ==∗ ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
-           ⌜(<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
+           ⌜(<<SIM: forall fmr1 OwnT (TGT: fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp OwnT) (ACC: current_iProp fmr1 (Own OwnT ** J)),
                 hsim _ _ OwnT Q fmr1 (Some fuel1) true true (st_src1, itr_src) (st_tgt1, ktr_tgt ret_tgt)>>)⌝
                                           )>>)>>)
             ),
@@ -585,7 +585,7 @@ Section SIM.
                 (<<UPD: ∀ retp, (FR ** inv_with w0 st_src1 st_tgt1 **
                                         fsp_src.(postcond) (Some mn) x_src ret_src retp)
                          ==∗ ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
-       ⌜(<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
+       ⌜(<<SIM: forall fmr1 OwnT (TGT: fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp OwnT) (ACC: current_iProp fmr1 (Own OwnT ** J)),
             hsim OwnT Q fmr1 None true true (st_src1, ktr_src ret_src) (st_tgt1, ktr_tgt ret_tgt)>>)⌝)>>)
                   >>)
             )
@@ -620,7 +620,7 @@ Section SIM.
                 (<<UPD: ∀ retp, (FR ** inv_with w0 st_src1 st_tgt1 **
                                         fsp_src.(postcond) (Some mn) x_src ret_src retp)
                          ==∗ ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
-           ⌜(<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)),
+           ⌜(<<SIM: forall fmr1 OwnT (TGT: fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp OwnT)(ACC: current_iProp fmr1 (Own OwnT ** J)),
                 hsim OwnT Q fmr1 (Some fuel1) true true (st_src1, itr_src) (st_tgt1, ktr_tgt ret_tgt)>>)⌝
                                           )>>)>>)
             ),
@@ -813,8 +813,18 @@ Section SIM.
           { iFrame. iAssumption. }
           iPureIntro.
           i. steps. gbase. hexploit CIH; eauto.
-          { eapply C; eauto. eapply current_iProp_entail; [eauto|].
-            iIntros "[A [B [C _]]]". iSplitL "B C"; eauto. iSplitL "B"; eauto. }
+          { eapply C; eauto.
+            2: { eapply current_iProp_entail; [eauto|].
+                 iIntros "[A [B [C _]]]". iSplitL "B C"; eauto. iSplitL "B"; eauto. }
+            eapply iProp_mono; et.
+            - clear - ACC.
+              (*** TODO: make lemma ***)
+              mClear "J". eapply current_iProp_entail in ACC; cycle 1.
+              { start_ipm_proof. iCombine "TF" "TM" as "T". iAssumption. }
+              inv ACC. uipropall. eapply URA.wf_extends; et.
+              eapply URA.updatable_wf; et.
+            - exists mr_tgt1; r_solve.
+          }
           i. ss.
         }
       }
@@ -829,8 +839,18 @@ Section SIM.
           { iFrame. iAssumption. }
           iPureIntro.
           i. steps. gbase. hexploit CIH; eauto.
-          { eapply C; eauto. eapply current_iProp_entail; [eauto|].
-            iIntros "[A [B [C _]]]". iSplitL "B C"; eauto. iSplitL "B"; eauto. }
+          { eapply C; eauto.
+            2: { eapply current_iProp_entail; [eauto|].
+                 iIntros "[A [B [C _]]]". iSplitL "B C"; eauto. iSplitL "B"; eauto. }
+            eapply iProp_mono; et.
+            - clear - ACC.
+              (*** TODO: make lemma ***)
+              mClear "J". eapply current_iProp_entail in ACC; cycle 1.
+              { start_ipm_proof. iCombine "TF" "TM" as "T". iAssumption. }
+              inv ACC. uipropall. eapply URA.wf_extends; et.
+              eapply URA.updatable_wf; et.
+            - exists mr_tgt1; r_solve.
+          }
           i. ss.
         }
       }
@@ -879,8 +899,18 @@ Section SIM.
       { iFrame. iAssumption. }
       iPureIntro.
       i. steps. gbase. hexploit CIH; eauto.
-      { eapply C; eauto. eapply current_iProp_entail; [eauto|].
-        iIntros "[A [B [C _]]]". iSplitL "B C"; eauto. iSplitL "B"; eauto. }
+      { eapply C; eauto.
+        2: { eapply current_iProp_entail; [eauto|].
+             iIntros "[A [B [C _]]]". iSplitL "B C"; eauto. iSplitL "B"; eauto. }
+        eapply iProp_mono; et.
+        - clear - ACC.
+          (*** TODO: make lemma ***)
+          mClear "J". eapply current_iProp_entail in ACC; cycle 1.
+          { start_ipm_proof. iCombine "TF" "TM" as "T". iAssumption. }
+          inv ACC. uipropall. eapply URA.wf_extends; et.
+          eapply URA.updatable_wf; et.
+        - exists mr_tgt1; r_solve.
+      }
       i. ss.
     }
     { destruct fuel.
@@ -1880,6 +1910,78 @@ Section SIM.
     { econs 16; eauto. }
     { econs 17; eauto. eapply rclo10_clo_base. econs; eauto. }
   Qed.
+
+  Variant hupdC2 (r: forall R_src R_tgt
+                           (OwnT: Σ)
+                           (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
+                           (fmr: Σ),
+                     option Ord.t -> bool -> bool -> Any.t * itree hEs R_src -> Any.t * itree hEs R_tgt -> Prop)
+          {R_src R_tgt}
+          (OwnT: Σ)
+          (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
+          (fmr: Σ)
+    : option Ord.t -> bool -> bool -> Any.t * itree hEs R_src -> Any.t * itree hEs R_tgt -> Prop :=
+  | hupdC2_intro
+      f_src f_tgt fuel
+      st_src st_tgt
+      OwnT1
+      (* (WF: URA.wf fmr) *)
+      (UPD: URA.updatable OwnT1 OwnT)
+      (SIM: r _ _ OwnT1 Q fmr fuel f_src f_tgt st_src st_tgt)
+    :
+      hupdC2 r OwnT Q fmr fuel f_src f_tgt st_src st_tgt
+  .
+
+  Lemma hupdC2_mon:
+    monotone10 hupdC2.
+  Proof. ii. inv IN; econs; et. Qed.
+  Hint Resolve hupdC2_mon: paco.
+
+  Lemma hupdC2_spec: hupdC2 <11= gupaco10 (_hsim) (cpn10 _hsim).
+  Proof.
+    eapply wrespect10_uclo; eauto with paco.
+    econs; eauto with paco. i. inv PR. eapply GF in SIM.
+    induction SIM using _hsim_ind2; i; clarify; ired_both.
+    { econs 1; eauto.
+      eapply current_iProp_upd.
+      eapply current_iProp_entail; eauto.
+      iIntros "[A B]". iFrame. iApply Own_Upd; eauto. }
+    { econs 2; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
+      { eapply current_iProp_upd. eapply current_iProp_entail; eauto.
+        iIntros "[A B]". iFrame. iApply Own_Upd; eauto. }
+      i. etrans; try apply POST.
+      iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro. i. eapply rclo10_clo_base. econs; eauto; try refl.
+    }
+    { econs 3; eauto. }
+    { econs 4; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
+      { eapply current_iProp_upd. eapply current_iProp_entail; eauto.
+        iIntros "[A B]". iFrame. iApply Own_Upd; eauto. }
+      i. etrans; try apply POST.
+      iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro. i. eapply rclo10_clo_base. econs; eauto; try refl.
+    }
+    { econs 5; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
+      { eapply current_iProp_upd. eapply current_iProp_entail; eauto.
+        iIntros "[[A B] C]". instantiate (1:=FR). iFrame. iApply Own_Upd; eauto. }
+      i. eapply rclo10_clo_base. econs; eauto; try refl.
+    }
+    { econs 6; eauto. i. eapply rclo10_clo_base. econs; eauto. }
+    { econs 7; eauto. }
+    { econs 8; eauto. }
+    { econs 9; eauto. des. esplits; eauto. }
+    { econs 10; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
+    { econs 11; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
+    { econs 12; eauto. des. esplits; eauto. }
+    { econs 13; eauto. }
+    { econs 14; eauto. }
+    { econs 15; eauto. }
+    { econs 16; eauto. }
+    { econs 17; eauto. eapply rclo10_clo_base. econs; eauto. }
+  Qed.
+
 End SIM.
 #[export] Hint Resolve _hsim_mon: paco.
 #[export] Hint Resolve cpn9_wcompat: paco.
