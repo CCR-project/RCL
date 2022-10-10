@@ -189,6 +189,7 @@ Section SIM.
       v_src v_tgt
       st_src st_tgt
       fuel f_src f_tgt
+      (FFF: False)
       (RET: current_iProp fmr (Own OwnT ** Q st_src st_tgt v_src v_tgt))
     :
       _hsim hsim OwnT Q fmr fuel f_src f_tgt (st_src, (Ret v_src)) (st_tgt, (Ret v_tgt))
@@ -361,6 +362,7 @@ Section SIM.
             v_src v_tgt
             st_src st_tgt
             fuel f_src f_tgt
+            (FFF: False)
             (RET: current_iProp fmr (Own OwnT ** Q st_src st_tgt v_src v_tgt)),
             P fuel f_src f_tgt (st_src, (Ret v_src)) (st_tgt, (Ret v_tgt)))
         (CALL: forall
@@ -565,6 +567,7 @@ Section SIM.
             v_src v_tgt
             st_src st_tgt
             fuel f_src f_tgt
+            (FFF: False)
             (RET: current_iProp fmr (Own OwnT ** Q st_src st_tgt v_src v_tgt)),
             P fuel f_src f_tgt (st_src, (Ret v_src)) (st_tgt, (Ret v_tgt)))
         (CALL: forall
@@ -782,24 +785,24 @@ Section SIM.
     remember (st_src, itr_src). remember (st_tgt, itr_tgt).
     revert st_src st_tgt itr_src itr_tgt Heqp Heqp0 CIH.
     induction SIM using hsim_ind; i; clarify.
-    { eapply current_iPropL_convert in RET. mDesAll. destruct fuel; steps.
-      { astop. steps. unfold inv_with in RET. mDesAll. eapply hret_clo2; eauto.
-        { mAssert (_ ∗ _ ∗ _)%I with "*".
-          { iSplitL "A"; try iAssumption. iDestruct "H" as "[A B]". iSplitL "A"; try iAssumption. }
-          eapply current_iPropL_entail_all in RET; et.
-          iIntros "[[A [B C]] _]". iFrame. eauto.
-        }
-        { ii. rr. esplits; et. }
-      }
-      { unfold inv_with in RET. mDesAll. eapply hret_clo2; eauto.
-        { mAssert (_ ∗ _ ∗ _)%I with "*".
-          { iSplitL "A"; try iAssumption. iDestruct "H" as "[A B]". iSplitL "A"; try iAssumption. }
-          eapply current_iPropL_entail_all in RET; et.
-          iIntros "[[A [B C]] _]". iFrame. eauto.
-        }
-        { ii. rr. esplits; et. }
-      }
-    }
+    (* { eapply current_iPropL_convert in RET. mDesAll. destruct fuel; steps. *)
+    (*   { astop. steps. unfold inv_with in RET. mDesAll. eapply hret_clo2; eauto. *)
+    (*     { mAssert (_ ∗ _ ∗ _)%I with "*". *)
+    (*       { iSplitL "A"; try iAssumption. iDestruct "H" as "[A B]". iSplitL "A"; try iAssumption. } *)
+    (*       eapply current_iPropL_entail_all in RET; et. *)
+    (*       iIntros "[[A [B C]] _]". iFrame. eauto. *)
+    (*     } *)
+    (*     { ii. rr. esplits; et. } *)
+    (*   } *)
+    (*   { unfold inv_with in RET. mDesAll. eapply hret_clo2; eauto. *)
+    (*     { mAssert (_ ∗ _ ∗ _)%I with "*". *)
+    (*       { iSplitL "A"; try iAssumption. iDestruct "H" as "[A B]". iSplitL "A"; try iAssumption. } *)
+    (*       eapply current_iPropL_entail_all in RET; et. *)
+    (*       iIntros "[[A [B C]] _]". iFrame. eauto. *)
+    (*     } *)
+    (*     { ii. rr. esplits; et. } *)
+    (*   } *)
+    (* } *)
     { destruct fuel; steps.
       { astop. steps. rewrite SPEC. steps. eapply hcall_clo2; eauto.
         i. des. specialize (PRE x_tgt0). des. esplits; eauto; ss.
@@ -1012,7 +1015,7 @@ Section SIM.
   Proof.
     revert f_src1 f_tgt1 SRC TGT.
     induction SIM using _hsim_ind2; i; clarify.
-    { econs 1; eauto. }
+    (* { econs 1; eauto. } *)
     { econs 2; eauto. }
     { econs 3. eapply IHSIM; eauto. }
     { econs 4; eauto. }
@@ -1060,7 +1063,7 @@ Section SIM.
     eapply wrespect10_uclo; eauto with paco.
     econs; eauto with paco. i. inv PR. eapply GF in SIM.
     revert x5 ORD. induction SIM using _hsim_ind2; i; clarify.
-    { econs 1; eauto. }
+    (* { econs 1; eauto. } *)
     { econs 2; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
       i. etrans; try apply POST.
       iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
@@ -1175,6 +1178,7 @@ Section SIM.
       v_src v_tgt
       st_src st_tgt
       fuel f_src f_tgt
+      (FFF: False)
       (RET: current_iProp fmr (Own OwnT ** Q st_src st_tgt v_src v_tgt))
     :
       hsimC r g OwnT Q fmr fuel f_src f_tgt (st_src, (Ret v_src)) (st_tgt, (Ret v_tgt))
@@ -1465,13 +1469,13 @@ Section SIM.
     remember (st_src0, itr_src). remember (st_tgt0, itr_tgt).
     revert st_src0 itr_src st_tgt0 itr_tgt Heqp Heqp0.
     induction SIM using _hsim_ind2; i; clarify; ired_both.
-    { hexploit SIMK; eauto. i.
-      eapply GF in H. guclo hflagC_spec. econs.
-      2:{ instantiate (1:=false). ss. }
-      2:{ instantiate (1:=false). ss. }
-      2:{ instantiate (1:=None). destruct fuel; ss. }
-      gstep. eapply _hsim_mon; eauto. i. gbase. eapply rclo10_base. auto.
-    }
+    (* { hexploit SIMK; eauto. i. *)
+    (*   eapply GF in H. guclo hflagC_spec. econs. *)
+    (*   2:{ instantiate (1:=false). ss. } *)
+    (*   2:{ instantiate (1:=false). ss. } *)
+    (*   2:{ instantiate (1:=None). destruct fuel; ss. } *)
+    (*   gstep. eapply _hsim_mon; eauto. i. gbase. eapply rclo10_base. auto. *)
+    (* } *)
     { gstep. econs 2; try eassumption. i. specialize (PRE x_tgt). des. esplits; eauto.
       i. etrans; try apply POST.
       iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
@@ -1537,13 +1541,13 @@ Section SIM.
     remember (st_src0, Ret tt). remember (st_tgt0, itr_tgt).
     revert st_src0 st_tgt0 itr_tgt Heqp Heqp0 Heqo.
     induction SIM using _hsim_ind2; i; clarify; ired_both.
-    { hexploit SIMK; eauto. i.
-      eapply GF in H. guclo hflagC_spec. econs.
-      2:{ instantiate (1:=false). ss. }
-      2:{ instantiate (1:=false). ss. }
-      2:{ refl. }
-      gstep. eapply _hsim_mon; eauto. i. gbase. eapply rclo10_base. auto.
-    }
+    (* { hexploit SIMK; eauto. i. *)
+    (*   eapply GF in H. guclo hflagC_spec. econs. *)
+    (*   2:{ instantiate (1:=false). ss. } *)
+    (*   2:{ instantiate (1:=false). ss. } *)
+    (*   2:{ refl. } *)
+    (*   gstep. eapply _hsim_mon; eauto. i. gbase. eapply rclo10_base. auto. *)
+    (* } *)
     { apply f_equal with (f:=_observe) in H0. ss. }
     { apply f_equal with (f:=_observe) in H0. ss. }
     { apply f_equal with (f:=_observe) in H0. ss. }
@@ -1594,13 +1598,13 @@ Section SIM.
     remember (st_src0, Ret tt). remember (st_tgt0, itr_tgt). remember (Some fuel0).
     revert fuel0 st_src0 st_tgt0 itr_tgt Heqp Heqp0 Heqo.
     induction SIM using _hsim_ind2; i; clarify; ired_both.
-    { hexploit SIMK; eauto. i.
-      eapply GF in H. guclo hflagC_spec. econs.
-      2:{ instantiate (1:=false). ss. }
-      2:{ instantiate (1:=false). ss. }
-      2:{ instantiate (1:=(Some fuel1)). ss. apply OrdArith.add_base_l. }
-      gstep. eapply _hsim_mon; eauto. i. gbase. eapply rclo10_base. auto.
-    }
+    (* { hexploit SIMK; eauto. i. *)
+    (*   eapply GF in H. guclo hflagC_spec. econs. *)
+    (*   2:{ instantiate (1:=false). ss. } *)
+    (*   2:{ instantiate (1:=false). ss. } *)
+    (*   2:{ instantiate (1:=(Some fuel1)). ss. apply OrdArith.add_base_l. } *)
+    (*   gstep. eapply _hsim_mon; eauto. i. gbase. eapply rclo10_base. auto. *)
+    (* } *)
     { apply f_equal with (f:=_observe) in H0. ss. }
     { apply f_equal with (f:=_observe) in H0. ss. }
     { des. gstep. econs 4; [..|M]; Mskip eauto.
@@ -1654,10 +1658,10 @@ Section SIM.
     eapply wrespect10_uclo; eauto with paco.
     econs; eauto with paco. i. inv PR. eapply GF in SIM.
     induction SIM using _hsim_ind2; i; clarify; ired_both.
-    { econs 1; eauto. eapply current_iProp_upd.
-      eapply current_iProp_entail; eauto.
-      iIntros "[A B]". iFrame. iStopProof. eauto.
-    }
+    (* { econs 1; eauto. eapply current_iProp_upd. *)
+    (*   eapply current_iProp_entail; eauto. *)
+    (*   iIntros "[A B]". iFrame. iStopProof. eauto. *)
+    (* } *)
     { econs 2; try eassumption.
       i. specialize (PRE x_tgt). des. esplits; eauto. etrans; try apply POST.
       iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
@@ -1718,11 +1722,11 @@ Section SIM.
     eapply wrespect10_uclo; eauto with paco.
     econs; eauto with paco. i. inv PR. eapply GF in SIM.
     induction SIM using _hsim_ind2; i; clarify; ired_both.
-    { econs 1; eauto. eapply current_iProp_upd. eapply current_iProp_updatable; et.
-      eapply current_iProp_frame_own; eauto.
-      { eapply URA.updatable_wf; et. }
-      eapply current_iProp_entail; eauto. iIntros "[A B]". iFrame. eauto.
-    }
+    (* { econs 1; eauto. eapply current_iProp_upd. eapply current_iProp_updatable; et. *)
+    (*   eapply current_iProp_frame_own; eauto. *)
+    (*   { eapply URA.updatable_wf; et. } *)
+    (*   eapply current_iProp_entail; eauto. iIntros "[A B]". iFrame. eauto. *)
+    (* } *)
     { econs 2; eauto. i. hexpl PRE0; eauto. esplits; [eauto|..].
       { eapply current_iProp_updatable; et. eapply current_iProp_frame_own; eauto.
         { eapply URA.updatable_wf; et. }
@@ -1877,7 +1881,7 @@ Section SIM.
     eapply wrespect10_uclo; eauto with paco.
     econs; eauto with paco. i. inv PR. eapply GF in SIM.
     induction SIM using _hsim_ind2; i; clarify; ired_both.
-    { econs 1; eauto. eapply current_iProp_updatable; et. }
+    (* { econs 1; eauto. eapply current_iProp_updatable; et. } *)
     { econs 2; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
       { eapply current_iProp_updatable; et. }
       i. etrans; try apply POST.
@@ -1942,10 +1946,10 @@ Section SIM.
     eapply wrespect10_uclo; eauto with paco.
     econs; eauto with paco. i. inv PR. eapply GF in SIM.
     induction SIM using _hsim_ind2; i; clarify; ired_both.
-    { econs 1; eauto.
-      eapply current_iProp_upd.
-      eapply current_iProp_entail; eauto.
-      iIntros "[A B]". iFrame. iApply Own_Upd; eauto. }
+    (* { econs 1; eauto. *)
+    (*   eapply current_iProp_upd. *)
+    (*   eapply current_iProp_entail; eauto. *)
+    (*   iIntros "[A B]". iFrame. iApply Own_Upd; eauto. } *)
     { econs 2; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
       { eapply current_iProp_upd. eapply current_iProp_entail; eauto.
         iIntros "[A B]". iFrame. iApply Own_Upd; eauto. }

@@ -551,7 +551,7 @@ Section SIM.
   Proof.
     eapply isim_final. i.
     eapply hsimC_uclo. econs; eauto.
-  Qed.
+  Abort.
 
   (* Lemma isim_apc_trigger *)
   (*       R_tgt *)
