@@ -127,6 +127,7 @@ Section MODE.
                               (bupd (P_tgt mn x_tgt varg_tgt argp ** FR))>>
                    /\
             <<SIM: forall mr_src' fr_src fr_tgt
+                  (TGT: P_tgt mn x_tgt varg_tgt argp fr_tgt)
                   (ACC: current_iPropL (fr_src ⋅ (mr_tgt ⋅ mr_src'))
                                        [("FR", FR); ("TF", OwnT fr_tgt); ("TM", OwnT mr_tgt)]),
                 gpaco8 (_sim_itree (mk_wf R) le) (cpn8 (_sim_itree (mk_wf R) le)) r rg _ _ eqr true true a
@@ -166,6 +167,7 @@ Section MODE.
     repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et.
     ired_both.
     eapply SIM.
+    { rewrite URA.unit_id. ss. }
     unshelve eassert(T:=@current_iPropL_init (fr_src ⋅ mr_src' ⋅ mr_tgt) "N" _).
     { r_wf VALID. }
     mAssert (#=> (FR ** OwnT fr_tgt ** OwnT mr_tgt)) with "N".

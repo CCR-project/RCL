@@ -1833,7 +1833,7 @@ Section ADEQUACY.
               (inv_with le wf w st_src st_tgt ** fsp_src.(precond) mn_caller x_src arg_src arg_tgt) ==∗
               (fsp_tgt.(precond) mn_caller x_tgt arg_tgt arg_tgt ** (∀ OwnT,
 ⌜(fsp_tgt.(precond) mn_caller x_tgt arg_tgt arg_tgt OwnT)⌝ -*
-  isim
+               isim
                  le wf mn stb_src stb_tgt (fsp_src.(measure) x_src)
                  (bot10, bot10, true, true)
                  OwnT
@@ -1872,7 +1872,14 @@ Section ADEQUACY.
     eapply isim_init; eauto.
     { eapply current_iProp_entail; et. start_ipm_proof. iSplitR "FR"; try iAssumption.
       - iSplitL "TF"; eauto.
-      - iApply "FR". iPureIntro.
+      - iApply "FR". iPureIntro. eapply iProp_mono; et.
+        + clear - ACC.
+          (*** TODO: make lemma ***)
+          mClear "J". eapply current_iProp_entail in ACC; cycle 1.
+          { start_ipm_proof. iCombine "TF" "TM" as "T". iAssumption. }
+          inv ACC. uipropall. eapply URA.wf_extends; et.
+          eapply URA.updatable_wf; et.
+        + exists mr_tgt; r_solve.
     }
   Qed.
 
@@ -1884,9 +1891,12 @@ Section ADEQUACY.
             (<<OLE: ord_le (measure fsp_tgt x_tgt) (measure fsp_src x_src)>>) /\
             forall w mn_caller arg_src arg_tgt st_src st_tgt,
               (inv_with le wf w st_src st_tgt ** fsp_src.(precond) mn_caller x_src arg_src arg_tgt) ==∗
-              (fsp_tgt.(precond) mn_caller x_tgt arg_tgt arg_tgt ** isim
+              (fsp_tgt.(precond) mn_caller x_tgt arg_tgt arg_tgt ** (∀ OwnT,
+⌜(fsp_tgt.(precond) mn_caller x_tgt arg_tgt arg_tgt OwnT)⌝ -*
+               isim
                  le wf mn stb_src stb_tgt (fsp_src.(measure) x_src)
                  (bot10, bot10, true, true)
+                 OwnT
                  (fun st_src st_tgt ret_src ret_tgt =>
                     ∀ retp,
                     (fsp_tgt.(postcond) mn_caller x_tgt ret_tgt retp) ==∗
@@ -1899,7 +1909,7 @@ Section ADEQUACY.
                  (st_tgt, match fsp_tgt.(measure) x_tgt with
                           | ord_pure _ => _ <- trigger hAPC;; trigger (Choose Any.t)
                           | ord_top => fsp_tgt.(fsb_body) (mn_caller, arg_tgt)
-                          end)))
+                          end))%I))
     :
       sim_fsem (mk_wf wf) le (fun_to_tgt mn stb_src fsp_src) (fun_to_tgt mn stb_tgt fsp_tgt).
   Proof.
@@ -1914,9 +1924,12 @@ Section ADEQUACY.
             (<<OLE: ord_le (measure ksp_tgt x_tgt) (measure ksp_src x_src)>>) /\
             forall w mn_caller arg_src arg_tgt st_src st_tgt,
               (inv_with le wf w st_src st_tgt ** ksp_src.(precond) mn_caller x_src arg_src arg_tgt) ==∗
-              (ksp_tgt.(precond) mn_caller x_tgt arg_tgt arg_tgt ** isim
+              (ksp_tgt.(precond) mn_caller x_tgt arg_tgt arg_tgt ** (∀ OwnT,
+⌜(ksp_tgt.(precond) mn_caller x_tgt arg_tgt arg_tgt OwnT)⌝ -*
+               isim
                  le wf mn stb_src stb_tgt (ksp_src.(measure) x_src)
                  (bot10, bot10, true, true)
+                 OwnT
                  (fun st_src st_tgt ret_src ret_tgt =>
                     ∀ retp,
                     (ksp_tgt.(postcond) mn_caller x_tgt ret_tgt retp) ==∗
@@ -1929,17 +1942,18 @@ Section ADEQUACY.
                  (st_tgt, match ksp_tgt.(measure) x_tgt with
                           | ord_pure _ => _ <- trigger hAPC;; trigger (Choose Any.t)
                           | ord_top => ksp_tgt.(ksb_kbody) (mn_caller, arg_tgt)
-                          end)))
+                          end))%I))
         (CONTEXT: forall w mn_caller arg st_src st_tgt,
-              (inv_with le wf w st_src st_tgt) ==∗
+              (inv_with le wf w st_src st_tgt) ==∗ (∀ OwnT,
               (isim
                  le wf mn stb_src stb_tgt ord_top
                  (bot10, bot10, true, true)
+                 OwnT
                  (fun st_src st_tgt ret_src ret_tgt =>
                     (inv_with le wf w st_src st_tgt ** ⌜ret_src = ret_tgt⌝))
                  None
                  (st_src, ksp_src.(ksb_ubody) (mn_caller, arg))
-                 (st_tgt, ksp_tgt.(ksb_ubody) (mn_caller, arg))))
+                 (st_tgt, ksp_tgt.(ksb_ubody) (mn_caller, arg)))))
     :
       sim_fsem (mk_wf wf) le (KModSem.disclose_ksb_tgt mn stb_src ksp_src)
                (KModSem.disclose_ksb_tgt mn stb_tgt ksp_tgt).
@@ -1951,7 +1965,8 @@ Section ADEQUACY.
     { gfinal. right. eapply isim_fun_to_tgt_aux; eauto. }
     { gfinal. right. eapply isim_fun_to_tgt_aux; eauto. i. ss. exists tt. esplits; eauto.
       i. iIntros "[H0 %]". subst. iSplits; ss. iDestruct (CONTEXT with "H0") as ">H0".
-      iModIntro. iSplits; et. iApply isim_wand; eauto. iFrame. iIntros. subst. eauto.
+      iModIntro. iSplits; et. iIntros. iApply isim_wand; eauto.
+      iSplitR; [|eauto]. iIntros. subst. eauto.
     }
   Qed.
 
@@ -1960,15 +1975,16 @@ Section ADEQUACY.
         body_src body_tgt
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
         (CONTEXT: forall w mn_caller arg st_src st_tgt,
-              (inv_with le wf w st_src st_tgt) ==∗
-              (isim
+              (inv_with le wf w st_src st_tgt) ==∗ (∀ OwnT,
+               isim
                  le wf mn stb_src stb_tgt ord_top
                  (bot10, bot10, true, true)
+                 OwnT
                  (fun st_src st_tgt ret_src ret_tgt =>
                     (inv_with le wf w st_src st_tgt ** ⌜ret_src = ret_tgt⌝))
                  None
                  (st_src, body_src (mn_caller, arg))
-                 (st_tgt, body_tgt (mn_caller, arg))))
+                 (st_tgt, body_tgt (mn_caller, arg)))%I)
     :
       sim_fsem (mk_wf wf) le (KModSem.disclose_ksb_tgt mn stb_src (ksb_trivial body_src))
                (KModSem.disclose_ksb_tgt mn stb_tgt (ksb_trivial body_tgt)).
@@ -1977,7 +1993,7 @@ Section ADEQUACY.
     iIntros "[H0 %]". subst. iSplits; ss; et.
     iDestruct (CONTEXT with "H0") as ">H".
     iModIntro. iSplits; et.
-    iApply isim_wand; eauto. iFrame; eauto. iIntros. subst. eauto.
+    iIntros. iApply isim_wand; eauto. iSplitR; [|eauto]. iIntros. subst. eauto.
   Qed.
 
 End ADEQUACY.
