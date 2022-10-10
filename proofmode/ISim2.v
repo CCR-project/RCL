@@ -1918,19 +1918,26 @@ Section COROLLARY.
   (* Variable world: Type. *)
   (* Variable le: relation world. *)
   (* Context `{PreOrder _ le}. *)
+  Variable fsp: fspec.
+  Variable body: option string * Any.t → itree (hAPCE +' Es) Any.t.
+  Variable FR: iProp.
+  Let fsp': fspec := mk_fspec (fsp.(measure))
+                       (fun mn x argv argp => (FR ∗ fsp.(precond) mn x argv argp)%I)
+                       (fun mn x retv retp => (FR ∗ fsp.(postcond) mn x retv retp)%I)
+  .
 
   Lemma isim_hframe
         mn stb_src stb_tgt
-        fsp
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
     :
-      sim_fsem (mk_wf wf) top2 (fun_to_tgt mn stb_src fsp) (fun_to_tgt mn stb_tgt fsp).
+      sim_fsem (mk_wf wf) top2 (fun_to_tgt mn stb_src (mk_specbody fsp' body))
+        (fun_to_tgt mn stb_tgt (mk_specbody fsp body)).
   Proof.
     ii. eapply isim_fun_to_tgt; eauto.
     { typeclasses eauto. }
-    i. exists x_src. esplits; et.
-    { destruct (measure fsp x_src) eqn:T; ss. refl. }
-    i. esplits. iIntros "[A B]". iFrame. iModIntro.
+    i. exists x_src. ss. esplits; et.
+    { destruct (measure fsp x_src) eqn:T; ss. refl. (*** TODO: PreOrder ***) }
+    i. esplits. iIntros "[A [B C]]". iFrame. iModIntro.
     unfold inv_with. iDestruct "A" as (w1) "[%A _]". subst.
     (*** TODO: define reflexivity ***)
   Abort.
