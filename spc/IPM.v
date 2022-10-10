@@ -174,6 +174,21 @@ Section IPM.
   Definition OwnM (M: URA.t) `{@GRA.inG M Σ} (r: M): iProp := Own (GRA.embed r).
 
   (** extra BI instances *)
+  Lemma iProp_bupd_mixin_weak: BiBUpdMixin iProp WeakUpd.
+  Proof.
+    econs.
+    - ii. econs. unfold bupd. uipropall. i. split.
+      { ii. specialize (H1 ctx). spc H1. des.
+        esplits. 2: { eapply H; [|et]. eapply URA.wf_mon; et. } ss. }
+      { ii. specialize (H1 ctx). spc H1. des.
+        esplits. 2: { eapply H; [|et]. eapply URA.wf_mon; et. } ss. }
+    - exact WeakUpd_intro.
+    - exact WeakUpd_mono.
+    - exact WeakUpd_trans.
+    - exact WeakUpd_frame_r.
+  Qed.
+  Global Instance iProp_bi_bupd_weak: BiBUpd iProp | 10 := {| bi_bupd_mixin := iProp_bupd_mixin_weak |}.
+
   Lemma iProp_bupd_mixin: BiBUpdMixin iProp Upd.
   Proof.
     econs.
@@ -185,7 +200,7 @@ Section IPM.
     - exact Upd_trans.
     - exact Upd_frame_r.
   Qed.
-  Global Instance iProp_bi_bupd: BiBUpd iProp := {| bi_bupd_mixin := iProp_bupd_mixin |}.
+  Global Instance iProp_bi_bupd: BiBUpd iProp | 0 := {| bi_bupd_mixin := iProp_bupd_mixin |}.
 
   Global Instance iProp_absorbing (P: iProp): Absorbing P.
   Proof.
@@ -213,8 +228,27 @@ Section TEST.
   Goal forall (P Q: iProp), ((bupd P) ∗ Q) -∗ (bupd Q).
   Proof.
     i. iStartProof.
+    unfold bupd, bi_bupd_bupd; cbn.
+    match goal with
+    | [ |- context[Upd] ] => idtac
+    | [ |- context[WeakUpd] ] => fail
+    end.
+    Undo 2.
     iIntros "[Hxs Hys]". iMod "Hxs". iApply "Hys".
   Qed.
+
+  Lemma WeakUpd_fold: WeakUpd = (@bupd (bi_car (@iProp Σ))
+                                   (@bi_bupd_bupd (@iProp Σ) (@iProp_bi_bupd_weak Σ))).
+  Proof. refl. Qed.
+
+  Goal forall (P Q: iProp), ((WeakUpd P) ∗ Q) -∗ (WeakUpd Q).
+  Proof.
+    i. iStartProof.
+    iIntros "[Hxs Hys]".
+    rewrite WeakUpd_fold.
+    iMod "Hxs". iApply "Hys".
+  Qed.
+
 End TEST.
 
 Infix "⊢" := (@bi_entails iProp).
@@ -338,23 +372,22 @@ Section ILEMMAS.
     rr. uipropall. i. rr. uipropall. des. rr in H. uipropall.
   Qed.
 
-  (*** this is deprecated in 1.1 ***)
-  (* Lemma Own_Upd_set *)
-  (*       (r1: Σ) B *)
-  (*       (UPD: URA.updatable_set r1 B) *)
-  (*   : *)
-  (*     (Own r1) ⊢ (#=> (∃ b, ⌜B b⌝ ** (Own b))) *)
-  (* . *)
-  (* Proof. *)
-  (*   cut (Entails (Own r1) (Upd (Ex (fun b => Sepconj (Pure (B b)) (Own b))))); ss. *)
-  (*   uipropall. i. red in H. des. subst. *)
-  (*   exploit (UPD (ctx0 ⋅ ctx)). *)
-  (*   { rewrite URA.add_assoc. et. } *)
-  (*   i. des. exists (b ⋅ ctx0). split. *)
-  (*   { rewrite <- URA.add_assoc. et. } *)
-  (*   { exists b. uipropall. esplits; [|apply IN|refl]. *)
-  (*     eapply URA.add_comm. } *)
-  (* Qed. *)
+  Lemma Own_WeakUpd_set
+        (r1: Σ) B
+        (UPD: URA.updatable_set r1 B)
+    :
+      (Own r1) ⊢ (WeakUpd (∃ b, ⌜B b⌝ ** (Own b))%I)
+  .
+  Proof.
+    cut (Entails (Own r1) (WeakUpd (Ex (fun b => Sepconj (Pure (B b)) (Own b)))%I)); ss.
+    uipropall. i. red in H. des. subst.
+    exploit (UPD (ctx0 ⋅ ctx)).
+    { rewrite URA.add_assoc. et. }
+    i. des. exists (b ⋅ ctx0). split.
+    { rewrite <- URA.add_assoc. et. }
+    { exists b. uipropall. esplits; [|apply IN|refl].
+      eapply URA.add_comm. }
+  Qed.
 
   Lemma Own_Upd
         (r1 r2: Σ)
@@ -377,45 +410,45 @@ Section ILEMMAS.
     red. uipropall. ii. etrans; et.
   Qed.
 
-  (*** this is deprecated in 1.1 ***)
-  (* Lemma OwnM_Upd_set (M: URA.t) `{@GRA.inG M Σ} *)
-  (*       (r1: M) B *)
-  (*       (UPD: URA.updatable_set r1 B) *)
-  (*   : *)
-  (*     (OwnM r1) ⊢ (#=> (∃ b, ⌜B b⌝ ** (OwnM b))) *)
-  (* . *)
-  (* Proof. *)
-  (*   assert (UPDM: URA.updatable_set *)
-  (*                   (GRA.embed r1) *)
-  (*                   (fun r => exists m, r = GRA.embed m /\ B m)). *)
-  (*   { red. i. red in UPD. *)
-  (*     unshelve hexploit UPD. *)
-  (*     { eapply (@eq_rect URA.t (Σ (@GRA.inG_id _ _ H)) (@URA.car)). *)
-  (*       { eapply (ctx (@GRA.inG_id _ _ H)). } *)
-  (*       { symmetry. eapply (@GRA.inG_prf _ _ H). } *)
-  (*     } *)
-  (*     Local Transparent GRA.to_URA. *)
-  (*     { ur in WF. ss. specialize (WF GRA.inG_id). *)
-  (*       destruct H. subst. ss. *)
-  (*       unfold GRA.embed in WF. ss. *)
-  (*       replace (PeanoNat.Nat.eq_dec inG_id inG_id) *)
-  (*         with (@left (inG_id = inG_id) (inG_id <> inG_id) eq_refl) in WF; ss. *)
-  (*       { des_ifs. repeat f_equal. eapply proof_irrelevance. } *)
-  (*     } *)
-  (*     i. des. exists (GRA.embed b). esplits; et. *)
-  (*     ur. Local Transparent GRA.to_URA. ss. *)
-  (*     i. unfold GRA.embed. des_ifs. *)
-  (*     { ss. unfold PCM.GRA.cast_ra. destruct  H. subst. ss. } *)
-  (*     { ur in WF. specialize (WF k). rewrite URA.unit_idl. *)
-  (*       eapply URA.wf_mon. rewrite URA.add_comm. et. *)
-  (*     } *)
-  (*   } *)
-  (*   iIntros "H". *)
-  (*   iPoseProof (Own_Upd_set with "H") as "> H". *)
-  (*   { eapply UPDM. } *)
-  (*   iDestruct "H" as (b) "[% H1]". des. subst. *)
-  (*   iModIntro. iExists m. iFrame. ss. *)
-  (* Qed. *)
+  Lemma OwnM_WeakUpd_set (M: URA.t) `{@GRA.inG M Σ}
+        (r1: M) B
+        (UPD: URA.updatable_set r1 B)
+    :
+      (OwnM r1) ⊢ (WeakUpd (∃ b, ⌜B b⌝ ** (OwnM b))%I)
+  .
+  Proof.
+    assert (UPDM: URA.updatable_set
+                    (GRA.embed r1)
+                    (fun r => exists m, r = GRA.embed m /\ B m)).
+    { red. i. red in UPD.
+      unshelve hexploit UPD.
+      { eapply (@eq_rect URA.t (Σ (@GRA.inG_id _ _ H)) (@URA.car)).
+        { eapply (ctx (@GRA.inG_id _ _ H)). }
+        { symmetry. eapply (@GRA.inG_prf _ _ H). }
+      }
+      Local Transparent GRA.to_URA.
+      { ur in WF. ss. specialize (WF GRA.inG_id).
+        destruct H. subst. ss.
+        unfold GRA.embed in WF. ss.
+        replace (PeanoNat.Nat.eq_dec inG_id inG_id)
+          with (@left (inG_id = inG_id) (inG_id <> inG_id) eq_refl) in WF; ss.
+        { des_ifs. repeat f_equal. eapply proof_irrelevance. }
+      }
+      i. des. exists (GRA.embed b). esplits; et.
+      ur. Local Transparent GRA.to_URA. ss.
+      i. unfold GRA.embed. des_ifs.
+      { ss. unfold PCM.GRA.cast_ra. destruct  H. subst. ss. }
+      { ur in WF. specialize (WF k). rewrite URA.unit_idl.
+        eapply URA.wf_mon. rewrite URA.add_comm. et.
+      }
+    }
+    iIntros "H".
+    iPoseProof (Own_WeakUpd_set with "H") as "H".
+    { eapply UPDM. }
+    rewrite WeakUpd_fold. iMod "H".
+    iDestruct "H" as (b) "[% H1]". des. subst.
+    iModIntro. iExists m. iFrame. ss.
+  Qed.
 
   Lemma OwnM_Upd (M: URA.t) `{@GRA.inG M Σ}
         (r1 r2: M)
