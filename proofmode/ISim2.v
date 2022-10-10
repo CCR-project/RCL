@@ -1943,3 +1943,91 @@ Section COROLLARY.
   Abort.
 
 End COROLLARY.
+
+Section COROLLARY.
+
+  Context `{Σ: GRA.t}.
+  Variable world: Type.
+  Variable le: relation world.
+  Context `{PreOrder _ le}.
+  Variable wf: world -> Any.t -> Any.t -> iProp.
+
+  Variable fsp_src fsp_tgt: fspec.
+  Variable FRP FRQ: iProp.
+
+  Let fsp_src': fspec :=
+        mk_fspec (fsp_src.(measure))
+          (fun mn x argv argp => (FRP ∗ fsp_src.(precond) mn x argv argp)%I)
+          (fun mn x retv retp => (FRQ ∗ fsp_src.(postcond) mn x retv retp)%I)
+  .
+  Let fsp_tgt': fspec :=
+        mk_fspec (fsp_tgt.(measure))
+          (fun mn x argv argp => (FRP ∗ fsp_tgt.(precond) mn x argv argp)%I)
+          (fun mn x retv retp => (FRQ ∗ fsp_tgt.(postcond) mn x retv retp)%I)
+  .
+
+  Lemma isim_vframe
+        mn stb_src stb_tgt
+        body_src body_tgt
+        (PUREINCL: stb_pure_incl stb_tgt stb_src)
+        (PROOF: ∀ x_src, ∃ x_tgt,
+       (∀ w0 mn_caller arg_src argp st_src st_tgt,
+         ∃ arg_tgt,
+           (inv_with le wf w0 st_src st_tgt **
+            (precond fsp_src mn_caller x_src arg_src argp))
+           ⊢ #=> (precond fsp_tgt mn_caller x_tgt arg_tgt argp **
+                  isim top2 wf mn stb_src stb_tgt (measure fsp_src x_src)
+                    (bot10, bot10, true, true)
+                    (λ st_src0 st_tgt0 ret_src ret_tgt,
+                      (∀ retp,
+                        postcond fsp_tgt mn_caller x_tgt ret_tgt retp ==∗
+                        inv_with top2 wf w0 st_src0 st_tgt0 **
+                        (postcond fsp_src mn_caller x_src ret_src retp))%I) None
+                    (st_src,
+                    match measure fsp_src x_src with
+                    | ord_pure _ => ;;; trigger (Choose Any.t)
+                    | ord_top => body_src (mn_caller, arg_src)
+                    end)
+                    (st_tgt,
+                    match measure fsp_tgt x_tgt with
+                    | ord_pure _ => ;;; trigger (Choose Any.t)
+                    | ord_top => body_tgt (mn_caller, arg_tgt)
+                    end))))
+    :
+    (<<PROOF: ∀ x_src, ∃ x_tgt,
+       (∀ w0 mn_caller arg_src argp st_src st_tgt,
+         ∃ arg_tgt,
+           (inv_with le wf w0 st_src st_tgt **
+            (precond fsp_src' mn_caller x_src arg_src argp))
+           ⊢ #=> (precond fsp_tgt' mn_caller x_tgt arg_tgt argp **
+                  isim top2 wf mn stb_src stb_tgt (measure fsp_src' x_src)
+                    (bot10, bot10, true, true)
+                    (λ st_src0 st_tgt0 ret_src ret_tgt,
+                      (∀ retp,
+                        postcond fsp_tgt' mn_caller x_tgt ret_tgt retp ==∗
+                        inv_with top2 wf w0 st_src0 st_tgt0 **
+                        (postcond fsp_src' mn_caller x_src ret_src retp))%I) None
+                    (st_src,
+                    match measure fsp_src' x_src with
+                    | ord_pure _ => ;;; trigger (Choose Any.t)
+                    | ord_top => body_src (mn_caller, arg_src)
+                    end)
+                    (st_tgt,
+                    match measure fsp_tgt' x_tgt with
+                    | ord_pure _ => ;;; trigger (Choose Any.t)
+                    | ord_top => body_tgt (mn_caller, arg_tgt)
+                    end)))>>)
+  .
+  Proof.
+    ii. specialize (PROOF x_src). des. exists x_tgt.
+    i. ss. specialize (PROOF w0 mn_caller arg_src argp st_src st_tgt). des.
+    esplits. iIntros "[A [B C]]". iFrame. iStopProof. etrans; eauto.
+    iIntros ">[A B]". iFrame. iModIntro.
+    iApply (isim_wand); eauto. iFrame.
+    iIntros (st_src0 st_tgt0 ret_src ret_tgt) "A".
+    iIntros (retp) "[$ B]".
+    iDestruct ("A" with "[B]") as ">[A B]"; eauto.
+    iFrame. ss.
+  Qed.
+
+End COROLLARY.
