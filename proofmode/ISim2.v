@@ -1940,6 +1940,18 @@ Section COROLLARY.
     i. esplits. iIntros "[A [B C]]". iFrame. iModIntro.
     unfold inv_with. iDestruct "A" as (w1) "[%A _]". subst.
     (*** TODO: define reflexivity ***)
+    iApply isim_wand.
+    instantiate (1:=fun st_src st_tgt ret_src ret_tgt =>
+                      (inv_with top2 wf tt st_src st_tgt ∗ ⌜ret_src = ret_tgt⌝)%I). cbn.
+    iSplitL.
+    { iFrame. iIntros. des; subst. iFrame. eauto. }
+    set (match measure fsp x_src with
+             | ord_pure _ => ;;; trigger (Choose Any.t)
+             | ord_top => body (mn_caller, arg_src)
+             end) as tmp.
+    erewrite idK_spec with (i0:=tmp).
+    iApply isim_frame.
+    iApply isim_bind.
   Abort.
 
 End COROLLARY.
