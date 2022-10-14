@@ -127,6 +127,7 @@ Section MODE.
                               (bupd (P_tgt mn x_tgt varg_tgt argp ** FR))>>
                    /\
             <<SIM: forall mr_src' fr_src fr_tgt
+                  (TGT: P_tgt mn x_tgt varg_tgt argp fr_tgt)
                   (ACC: current_iPropL (fr_src ⋅ (mr_tgt ⋅ mr_src'))
                                        [("FR", FR); ("TF", OwnT fr_tgt); ("TM", OwnT mr_tgt)]),
                 gpaco8 (_sim_itree (mk_wf R) le) (cpn8 (_sim_itree (mk_wf R) le)) r rg _ _ eqr true true a
@@ -166,6 +167,7 @@ Section MODE.
     repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et.
     ired_both.
     eapply SIM.
+    { rewrite URA.unit_id. ss. }
     unshelve eassert(T:=@current_iPropL_init (fr_src ⋅ mr_src' ⋅ mr_tgt) "N" _).
     { r_wf VALID. }
     mAssert (#=> (FR ** OwnT fr_tgt ** OwnT mr_tgt)) with "N".
@@ -254,7 +256,7 @@ Section MODE.
               (<<UPDATABLE: ∀ retp, (FR ** (∃ a1, R a1 mp_src1 mp_tgt1 ** ⌜le a0 a1⌝) **
                                           fsp_src.(postcond) (Some mn) x_src ret_src retp) ==∗
                             ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
-                   ⌜(<<SIM: forall fr_src1 fr_tgt1 mr_src1 mr_tgt1
+                   ⌜(<<SIM: forall fr_src1 fr_tgt1 (TGT: fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp fr_tgt1) mr_src1 mr_tgt1
                               (ACC: current_iPropL (fr_src1 ⋅ (mr_tgt1 ⋅ mr_src1))
                                                    [("J", J); ("TF", OwnT fr_tgt1); ("TM", OwnT mr_tgt1)]),
                 gpaco8 (_sim_itree (mk_wf R) le) (cpn8 (_sim_itree (mk_wf R) le)) rg rg _ _ eqr true true a
@@ -351,6 +353,9 @@ Section MODE.
     rename IPROP3 into SIM.
     rr in SIM; repeat (autorewrite with iprop in SIM; autounfold with iprop in SIM; ss). des.
     eapply SIM.
+    { eapply iProp_mono; et.
+      - eapply URA.wf_extends; et. exists (jr ⋅ mr_tgt). r_solve.
+      - exists fr_tgt. r_solve. }
     econs; et; cycle 1.
     { replace (ri_src ⋅ (fr_src ⋅ fr_tgt) ⋅ (mr_tgt ⋅ mr_src'))
         with ((ri_src ⋅ fr_src ⋅ mr_src') ⋅ (fr_tgt ⋅ mr_tgt)) by r_solve.
@@ -397,7 +402,7 @@ Section MODE.
               (<<UPDATABLE: ∀ retp, (FR ** (∃ a1, R a1 mp_src1 mp_tgt1 ** ⌜le a0 a1⌝) **
                                           fsp_src.(postcond) (Some mn) x_src ret_src retp) ==∗
                             ∃ ret_tgt J, (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J **
-                   ⌜(<<SIM: forall fr_src1 fr_tgt1 mr_src1 mr_tgt1
+                   ⌜(<<SIM: forall fr_src1 fr_tgt1 (TGT: fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp fr_tgt1) mr_src1 mr_tgt1
                               (ACC: current_iPropL (fr_src1 ⋅ (mr_tgt1 ⋅ mr_src1))
                                                    [("J", J); ("TF", OwnT fr_tgt1); ("TM", OwnT mr_tgt1)]),
                 gpaco8 (_sim_itree (mk_wf R) le) (cpn8 (_sim_itree (mk_wf R) le)) rg rg _ _ eqr true true a

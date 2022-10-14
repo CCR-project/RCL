@@ -156,7 +156,7 @@ Section IPROP.
       (forall r (WF: URA.wf r), P r -> Q r).
 
   Hint Rewrite (Seal.sealing_eq "iProp"): iprop.
-  #[local] Hint Unfold Sepconj Pure Ex Univ Own And Or Impl Wand Emp Persistently Later Upd Entails: iprop.
+  #[local] Hint Unfold Sepconj Pure Ex Univ Own And Or Impl Wand Emp Persistently Later WeakUpd Upd Entails: iprop.
 
   (* BI axioms *)
   Global Program Instance PreOrder_Entails: PreOrder Entails.
@@ -343,6 +343,33 @@ Section IPROP.
     ii. uipropall. ii. unfold Sepconj in *. des. subst. esplits; et. i.
     rewrite <- URA.add_assoc in H. eapply H2 in H. r_wf H.
   Qed.
+
+  Lemma WeakUpd_intro: forall P : iProp', Entails P (WeakUpd P).
+  Proof.
+    ii. uipropall. ii. exists r. splits; auto.
+  Qed.
+
+  Lemma WeakUpd_mono: forall P Q : iProp', Entails P Q -> Entails (WeakUpd P) (WeakUpd Q).
+  Proof.
+    ii. uipropall. ii. des. specialize (H0 ctx). spc H0. des.
+    esplits.
+    2: { eapply H; try apply H2. eapply URA.wf_mon; et. }
+    ss.
+  Qed.
+
+  Lemma WeakUpd_trans: forall P : iProp', Entails (WeakUpd (WeakUpd P)) (WeakUpd P).
+  Proof.
+    ii. uipropall. ii. specialize (H ctx). spc H. des.
+    specialize (H1 ctx). spc H1. des.
+    esplits; [|et]; et.
+  Qed.
+
+  Lemma WeakUpd_frame_r: forall P R : iProp', Entails (Sepconj (WeakUpd P) R) (WeakUpd (Sepconj P R)).
+  Proof.
+    ii. uipropall. ii. unfold Sepconj in *. des. subst.
+    specialize (H1 (b ⋅ ctx)). rewrite URA.add_assoc in H1. spc H1. des.
+    esplits; try apply H2; try apply H3; try refl. r_wf H1.
+  Qed.
 End IPROP.
 Hint Rewrite (Seal.sealing_eq "iProp"): iprop.
-#[export] Hint Unfold Sepconj Pure Ex Univ Own And Or Impl Wand Emp Persistently Later Upd Entails: iprop.
+#[export] Hint Unfold Sepconj Pure Ex Univ Own And Or Impl Wand Emp Persistently Later WeakUpd Upd Entails: iprop.

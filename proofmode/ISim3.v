@@ -15,6 +15,7 @@ From ExtLib Require Import
 Require Import Red IRed.
 Require Import ProofMode Invariant.
 Require Import HTactics2 HSim2.
+Require Import Sealed.
 
 Set Implicit Arguments.
 
@@ -88,11 +89,12 @@ Section SIM.
   Program Definition isim'
           r g f_src f_tgt
           {R_src R_tgt}
+          (OwnT: Σ)
           (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
           (fuel: option Ord.t)
           (st_src: Any.t * itree hEs R_src)
           (st_tgt: Any.t * itree hEs R_tgt): iProp :=
-    iProp_intro (fun fmr_src => forall OwnT (WF: URA.wf (fmr_src ⋅ OwnT)),
+    iProp_intro (fun fmr_src => forall (WF: URA.wf (fmr_src ⋅ OwnT)),
                      gpaco10 (_hsim) (cpn10 _hsim) r g _ _ OwnT Q (fmr_src ⋅ OwnT) fuel f_src f_tgt st_src st_tgt) _.
   Next Obligation.
     cbn. i. des. esplits. guclo hupdC_spec.
@@ -104,18 +106,19 @@ Section SIM.
   Definition isim
              '(r, g, f_src, f_tgt)
              {R_src R_tgt}
+             (OwnT: Σ)
              (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
              (fuel: option Ord.t)
              (st_src: Any.t * itree hEs R_src)
              (st_tgt: Any.t * itree hEs R_tgt): iProp :=
-    isim' r g f_src f_tgt Q fuel st_src st_tgt.
+    isim' r g f_src f_tgt OwnT Q fuel st_src st_tgt.
 
   Lemma isim_init
         R_src R_tgt (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         P r g fmr fuel f_src f_tgt st_src st_tgt itr_src itr_tgt OwnT
         (ENTAIL: bi_entails
                    P
-                   (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, itr_tgt)))
+                   (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, itr_tgt)))
         (CUR: current_iProp fmr (Own OwnT ** P))
     :
       gpaco10 _hsim (cpn10 _hsim) r g _ _ OwnT Q fmr fuel f_src f_tgt (st_src, itr_src) (st_tgt, itr_tgt).
@@ -132,13 +135,14 @@ Section SIM.
   Lemma isim_final
         R_src R_tgt (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         P r g fuel f_src f_tgt st_src st_tgt itr_src itr_tgt
-        (SIM: forall fmr OwnT
+        OwnT
+        (SIM: forall fmr
                      (CUR: current_iProp fmr (Own OwnT ** P)),
             gpaco10 _hsim (cpn10 _hsim) r g _ _ OwnT Q fmr fuel f_src f_tgt (st_src, itr_src) (st_tgt, itr_tgt))
     :
       bi_entails
         P
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, itr_tgt)).
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, itr_tgt)).
   Proof.
     rr. autorewrite with iprop. ii. eapply SIM. eapply current_iProp_frame_own; eauto.
     eapply current_iProp_entail; cycle 1.
@@ -149,7 +153,7 @@ Section SIM.
   Lemma isim_current
         R_src R_tgt (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel fmr f_src f_tgt st_src st_tgt itr_src itr_tgt OwnT
-        (CUR: current_iProp fmr (Own OwnT ** isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, itr_tgt)))
+        (CUR: current_iProp fmr (Own OwnT ** isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, itr_tgt)))
     :
       gpaco10 _hsim (cpn10 _hsim) r g _ _ OwnT Q fmr fuel f_src f_tgt (st_src, itr_src) (st_tgt, itr_tgt).
   Proof.
@@ -161,13 +165,13 @@ Section SIM.
     { eapply URA.updatable_wf; [|apply H]; eauto. }
   Qed.
 
-  Lemma isim_upd R_src R_tgt
+  Lemma isim_upd R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt
     :
       bi_entails
-        (#=> (isim (r, g, f_src, f_tgt) (fun st_src st_tgt ret_src ret_tgt => #=> Q st_src st_tgt ret_src ret_tgt) fuel st_src st_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel st_src st_tgt).
+        (#=> (isim (r, g, f_src, f_tgt) OwnT (fun st_src st_tgt ret_src ret_tgt => #=> Q st_src st_tgt ret_src ret_tgt) fuel st_src st_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel st_src st_tgt).
   Proof.
     red. unfold Entails. autorewrite with iprop.
     unfold isim in *. i.
@@ -176,15 +180,38 @@ Section SIM.
     guclo hupdC_spec. econs; eauto. eapply URA.updatable_add; eauto. refl.
   Qed.
 
-  Lemma isim_mono R_src R_tgt
+  Lemma isim_upd_strong R_src R_tgt OwnT
+        (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
+        r g fuel f_src f_tgt st_src st_tgt
+    :
+      bi_entails
+        (sealed_upd (Own OwnT) (isim (r, g, f_src, f_tgt) OwnT (fun st_src st_tgt ret_src ret_tgt => #=> Q st_src st_tgt ret_src ret_tgt) fuel st_src st_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel st_src st_tgt).
+  Proof.
+    red. unfold Entails. autorewrite with iprop.
+    Opaque sealed_upd.
+    unfold isim in *. i.
+    rr in H. unfold bi_bupd_bupd in H. ss. unfold Upd in H. autorewrite with iprop in H.
+    des. i. guclo hmonoC_spec. econs; auto.
+    guclo hupdC_spec.
+    eapply sealed_upd_unfold in H. des.
+    econs; eauto.
+    { rewrite URA.add_comm; et. }
+    { unfold isim' in *; ss. rewrite URA.add_comm. eapply H0.
+      eapply URA.updatable_wf; et. rewrite URA.add_comm. etrans; et.
+      rewrite URA.add_comm. refl. }
+    { ss. }
+  Qed.
+
+  Lemma isim_mono R_src R_tgt OwnT
         (Q0 Q1: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src itr_src st_tgt itr_tgt
         (MONO: forall st_src st_tgt ret_src ret_tgt,
             (bi_entails (Q0 st_src st_tgt ret_src ret_tgt) (Q1 st_src st_tgt ret_src ret_tgt)))
     :
       bi_entails
-        (isim (r, g, f_src, f_tgt) Q0 fuel (st_src, itr_src) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q1 fuel (st_src, itr_src) (st_tgt, itr_tgt)).
+        (isim (r, g, f_src, f_tgt) OwnT Q0 fuel (st_src, itr_src) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q1 fuel (st_src, itr_src) (st_tgt, itr_tgt)).
   Proof.
     red. unfold Entails. autorewrite with iprop.
     unfold isim in *. i.
@@ -193,19 +220,19 @@ Section SIM.
     iModIntro. iApply MONO. auto.
   Qed.
 
-  Lemma isim_wand R_src R_tgt
+  Lemma isim_wand R_src R_tgt OwnT
         (Q0 Q1: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src itr_src st_tgt itr_tgt
     :
       bi_entails
         ((∀ st_src st_tgt ret_src ret_tgt,
-             ((Q0 st_src st_tgt ret_src ret_tgt) -∗ (Q1 st_src st_tgt ret_src ret_tgt))) ** (isim (r, g, f_src, f_tgt) Q0 fuel (st_src, itr_src) (st_tgt, itr_tgt)))
-        (isim (r, g, f_src, f_tgt) Q1 fuel (st_src, itr_src) (st_tgt, itr_tgt)).
+             ((Q0 st_src st_tgt ret_src ret_tgt) -∗ (Q1 st_src st_tgt ret_src ret_tgt))) ** (isim (r, g, f_src, f_tgt) OwnT Q0 fuel (st_src, itr_src) (st_tgt, itr_tgt)))
+        (isim (r, g, f_src, f_tgt) OwnT Q1 fuel (st_src, itr_src) (st_tgt, itr_tgt)).
   Proof.
     red. unfold Entails. autorewrite with iprop.
     unfold isim, isim' in *. rr. i.
     rr in H. unfold Sepconj in H. autorewrite with iprop in H. ss.
-    des. clarify. specialize (H1 OwnT).
+    des. clarify.
     guclo hframeC_aux_spec. econs; eauto.
     { instantiate (1:=a). instantiate (1:=b ⋅ OwnT).
       replace (a ⋅ b ⋅ OwnT) with (b ⋅ OwnT ⋅ a) by r_solve; refl. }
@@ -217,14 +244,18 @@ Section SIM.
     iModIntro. iApply "H1"; eauto.
   Qed.
 
-  Lemma isim_bind R_src R_tgt S_src S_tgt
+  Lemma isim_bind R_src R_tgt S_src S_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src (itr_src: itree hEs S_src)
         ktr_src st_tgt (itr_tgt: itree hEs S_tgt) ktr_tgt
     :
       bi_entails
-        (isim (r, g, f_src, f_tgt) (fun st_src st_tgt ret_src ret_tgt => isim (r, g, false, false) Q None (st_src, ktr_src ret_src) (st_tgt, ktr_tgt ret_tgt)) fuel (st_src, itr_src) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src >>= ktr_src) (st_tgt, itr_tgt >>= ktr_tgt)).
+        (isim (r, g, f_src, f_tgt) OwnT
+           (fun st_src st_tgt ret_src ret_tgt =>
+              (∀ OwnT0, isim (r, g, false, false) OwnT0 Q None
+                (st_src, ktr_src ret_src) (st_tgt, ktr_tgt ret_tgt))%I)
+           fuel (st_src, itr_src) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src >>= ktr_src) (st_tgt, itr_tgt >>= ktr_tgt)).
   Proof.
     red. unfold Entails. autorewrite with iprop.
     unfold isim in *. i.
@@ -235,19 +266,21 @@ Section SIM.
     assert(URA.updatable (a ⋅ b) (b ⋅ OwnT0)).
     { rewrite URA.add_comm. eapply URA.updatable_add; try refl.
       eapply URA.extends_updatable; eauto. }
-    econs; eauto; try apply IPROP1.
+    econs.
     { eapply URA.updatable_wf; et. }
-    { eapply URA.updatable_wf; et. etrans; eauto. }
+    2: { rr in IPROP1. uipropall. eapply IPROP1; et.
+         eapply URA.updatable_wf; et. etrans; eauto. }
+    { ss. }
   Qed.
 
-  Lemma isim_bind_left R_src R_tgt S_src
+  Lemma isim_bind_left R_src R_tgt S_src OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src (itr_src: itree hEs S_src)
         ktr_src st_tgt itr_tgt
     :
       bi_entails
-        (isim (r, g, f_src, f_tgt) (fun st_src st_tgt ret_src ret_tgt => isim (r, g, false, false) Q None (st_src, ktr_src ret_src) (st_tgt, itr_tgt)) fuel (st_src, itr_src) (st_tgt, Ret tt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src >>= ktr_src) (st_tgt, itr_tgt)).
+        (isim (r, g, f_src, f_tgt) OwnT (fun st_src st_tgt ret_src ret_tgt => (∀ OwnT0, isim (r, g, false, false) OwnT0 Q None (st_src, ktr_src ret_src) (st_tgt, itr_tgt))%I) fuel (st_src, itr_src) (st_tgt, Ret tt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src >>= ktr_src) (st_tgt, itr_tgt)).
   Proof.
     iIntros "H".
     assert (EQ: itr_tgt = Ret tt >>= fun _ => itr_tgt).
@@ -255,14 +288,14 @@ Section SIM.
     rewrite EQ. iApply isim_bind. rewrite <- EQ. iApply "H".
   Qed.
 
-  Lemma isim_bind_right R_src R_tgt S_tgt
+  Lemma isim_bind_right R_src R_tgt S_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src itr_src
         st_tgt (itr_tgt: itree hEs S_tgt) ktr_tgt
     :
       bi_entails
-        (isim (r, g, f_src, f_tgt) (fun st_src st_tgt ret_src ret_tgt => isim (r, g, false, false) Q None (st_src, itr_src) (st_tgt, ktr_tgt ret_tgt)) fuel (st_src, Ret tt) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, itr_tgt >>= ktr_tgt)).
+        (isim (r, g, f_src, f_tgt) OwnT (fun st_src st_tgt ret_src ret_tgt => (∀ OwnT0, isim (r, g, false, false) OwnT0 Q None (st_src, itr_src) (st_tgt, ktr_tgt ret_tgt))%I) fuel (st_src, Ret tt) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, itr_tgt >>= ktr_tgt)).
   Proof.
     iIntros "H".
     assert (EQ: itr_src = Ret tt >>= fun _ => itr_src).
@@ -270,14 +303,14 @@ Section SIM.
     rewrite EQ. iApply isim_bind. rewrite <- EQ. iApply "H".
   Qed.
 
-  Lemma isim_bind_right_pure R_src R_tgt S_tgt
+  Lemma isim_bind_right_pure R_src R_tgt S_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src itr_src
         st_tgt (itr_tgt: itree hEs S_tgt) ktr_tgt
     :
       bi_entails
-        (isim (r, g, f_src, f_tgt) (fun st_src st_tgt ret_src ret_tgt => isim (r, g, false, false) Q fuel (st_src, itr_src) (st_tgt, ktr_tgt ret_tgt)) None (st_src, Ret tt) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, itr_tgt >>= ktr_tgt)).
+        (isim (r, g, f_src, f_tgt) OwnT (fun st_src st_tgt ret_src ret_tgt => (∀ OwnT0, isim (r, g, false, false) OwnT0 Q fuel (st_src, itr_src) (st_tgt, ktr_tgt ret_tgt))%I) None (st_src, Ret tt) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, itr_tgt >>= ktr_tgt)).
   Proof.
     red. unfold Entails. autorewrite with iprop.
     unfold isim in *. i.
@@ -288,19 +321,21 @@ Section SIM.
     assert(URA.updatable (a ⋅ b) (b ⋅ OwnT0)).
     { rewrite URA.add_comm. eapply URA.updatable_add; try refl.
       eapply URA.extends_updatable; eauto. }
-    econs; eauto; try apply IPROP1.
+    econs.
     { eapply URA.updatable_wf; et. }
-    { eapply URA.updatable_wf; et. etrans; et. }
+    2: { rr in IPROP1. uipropall. eapply IPROP1; et.
+         eapply URA.updatable_wf; et. etrans; eauto. }
+    { ss. }
   Qed.
 
-  Lemma isim_split_aux R_src R_tgt S_tgt
+  Lemma isim_split_aux R_src R_tgt S_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g st_src itr_src st_tgt (itr_tgt: itree hEs S_tgt) ktr_tgt
         fuel0 fuel1 f_src f_tgt
     :
       bi_entails
-        (isim (r, g, f_src, f_tgt) (fun st_src st_tgt _ ret_tgt => isim (r, g, false, false) Q (Some fuel1) (st_src, itr_src) (st_tgt, ktr_tgt ret_tgt)) (Some fuel0) (st_src, Ret tt) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q (Some (fuel1 + fuel0)%ord) (st_src, itr_src) (st_tgt, itr_tgt >>= ktr_tgt)).
+        (isim (r, g, f_src, f_tgt) OwnT (fun st_src st_tgt _ ret_tgt => (∀ OwnT0, isim (r, g, false, false) OwnT0 Q (Some fuel1) (st_src, itr_src) (st_tgt, ktr_tgt ret_tgt))%I) (Some fuel0) (st_src, Ret tt) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q (Some (fuel1 + fuel0)%ord) (st_src, itr_src) (st_tgt, itr_tgt >>= ktr_tgt)).
   Proof.
     red. unfold Entails. autorewrite with iprop.
     unfold isim in *. i.
@@ -311,13 +346,16 @@ Section SIM.
     assert(URA.updatable (a ⋅ b) (b ⋅ OwnT0)).
     { rewrite URA.add_comm. eapply URA.updatable_add; try refl.
       eapply URA.extends_updatable; eauto. }
-    guclo hupdC_spec. econs; try apply IPROP1; eauto.
+    guclo hupdC_spec.
+    econs.
     { eapply URA.updatable_wf; et. }
-    { eapply URA.updatable_wf; et. etrans; et. }
+    2: { rr in IPROP1. uipropall. eapply IPROP1; et.
+         eapply URA.updatable_wf; et. etrans; eauto. }
+    { ss. }
   Qed.
 
   Lemma isim_call_impure
-        w0 R_src R_tgt
+        w0 R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt fn arg_src arg_tgt ktr_src ktr_tgt
         fsp_src fsp_tgt
@@ -334,11 +372,13 @@ Section SIM.
                           {{"INV": inv_with le I w0 st_src st_tgt}}
                             -* {{"POST": (fsp_src.(postcond) (Some mn) x_src ret_src retp)}}
                             -* (((fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp))
-                                  ∗ isim (g, g, true, true) Q None (st_src, ktr_src ret_src)
-                                  (st_tgt, ktr_tgt ret_tgt))
+                                  ∗ (∀ OwnT,
+⌜(((fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp)) OwnT)⌝ -*
+                                      isim (g, g, true, true) OwnT Q None (st_src, ktr_src ret_src)
+                                  (st_tgt, ktr_tgt ret_tgt)))
                       )))
         )
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, trigger (Call fn arg_src) >>= ktr_src)
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, trigger (Call fn arg_src) >>= ktr_src)
               (st_tgt, trigger (Call fn arg_tgt) >>= ktr_tgt)).
   Proof.
     red. unfold Entails. autorewrite with iprop.
@@ -363,13 +403,21 @@ Section SIM.
         inv ACC1. ss.
         assert(T: URA.updatable fmr1 (r1 ⋅ OwnT0)).
         { etrans; et. eapply URA.updatable_add; eauto. refl. }
-        guclo hupdC_spec. econs; try apply IPROP; et.
-        { eapply URA.updatable_wf; try apply ACC; eauto. }
+        guclo hupdC_spec.
+        eapply from_semantic in IPROP.
+        eassert(U: Own r1 ⊢ _).
+        { etrans; try apply IPROP. iIntros "H". iSpecialize ("H" $! OwnT0).
+          iDestruct ("H" with "[]") as "H"; ss.
+          iAssumption. }
+        eapply to_semantic in U; ss.
+        2: { eapply URA.updatable_wf; et. }
+        econs; try apply U; et.
+        { eapply URA.updatable_wf; [|apply T]; et. }
     }
   Qed.
 
   Lemma isim_call_pure
-        w0 R_src R_tgt
+        w0 R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel0 fuel1 f_src f_tgt st_src st_tgt fn arg_src arg_tgt itr_src ktr_tgt
         fsp_src fsp_tgt
@@ -387,11 +435,13 @@ Section SIM.
                           {{"INV": inv_with le I w0 st_src st_tgt}}
                             -* {{"POST": (fsp_src.(postcond) (Some mn) x_src ret_src retp)}}
                             -* (((fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp))
-                                  ∗ isim (g, g, true, true) Q (Some fuel1) (st_src, itr_src)
-                                  (st_tgt, ktr_tgt ret_tgt))
+                                  ∗ (∀ OwnT,
+⌜(((fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp)) OwnT)⌝ -*
+                                      isim (g, g, true, true) OwnT Q (Some fuel1) (st_src, itr_src)
+                                  (st_tgt, ktr_tgt ret_tgt)))
                       )))
         )
-        (isim (r, g, f_src, f_tgt) Q (Some fuel0) (st_src, itr_src)
+        (isim (r, g, f_src, f_tgt) OwnT Q (Some fuel0) (st_src, itr_src)
               (st_tgt, trigger (Call fn arg_tgt) >>= ktr_tgt)).
   Proof.
     red. unfold Entails. autorewrite with iprop.
@@ -416,20 +466,28 @@ Section SIM.
         inv ACC1. ss.
         assert(T: URA.updatable fmr1 (r1 ⋅ OwnT0)).
         { etrans; et. eapply URA.updatable_add; eauto. refl. }
-        guclo hupdC_spec. econs; try apply IPROP; et.
-        { eapply URA.updatable_wf; try apply ACC; eauto. }
+        guclo hupdC_spec.
+        eapply from_semantic in IPROP.
+        eassert(U: Own r1 ⊢ _).
+        { etrans; try apply IPROP. iIntros "H". iSpecialize ("H" $! OwnT0).
+          iDestruct ("H" with "[]") as "H"; ss.
+          iAssumption. }
+        eapply to_semantic in U; ss.
+        2: { eapply URA.updatable_wf; et. }
+        econs; try apply U; et.
+        { eapply URA.updatable_wf; [|apply T]; et. }
     }
   Qed.
 
   Lemma isim_apc
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g f_src f_tgt st_src st_tgt ktr_src itr_tgt
         fuel0
     :
       bi_entails
-        (∃ fuel1, isim (r, g, true, f_tgt) Q fuel1 (st_src, ktr_src tt) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel0 (st_src, trigger hAPC >>= ktr_src) (st_tgt, itr_tgt)).
+        (∃ fuel1, isim (r, g, true, f_tgt) OwnT Q fuel1 (st_src, ktr_src tt) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel0 (st_src, trigger hAPC >>= ktr_src) (st_tgt, itr_tgt)).
   Proof.
     iIntros "H". iDestruct "H" as (fuel1) "H". iStopProof.
     eapply isim_final. i.
@@ -438,13 +496,14 @@ Section SIM.
     assert(URA.updatable (a ⋅ b) (b ⋅ OwnT)).
     { rewrite URA.add_comm. eapply URA.updatable_add; try refl.
       eapply URA.extends_updatable; eauto. }
-    guclo hupdC_spec. econs; try apply IPROP1; eauto.
+    guclo hupdC_spec.
+    econs; try apply IPROP1; eauto.
     { etrans; et. }
     { eapply URA.updatable_wf; et. etrans; et. }
   Qed.
 
   Lemma isim_apc_both
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g f_src f_tgt st_src0 st_tgt0 ktr_src ktr_tgt
         fuel0
@@ -453,8 +512,8 @@ Section SIM.
         bi_entails
           (inv_with le I w0 st_src0 st_tgt0 **
                (∀ st_src1 st_tgt1, inv_with le I w0 st_src1 st_tgt1 -*
-                     isim (g, g, true, true) Q None (st_src1, ktr_src tt) (st_tgt1, ktr_tgt tt)))
-          (isim (r, g, f_src, f_tgt) Q fuel0 (st_src0, trigger hAPC >>= ktr_src)
+                     ∀ OwnT, isim (g, g, true, true) OwnT Q None (st_src1, ktr_src tt) (st_tgt1, ktr_tgt tt)))
+          (isim (r, g, f_src, f_tgt) OwnT Q fuel0 (st_src0, trigger hAPC >>= ktr_src)
                 (st_tgt0, trigger hAPC >>= ktr_tgt))
   .
   Proof.
@@ -467,17 +526,23 @@ Section SIM.
     inv ACC. uipropall. des. subst.
     assert(URA.updatable fmr1 (b ⋅ OwnT0)).
     { etrans; et. rewrite URA.add_comm. eapply URA.updatable_add; try refl. eapply URA.extends_updatable; et. }
-    guclo hupdC_spec. econs; try apply IPROP1; et.
+    guclo hupdC_spec.
+    eapply from_semantic in IPROP1.
+    eassert(U: Own b ⊢ _).
+    { etrans; try apply IPROP1. iIntros "H". iSpecialize ("H" $! OwnT0). iAssumption. }
+    eapply to_semantic in U; ss.
+    2: { eapply URA.updatable_wf; et. etrans; et. eapply URA.extends_updatable. exists OwnT0; r_solve. }
+    econs; try apply U; et.
     { eapply URA.updatable_wf; et. }
   Qed.
 
-  Lemma isim_progress R_src R_tgt
+  Lemma isim_progress R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel st_src itr_src st_tgt itr_tgt
     :
       bi_entails
-        (isim (g, g, false, false) Q fuel (st_src, itr_src) (st_tgt, itr_tgt))
-        (isim (r, g, true, true) Q fuel (st_src, itr_src) (st_tgt, itr_tgt)).
+        (isim (g, g, false, false) OwnT Q fuel (st_src, itr_src) (st_tgt, itr_tgt))
+        (isim (r, g, true, true) OwnT Q fuel (st_src, itr_src) (st_tgt, itr_tgt)).
   Proof.
     eapply isim_final. i. eapply isim_current in CUR.
     eapply hsim_progress_flag. auto.
@@ -485,7 +550,7 @@ Section SIM.
 
   Lemma isim_knowledge_mon
         r0 g0
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r1 g1 st_src itr_src st_tgt itr_tgt
         fuel f_src f_tgt
@@ -493,8 +558,8 @@ Section SIM.
         (LE1: g0 <10= g1)
     :
       bi_entails
-        (isim (r0, g0, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, itr_tgt))
-        (isim (r1, g1, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, itr_tgt)).
+        (isim (r0, g0, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, itr_tgt))
+        (isim (r1, g1, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, itr_tgt)).
   Proof.
     eapply isim_final. i. eapply isim_current in CUR.
     eapply gpaco10_mon; eauto.
@@ -502,7 +567,7 @@ Section SIM.
 
   Lemma isim_flag_mon
         fuel0 f_src0 f_tgt0
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g st_src itr_src st_tgt itr_tgt
         fuel1 f_src1 f_tgt1
@@ -511,8 +576,8 @@ Section SIM.
         (FUEL: option_Ord_le fuel0 fuel1)
     :
       bi_entails
-        (isim (r, g, f_src0, f_tgt0) Q fuel0 (st_src, itr_src) (st_tgt, itr_tgt))
-        (isim (r, g, f_src1, f_tgt1) Q fuel1 (st_src, itr_src) (st_tgt, itr_tgt)).
+        (isim (r, g, f_src0, f_tgt0) OwnT Q fuel0 (st_src, itr_src) (st_tgt, itr_tgt))
+        (isim (r, g, f_src1, f_tgt1) OwnT Q fuel1 (st_src, itr_src) (st_tgt, itr_tgt)).
   Proof.
     eapply isim_final. i. eapply isim_current in CUR.
     guclo hflagC_spec. econs; eauto.
@@ -520,15 +585,15 @@ Section SIM.
 
   Lemma isim_split
         fuel0 fuel1
-        R_src R_tgt S_tgt
+        R_src R_tgt S_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g st_src itr_src st_tgt (itr_tgt: itree hEs S_tgt) ktr_tgt
         fuel f_src f_tgt
         (FUEL: (fuel1 + fuel0 <= fuel)%ord)
     :
       bi_entails
-        (isim (r, g, f_src, f_tgt) (fun st_src st_tgt _ ret_tgt => isim (r, g, false, false) Q (Some fuel1) (st_src, itr_src) (st_tgt, ktr_tgt ret_tgt)) (Some fuel0) (st_src, Ret tt) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q (Some fuel) (st_src, itr_src) (st_tgt, itr_tgt >>= ktr_tgt)).
+        (isim (r, g, f_src, f_tgt) OwnT (fun st_src st_tgt _ ret_tgt => (∀ OwnT, isim (r, g, false, false) OwnT Q (Some fuel1) (st_src, itr_src) (st_tgt, ktr_tgt ret_tgt))%I) (Some fuel0) (st_src, Ret tt) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q (Some fuel) (st_src, itr_src) (st_tgt, itr_tgt >>= ktr_tgt)).
   Proof.
     iIntros "H".
     iApply isim_flag_mon.
@@ -539,7 +604,7 @@ Section SIM.
   Qed.
 
   Lemma isim_ret
-        R_src R_tgt (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
+        R_src R_tgt OwnT (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g
         v_src v_tgt
         st_src st_tgt
@@ -547,7 +612,7 @@ Section SIM.
     :
       bi_entails
         (Q st_src st_tgt v_src v_tgt)
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, Ret v_src) (st_tgt, (Ret v_tgt))).
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, Ret v_src) (st_tgt, (Ret v_tgt))).
   Proof.
     eapply isim_final. i.
     eapply hsimC_uclo. econs; eauto.
@@ -612,9 +677,9 @@ Section SIM.
   (* Qed. *)
 
   Global Instance iProp_isim_absorbing
-         R_src R_tgt r g (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
+         R_src R_tgt r g (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp) OwnT
          fuel f_src f_tgt st_src st_tgt:
-    Absorbing (isim (r, g, f_src, f_tgt) Q fuel st_src st_tgt).
+    Absorbing (isim (r, g, f_src, f_tgt) OwnT Q fuel st_src st_tgt).
   Proof.
     unfold Absorbing. unfold bi_absorbingly.
     iIntros "[H0 H1]". iApply isim_upd.
@@ -624,10 +689,10 @@ Section SIM.
   Qed.
 
   Global Instance iProp_isim_elim_upd
-         R_src R_tgt r g (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
+         R_src R_tgt OwnT r g (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
          fuel f_src f_tgt st_src st_tgt
          P:
-    ElimModal True false false (#=> P) P (isim (r, g, f_src, f_tgt) Q fuel st_src st_tgt) (isim (r, g, f_src, f_tgt) Q fuel st_src st_tgt).
+    ElimModal True false false (#=> P) P (isim (r, g, f_src, f_tgt) OwnT Q fuel st_src st_tgt) (isim (r, g, f_src, f_tgt) OwnT Q fuel st_src st_tgt).
   Proof.
     unfold ElimModal. i. iIntros "[H0 H1]".
     iApply isim_upd. iMod "H0". iModIntro.
@@ -636,14 +701,14 @@ Section SIM.
   Qed.
 
   Lemma isim_syscall
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         fn arg rvs
         r g fuel f_src f_tgt st_src st_tgt ktr_src ktr_tgt
     :
       bi_entails
-        (∀ ret, isim (g, g, true, true) Q None (st_src, ktr_src ret) (st_tgt, ktr_tgt ret))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, trigger (Syscall fn arg rvs) >>= ktr_src) (st_tgt, trigger (Syscall fn arg rvs) >>= ktr_tgt)).
+        (∀ ret, isim (g, g, true, true) OwnT Q None (st_src, ktr_src ret) (st_tgt, ktr_tgt ret))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, trigger (Syscall fn arg rvs) >>= ktr_src) (st_tgt, trigger (Syscall fn arg rvs) >>= ktr_tgt)).
   Proof.
     eapply isim_final. i. eapply hsimC_uclo. econs; eauto.
     i. inv CUR. rr in IPROP. uipropall. des; subst. rr in IPROP1. uipropall.
@@ -672,39 +737,39 @@ Section SIM.
   (* Qed. *)
 
   Lemma isim_tau_src
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt itr_src itr_tgt
     :
       bi_entails
-        (isim (r, g, true, f_tgt) Q None (st_src, itr_src) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, tau;; itr_src) (st_tgt, itr_tgt)).
+        (isim (r, g, true, f_tgt) OwnT Q None (st_src, itr_src) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, tau;; itr_src) (st_tgt, itr_tgt)).
   Proof.
     eapply isim_final. i. eapply hsimC_uclo. econs; eauto.
     eapply isim_current; eauto.
   Qed.
 
   Lemma isim_tau_tgt
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt itr_src itr_tgt
     :
       bi_entails
-        (isim (r, g, f_src, true) Q fuel (st_src, itr_src) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, tau;; itr_tgt)).
+        (isim (r, g, f_src, true) OwnT Q fuel (st_src, itr_src) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, tau;; itr_tgt)).
   Proof.
     eapply isim_final. i. eapply hsimC_uclo. econs; eauto.
     eapply isim_current; eauto.
   Qed.
 
   Lemma isim_choose_src
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt X ktr_src itr_tgt
     :
       bi_entails
-        (∃ x, isim (r, g, true, f_tgt) Q None (st_src, ktr_src x) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, trigger (Choose X) >>= ktr_src) (st_tgt, itr_tgt)).
+        (∃ x, isim (r, g, true, f_tgt) OwnT Q None (st_src, ktr_src x) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, trigger (Choose X) >>= ktr_src) (st_tgt, itr_tgt)).
   Proof.
     eapply isim_final. i. eapply hsimC_uclo. econs; eauto.
     inv CUR. rr in IPROP. uipropall. des. subst. rr in IPROP1. uipropall. des. esplits.
@@ -716,13 +781,13 @@ Section SIM.
   Qed.
 
   Lemma isim_choose_src_trigger
-        X R_tgt
+        X R_tgt OwnT
         (Q: Any.t -> Any.t -> X -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt itr_tgt
     :
       bi_entails
-        (∃ x, isim (r, g, true, f_tgt) Q None (st_src, Ret x) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, trigger (Choose X)) (st_tgt, itr_tgt)).
+        (∃ x, isim (r, g, true, f_tgt) OwnT Q None (st_src, Ret x) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, trigger (Choose X)) (st_tgt, itr_tgt)).
   Proof.
     erewrite (@idK_spec _ _ (trigger (Choose X))).
     iIntros "H". iApply isim_choose_src.
@@ -730,13 +795,13 @@ Section SIM.
   Qed.
 
   Lemma isim_choose_tgt
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt X itr_src ktr_tgt
     :
       bi_entails
-        (∀ x, isim (r, g, f_src, true) Q fuel (st_src, itr_src) (st_tgt, ktr_tgt x))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, trigger (Choose X) >>= ktr_tgt)).
+        (∀ x, isim (r, g, f_src, true) OwnT Q fuel (st_src, itr_src) (st_tgt, ktr_tgt x))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, trigger (Choose X) >>= ktr_tgt)).
   Proof.
     eapply isim_final. i. eapply hsimC_uclo. econs; eauto.
     inv CUR. rr in IPROP. uipropall. des. subst. rr in IPROP1. uipropall. des. esplits.
@@ -748,13 +813,13 @@ Section SIM.
   Qed.
 
   Lemma isim_choose_tgt_trigger
-        R_src X
+        R_src X OwnT
         (Q: Any.t -> Any.t -> R_src -> X -> iProp)
         r g fuel f_src f_tgt st_src st_tgt itr_src
     :
       bi_entails
-        (∀ x, isim (r, g, f_src, true) Q fuel (st_src, itr_src) (st_tgt, Ret x))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, trigger (Choose X))).
+        (∀ x, isim (r, g, f_src, true) OwnT Q fuel (st_src, itr_src) (st_tgt, Ret x))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, trigger (Choose X))).
   Proof.
     erewrite (@idK_spec _ _ (trigger (Choose X))).
     iIntros "H". iApply isim_choose_tgt.
@@ -762,13 +827,13 @@ Section SIM.
   Qed.
 
   Lemma isim_take_src
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt X ktr_src itr_tgt
     :
       bi_entails
-        (∀ x, isim (r, g, true, f_tgt) Q None (st_src, ktr_src x) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, trigger (Take X) >>= ktr_src) (st_tgt, itr_tgt)).
+        (∀ x, isim (r, g, true, f_tgt) OwnT Q None (st_src, ktr_src x) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, trigger (Take X) >>= ktr_src) (st_tgt, itr_tgt)).
   Proof.
     eapply isim_final. i. eapply hsimC_uclo. econs; eauto.
     inv CUR. rr in IPROP. uipropall. des. subst. rr in IPROP1. uipropall. des. esplits.
@@ -780,13 +845,13 @@ Section SIM.
   Qed.
 
   Lemma isim_take_src_trigger
-        X R_tgt
+        X R_tgt OwnT
         (Q: Any.t -> Any.t -> X -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt itr_tgt
     :
       bi_entails
-        (∀ x, isim (r, g, true, f_tgt) Q None (st_src, Ret x) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, trigger (Take X)) (st_tgt, itr_tgt)).
+        (∀ x, isim (r, g, true, f_tgt) OwnT Q None (st_src, Ret x) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, trigger (Take X)) (st_tgt, itr_tgt)).
   Proof.
     erewrite (@idK_spec _ _ (trigger (Take X))).
     iIntros "H". iApply isim_take_src.
@@ -794,13 +859,13 @@ Section SIM.
   Qed.
 
   Lemma isim_take_tgt
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt X itr_src ktr_tgt
     :
       bi_entails
-        (∃ x, isim (r, g, f_src, true) Q fuel (st_src, itr_src) (st_tgt, ktr_tgt x))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, trigger (Take X) >>= ktr_tgt)).
+        (∃ x, isim (r, g, f_src, true) OwnT Q fuel (st_src, itr_src) (st_tgt, ktr_tgt x))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, trigger (Take X) >>= ktr_tgt)).
   Proof.
     eapply isim_final. i. eapply hsimC_uclo. econs; eauto.
     inv CUR. rr in IPROP. uipropall. des. subst. rr in IPROP1. uipropall. des. esplits.
@@ -812,13 +877,13 @@ Section SIM.
   Qed.
 
   Lemma isim_take_tgt_trigger
-        R_src X
+        R_src X OwnT
         (Q: Any.t -> Any.t -> R_src -> X -> iProp)
         r g fuel f_src f_tgt st_src st_tgt itr_src
     :
       bi_entails
-        (∃ x, isim (r, g, f_src, true) Q fuel (st_src, itr_src) (st_tgt, Ret x))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, trigger (Take X))).
+        (∃ x, isim (r, g, f_src, true) OwnT Q fuel (st_src, itr_src) (st_tgt, Ret x))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, trigger (Take X))).
   Proof.
     erewrite (@idK_spec _ _ (trigger (Take X))).
     iIntros "H". iApply isim_take_tgt.
@@ -826,130 +891,130 @@ Section SIM.
   Qed.
 
   Lemma isim_pput_src
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src0 st_src1 st_tgt ktr_src itr_tgt
     :
       bi_entails
-        (isim (r, g, true, f_tgt) Q None (st_src1, ktr_src tt) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src0, trigger (PPut st_src1) >>= ktr_src) (st_tgt, itr_tgt)).
+        (isim (r, g, true, f_tgt) OwnT Q None (st_src1, ktr_src tt) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src0, trigger (PPut st_src1) >>= ktr_src) (st_tgt, itr_tgt)).
   Proof.
     eapply isim_final. i. eapply hsimC_uclo. econs; eauto.
     eapply isim_current; eauto.
   Qed.
 
   Lemma isim_pput_src_trigger
-        R_tgt
+        R_tgt OwnT
         (Q: Any.t -> Any.t -> unit -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src0 st_src1 st_tgt itr_tgt
     :
       bi_entails
-        (isim (r, g, true, f_tgt) Q None (st_src1, Ret tt) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src0, trigger (PPut st_src1)) (st_tgt, itr_tgt)).
+        (isim (r, g, true, f_tgt) OwnT Q None (st_src1, Ret tt) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src0, trigger (PPut st_src1)) (st_tgt, itr_tgt)).
   Proof.
     erewrite (@idK_spec _ _ (trigger (PPut st_src1))).
     iIntros "H". iApply isim_pput_src. iApply "H".
   Qed.
 
   Lemma isim_pget_src
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt ktr_src itr_tgt
     :
       bi_entails
-        (isim (r, g, true, f_tgt) Q None (st_src, ktr_src st_src) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, trigger (PGet) >>= ktr_src) (st_tgt, itr_tgt)).
+        (isim (r, g, true, f_tgt) OwnT Q None (st_src, ktr_src st_src) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, trigger (PGet) >>= ktr_src) (st_tgt, itr_tgt)).
   Proof.
     eapply isim_final. i. eapply hsimC_uclo. econs; eauto.
     eapply isim_current; eauto.
   Qed.
 
   Lemma isim_get_src_trigger
-        R_tgt
+        R_tgt OwnT
         (Q: Any.t -> Any.t -> Any.t -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt itr_tgt
     :
       bi_entails
-        (isim (r, g, true, f_tgt) Q None (st_src, Ret st_src) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, trigger (PGet)) (st_tgt, itr_tgt)).
+        (isim (r, g, true, f_tgt) OwnT Q None (st_src, Ret st_src) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, trigger (PGet)) (st_tgt, itr_tgt)).
   Proof.
     erewrite (@idK_spec _ _ (trigger (PGet))).
     iIntros "H". iApply isim_pget_src. iApply "H".
   Qed.
 
   Lemma isim_pput_tgt
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt0 st_tgt1 itr_src ktr_tgt
     :
       bi_entails
-        (isim (r, g, f_src, true) Q fuel (st_src, itr_src) (st_tgt1, ktr_tgt tt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt0, trigger (PPut st_tgt1) >>= ktr_tgt)).
+        (isim (r, g, f_src, true) OwnT Q fuel (st_src, itr_src) (st_tgt1, ktr_tgt tt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt0, trigger (PPut st_tgt1) >>= ktr_tgt)).
   Proof.
     eapply isim_final. i. eapply hsimC_uclo. econs; eauto.
     eapply isim_current; eauto.
   Qed.
 
   Lemma isim_pput_tgt_trigger
-        R_src
+        R_src OwnT
         (Q: Any.t -> Any.t -> R_src -> unit -> iProp)
         r g fuel f_src f_tgt st_src st_tgt0 st_tgt1 itr_src
     :
       bi_entails
-        (isim (r, g, f_src, true) Q fuel (st_src, itr_src) (st_tgt1, Ret tt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt0, trigger (PPut st_tgt1))).
+        (isim (r, g, f_src, true) OwnT Q fuel (st_src, itr_src) (st_tgt1, Ret tt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt0, trigger (PPut st_tgt1))).
   Proof.
     erewrite (@idK_spec _ _ (trigger (PPut st_tgt1))).
     iIntros "H". iApply isim_pput_tgt. iApply "H".
   Qed.
 
   Lemma isim_pget_tgt
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt itr_src ktr_tgt
     :
       bi_entails
-        (isim (r, g, f_src, true) Q fuel (st_src, itr_src) (st_tgt, ktr_tgt st_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, trigger (PGet) >>= ktr_tgt)).
+        (isim (r, g, f_src, true) OwnT Q fuel (st_src, itr_src) (st_tgt, ktr_tgt st_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, trigger (PGet) >>= ktr_tgt)).
   Proof.
     eapply isim_final. i. eapply hsimC_uclo. econs; eauto.
     eapply isim_current; eauto.
   Qed.
 
   Lemma isim_pget_tgt_trigger
-        R_src
+        R_src OwnT
         (Q: Any.t -> Any.t -> R_src -> Any.t -> iProp)
         r g fuel f_src f_tgt st_src st_tgt itr_src
     :
       bi_entails
-        (isim (r, g, f_src, true) Q fuel (st_src, itr_src) (st_tgt, Ret st_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, trigger (PGet))).
+        (isim (r, g, f_src, true) OwnT Q fuel (st_src, itr_src) (st_tgt, Ret st_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, trigger (PGet))).
   Proof.
     erewrite (@idK_spec _ _ (trigger (PGet))).
     iIntros "H". iApply isim_pget_tgt. iApply "H".
   Qed.
 
   Lemma isim_assume_src
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt P k_src i_tgt
     :
       bi_entails
-        (⌜P⌝ -* isim (r, g, true, f_tgt) Q None (st_src, k_src tt) (st_tgt, i_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, assume P >>= k_src) (st_tgt, i_tgt)).
+        (⌜P⌝ -* isim (r, g, true, f_tgt) OwnT Q None (st_src, k_src tt) (st_tgt, i_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, assume P >>= k_src) (st_tgt, i_tgt)).
   Proof.
     iIntros "H". unfold assume. hred_l.
     iApply isim_take_src. iIntros (H). hred_l. iApply "H". iPureIntro. auto.
   Qed.
 
   Lemma isim_assume_src_trigger
-        R_tgt
+        R_tgt OwnT
         (Q: Any.t -> Any.t -> unit -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt P itr_tgt
     :
       bi_entails
-        (⌜P⌝ -* isim (r, g, true, f_tgt) Q None (st_src, Ret tt) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, assume P) (st_tgt, itr_tgt)).
+        (⌜P⌝ -* isim (r, g, true, f_tgt) OwnT Q None (st_src, Ret tt) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, assume P) (st_tgt, itr_tgt)).
   Proof.
     erewrite (@idK_spec _ _ (assume P)).
     iIntros "H". iApply isim_assume_src.
@@ -957,13 +1022,13 @@ Section SIM.
   Qed.
 
   Lemma isim_assume_tgt
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt P itr_src ktr_tgt
     :
       bi_entails
-        (⌜P⌝ ∧ isim (r, g, f_src, true) Q fuel (st_src, itr_src) (st_tgt, ktr_tgt tt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, assume P >>= ktr_tgt)).
+        (⌜P⌝ ∧ isim (r, g, f_src, true) OwnT Q fuel (st_src, itr_src) (st_tgt, ktr_tgt tt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, assume P >>= ktr_tgt)).
   Proof.
     iIntros "H". iDestruct "H" as "[% H]".
     unfold assume. hred_r. iApply isim_take_tgt.
@@ -979,13 +1044,13 @@ Section SIM.
   Qed.
 
   Lemma isim_assume_tgt_trigger
-        R_src
+        R_src OwnT
         (Q: Any.t -> Any.t -> R_src -> unit -> iProp)
         r g fuel f_src f_tgt st_src st_tgt P itr_src
     :
       bi_entails
-        (⌜P⌝ ∧ isim (r, g, f_src, true) Q fuel (st_src, itr_src) (st_tgt, Ret tt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, assume P)).
+        (⌜P⌝ ∧ isim (r, g, f_src, true) OwnT Q fuel (st_src, itr_src) (st_tgt, Ret tt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, assume P)).
   Proof.
     erewrite (@idK_spec _ _ (assume P)).
     iIntros "H". iApply isim_assume_tgt. iSplit; auto.
@@ -994,13 +1059,13 @@ Section SIM.
   Qed.
 
   Lemma isim_guarantee_src
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt P ktr_src itr_tgt
     :
       bi_entails
-        (⌜P⌝ ∧ isim (r, g, true, f_tgt) Q None (st_src, ktr_src tt) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, guarantee P >>= ktr_src) (st_tgt, itr_tgt)).
+        (⌜P⌝ ∧ isim (r, g, true, f_tgt) OwnT Q None (st_src, ktr_src tt) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, guarantee P >>= ktr_src) (st_tgt, itr_tgt)).
   Proof.
     iIntros "H". iDestruct "H" as "[% H]".
     unfold guarantee. hred_l. iApply isim_choose_src.
@@ -1008,13 +1073,13 @@ Section SIM.
   Qed.
 
   Lemma isim_guarantee_src_trigger
-        R_tgt
+        R_tgt OwnT
         (Q: Any.t -> Any.t -> unit -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt P itr_tgt
     :
       bi_entails
-        (⌜P⌝ ∧ isim (r, g, true, f_tgt) Q None (st_src, Ret tt) (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, guarantee P) (st_tgt, itr_tgt)).
+        (⌜P⌝ ∧ isim (r, g, true, f_tgt) OwnT Q None (st_src, Ret tt) (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, guarantee P) (st_tgt, itr_tgt)).
   Proof.
     erewrite (@idK_spec _ _ (guarantee P)).
     iIntros "H". iApply isim_guarantee_src. iSplit; auto.
@@ -1023,13 +1088,13 @@ Section SIM.
   Qed.
 
   Lemma isim_guarantee_tgt
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt P itr_src ktr_tgt
     :
       bi_entails
-        (⌜P⌝ -* isim (r, g, f_src, true) Q fuel (st_src, itr_src) (st_tgt, ktr_tgt tt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, guarantee P >>= ktr_tgt)).
+        (⌜P⌝ -* isim (r, g, f_src, true) OwnT Q fuel (st_src, itr_src) (st_tgt, ktr_tgt tt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, guarantee P >>= ktr_tgt)).
   Proof.
     iIntros "H". unfold guarantee. hred_r.
     iApply isim_choose_tgt.
@@ -1037,13 +1102,13 @@ Section SIM.
   Qed.
 
   Lemma isim_guarantee_tgt_trigger
-        R_src
+        R_src OwnT
         (Q: Any.t -> Any.t -> R_src -> unit -> iProp)
         r g fuel f_src f_tgt st_src st_tgt P itr_src
     :
       bi_entails
-        (⌜P⌝ -* isim (r, g, f_src, true) Q fuel (st_src, itr_src) (st_tgt, Ret tt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, guarantee P)).
+        (⌜P⌝ -* isim (r, g, f_src, true) OwnT Q fuel (st_src, itr_src) (st_tgt, Ret tt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, guarantee P)).
   Proof.
     erewrite (@idK_spec _ _ (guarantee P)).
     iIntros "H". iApply isim_guarantee_tgt.
@@ -1051,65 +1116,65 @@ Section SIM.
   Qed.
 
   Lemma isim_triggerUB_src
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt X (ktr_src: X -> _) itr_tgt
     :
       bi_entails
         (⌜True⌝)
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, triggerUB >>= ktr_src) (st_tgt, itr_tgt)).
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, triggerUB >>= ktr_src) (st_tgt, itr_tgt)).
   Proof.
     iIntros "H". unfold triggerUB. hred_l. iApply isim_take_src.
     iIntros (x). destruct x.
   Qed.
 
   Lemma isim_triggerUB_src_trigger
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt itr_tgt
     :
       bi_entails
         (⌜True⌝)
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, triggerUB) (st_tgt, itr_tgt)).
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, triggerUB) (st_tgt, itr_tgt)).
   Proof.
     erewrite (@idK_spec _ _ (triggerUB)).
     iIntros "H". iApply isim_triggerUB_src. auto.
   Qed.
 
   Lemma isim_triggerNB_tgt
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt X itr_src (ktr_tgt: X -> _)
     :
       bi_entails
         (⌜True⌝)
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, triggerNB >>= ktr_tgt)).
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, triggerNB >>= ktr_tgt)).
   Proof.
     iIntros "H". unfold triggerNB. hred_r. iApply isim_choose_tgt.
     iIntros (x). destruct x.
   Qed.
 
   Lemma isim_triggerNB_trigger
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt itr_src
     :
       bi_entails
         (⌜True⌝)
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, triggerNB)).
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, triggerNB)).
   Proof.
     erewrite (@idK_spec _ _ (triggerNB)).
     iIntros "H". iApply isim_triggerNB_tgt. auto.
   Qed.
 
   Lemma isim_unwrapU_src
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt X (x: option X) ktr_src itr_tgt
     :
       bi_entails
-        (∀ x', ⌜x = Some x'⌝ -* isim (r, g, f_src, f_tgt) Q fuel (st_src, ktr_src x') (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, unwrapU x >>= ktr_src) (st_tgt, itr_tgt)).
+        (∀ x', ⌜x = Some x'⌝ -* isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, ktr_src x') (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, unwrapU x >>= ktr_src) (st_tgt, itr_tgt)).
   Proof.
     iIntros "H". unfold unwrapU. destruct x.
     { hred_l. iApply "H". auto. }
@@ -1117,13 +1182,13 @@ Section SIM.
   Qed.
 
   Lemma isim_unwrapU_src_trigger
-        X R_tgt
+        X R_tgt OwnT
         (Q: Any.t -> Any.t -> X -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt x itr_tgt
     :
       bi_entails
-        (∀ x', ⌜x = Some x'⌝ -* isim (r, g, f_src, f_tgt) Q fuel (st_src, Ret x') (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, unwrapU x) (st_tgt, itr_tgt)).
+        (∀ x', ⌜x = Some x'⌝ -* isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, Ret x') (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, unwrapU x) (st_tgt, itr_tgt)).
   Proof.
     erewrite (@idK_spec _ _ (unwrapU x)).
     iIntros "H". iApply isim_unwrapU_src.
@@ -1131,26 +1196,26 @@ Section SIM.
   Qed.
 
   Lemma isim_unwrapN_src
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt X (x: option X) ktr_src itr_tgt
     :
       bi_entails
-        (∃ x', ⌜x = Some x'⌝ ∧ isim (r, g, f_src, f_tgt) Q fuel (st_src, ktr_src x') (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, unwrapN x >>= ktr_src) (st_tgt, itr_tgt)).
+        (∃ x', ⌜x = Some x'⌝ ∧ isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, ktr_src x') (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, unwrapN x >>= ktr_src) (st_tgt, itr_tgt)).
   Proof.
     iIntros "H". iDestruct "H" as (x') "[% H]".
     subst. hred_l. iApply "H".
   Qed.
 
   Lemma isim_unwrapN_src_trigger
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt x itr_tgt
     :
       bi_entails
-        (∃ x', ⌜x = Some x'⌝ ∧ isim (r, g, f_src, f_tgt) Q fuel (st_src, Ret x') (st_tgt, itr_tgt))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, unwrapN x) (st_tgt, itr_tgt)).
+        (∃ x', ⌜x = Some x'⌝ ∧ isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, Ret x') (st_tgt, itr_tgt))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, unwrapN x) (st_tgt, itr_tgt)).
   Proof.
     erewrite (@idK_spec _ _ (unwrapN x)).
     iIntros "H". iDestruct "H" as (x') "[% H]".
@@ -1158,26 +1223,26 @@ Section SIM.
   Qed.
 
   Lemma isim_unwrapU_tgt
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt X (x: option X) itr_src ktr_tgt
     :
       bi_entails
-        (∃ x', ⌜x = Some x'⌝ ∧ isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, ktr_tgt x'))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, unwrapU x >>= ktr_tgt)).
+        (∃ x', ⌜x = Some x'⌝ ∧ isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, ktr_tgt x'))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, unwrapU x >>= ktr_tgt)).
   Proof.
     iIntros "H". iDestruct "H" as (x') "[% H]". subst.
     hred_r. iApply "H".
   Qed.
 
   Lemma isim_unwrapU_tgt_trigger
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt x itr_src
     :
       bi_entails
-        (∃ x', ⌜x = Some x'⌝ ∧ isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, Ret x'))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, unwrapU x)).
+        (∃ x', ⌜x = Some x'⌝ ∧ isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, Ret x'))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, unwrapU x)).
   Proof.
     erewrite (@idK_spec _ _ (unwrapU x)).
     iIntros "H". iDestruct "H" as (x') "[% H]".
@@ -1185,13 +1250,13 @@ Section SIM.
   Qed.
 
   Lemma isim_unwrapN_tgt
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt X (x: option X) itr_src ktr_tgt
     :
       bi_entails
-        (∀ x', ⌜x = Some x'⌝ -* isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, ktr_tgt x'))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, unwrapN x >>= ktr_tgt)).
+        (∀ x', ⌜x = Some x'⌝ -* isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, ktr_tgt x'))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, unwrapN x >>= ktr_tgt)).
   Proof.
     iIntros "H". unfold unwrapN. destruct x.
     { hred_r. iApply "H". auto. }
@@ -1199,13 +1264,13 @@ Section SIM.
   Qed.
 
   Lemma isim_unwrapN_tgt_trigger
-        R_src R_tgt
+        R_src R_tgt OwnT
         (Q: Any.t -> Any.t -> R_src -> R_tgt -> iProp)
         r g fuel f_src f_tgt st_src st_tgt x itr_src
     :
       bi_entails
-        (∀ x', ⌜x = Some x'⌝ -* isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, Ret x'))
-        (isim (r, g, f_src, f_tgt) Q fuel (st_src, itr_src) (st_tgt, unwrapN x)).
+        (∀ x', ⌜x = Some x'⌝ -* isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, Ret x'))
+        (isim (r, g, f_src, f_tgt) OwnT Q fuel (st_src, itr_src) (st_tgt, unwrapN x)).
   Proof.
     erewrite (@idK_spec _ _ (unwrapN x)).
     iIntros "H". iApply isim_unwrapN_tgt.
@@ -1766,9 +1831,12 @@ Section ADEQUACY.
             (<<OLE: ord_le (measure fsp_tgt x_tgt) (measure fsp_src x_src)>>) /\
             forall w mn_caller arg_src argp st_src st_tgt, ∃ arg_tgt,
               (inv_with le wf w st_src st_tgt ** fsp_src.(precond) mn_caller x_src arg_src argp) ==∗
-              (fsp_tgt.(precond) mn_caller x_tgt arg_tgt argp ** isim
+              (fsp_tgt.(precond) mn_caller x_tgt arg_tgt argp ** (∀ OwnT,
+⌜(fsp_tgt.(precond) mn_caller x_tgt arg_tgt argp OwnT)⌝ -*
+               isim
                  le wf mn stb_src stb_tgt (fsp_src.(measure) x_src)
                  (bot10, bot10, true, true)
+                 OwnT
                  (fun st_src st_tgt ret_src ret_tgt =>
                     ∀ retp,
                     (fsp_tgt.(postcond) mn_caller x_tgt ret_tgt retp) ==∗
@@ -1781,7 +1849,7 @@ Section ADEQUACY.
                  (st_tgt, match fsp_tgt.(measure) x_tgt with
                           | ord_pure _ => _ <- trigger hAPC;; trigger (Choose Any.t)
                           | ord_top => fsp_tgt.(fsb_body) (mn_caller, arg_tgt)
-                          end)))
+                          end))%I))
     :
       sim_itree
         (mk_wf wf) le
@@ -1792,7 +1860,8 @@ Section ADEQUACY.
     subst. destruct y as [mn_caller arg].
     ginit. unfold fun_to_tgt. rewrite ! HoareFun_parse. inv WF. eapply harg_clo2; eauto.
     { econs; eauto. }
-    i. exploit ISIM; eauto. i; des. rename x1 into SIM. exploit SIM; eauto. i; des. esplits; eauto.
+    i. exploit ISIM; eauto. i; des. rename x1 into SIM. exploit SIM; eauto. i; des.
+    esplits; eauto.
     { iIntros "[A B]".
       iDestruct (x0 with "[A B]") as "C".
       { iFrame. unfold inv_with. iSplits; eauto. }
@@ -1801,7 +1870,17 @@ Section ADEQUACY.
     i. gfinal. right. eapply hsim_adequacy; auto.
     ginit. { eapply cpn10_wcompat; eauto with paco. }
     eapply isim_init; eauto.
-    { eapply current_iProp_entail; et. start_ipm_proof. iSplitR "FR"; try iAssumption. iSplitL "TF"; eauto. }
+    { eapply current_iProp_entail; et. start_ipm_proof. iSplitR "FR"; try iAssumption.
+      - iSplitL "TF"; eauto.
+      - iApply "FR". iPureIntro. eapply iProp_mono; et.
+        + clear - ACC.
+          (*** TODO: make lemma ***)
+          mClear "J". eapply current_iProp_entail in ACC; cycle 1.
+          { start_ipm_proof. iCombine "TF" "TM" as "T". iAssumption. }
+          inv ACC. uipropall. eapply URA.wf_extends; et.
+          eapply URA.updatable_wf; et.
+        + exists mr_tgt; r_solve.
+    }
   Qed.
 
   Lemma isim_fun_to_tgt
@@ -1812,9 +1891,12 @@ Section ADEQUACY.
             (<<OLE: ord_le (measure fsp_tgt x_tgt) (measure fsp_src x_src)>>) /\
             forall w mn_caller arg_src argp st_src st_tgt, ∃ arg_tgt,
               (inv_with le wf w st_src st_tgt ** fsp_src.(precond) mn_caller x_src arg_src argp) ==∗
-              (fsp_tgt.(precond) mn_caller x_tgt arg_tgt argp ** isim
+              (fsp_tgt.(precond) mn_caller x_tgt arg_tgt argp ** (∀ OwnT,
+⌜(fsp_tgt.(precond) mn_caller x_tgt arg_tgt argp OwnT)⌝ -*
+               isim
                  le wf mn stb_src stb_tgt (fsp_src.(measure) x_src)
                  (bot10, bot10, true, true)
+                 OwnT
                  (fun st_src st_tgt ret_src ret_tgt =>
                     ∀ retp,
                     (fsp_tgt.(postcond) mn_caller x_tgt ret_tgt retp) ==∗
@@ -1827,7 +1909,7 @@ Section ADEQUACY.
                  (st_tgt, match fsp_tgt.(measure) x_tgt with
                           | ord_pure _ => _ <- trigger hAPC;; trigger (Choose Any.t)
                           | ord_top => fsp_tgt.(fsb_body) (mn_caller, arg_tgt)
-                          end)))
+                          end))%I))
     :
       sim_fsem (mk_wf wf) le (fun_to_tgt mn stb_src fsp_src) (fun_to_tgt mn stb_tgt fsp_tgt).
   Proof.
@@ -1842,9 +1924,12 @@ Section ADEQUACY.
             (<<OLE: ord_le (measure ksp_tgt x_tgt) (measure ksp_src x_src)>>) /\
             forall w mn_caller arg_src argp st_src st_tgt, ∃ arg_tgt,
               (inv_with le wf w st_src st_tgt ** ksp_src.(precond) mn_caller x_src arg_src argp) ==∗
-              (ksp_tgt.(precond) mn_caller x_tgt arg_tgt argp ** isim
+              (ksp_tgt.(precond) mn_caller x_tgt arg_tgt argp ** (∀ OwnT,
+⌜(ksp_tgt.(precond) mn_caller x_tgt arg_tgt argp OwnT)⌝ -*
+               isim
                  le wf mn stb_src stb_tgt (ksp_src.(measure) x_src)
                  (bot10, bot10, true, true)
+                 OwnT
                  (fun st_src st_tgt ret_src ret_tgt =>
                     ∀ retp,
                     (ksp_tgt.(postcond) mn_caller x_tgt ret_tgt retp) ==∗
@@ -1857,17 +1942,18 @@ Section ADEQUACY.
                  (st_tgt, match ksp_tgt.(measure) x_tgt with
                           | ord_pure _ => _ <- trigger hAPC;; trigger (Choose Any.t)
                           | ord_top => ksp_tgt.(ksb_kbody) (mn_caller, arg_tgt)
-                          end)))
+                          end))%I))
         (CONTEXT: forall w mn_caller arg st_src st_tgt,
-              (inv_with le wf w st_src st_tgt) ==∗
+              (inv_with le wf w st_src st_tgt) ==∗ (∀ OwnT,
               (isim
                  le wf mn stb_src stb_tgt ord_top
                  (bot10, bot10, true, true)
+                 OwnT
                  (fun st_src st_tgt ret_src ret_tgt =>
                     (inv_with le wf w st_src st_tgt ** ⌜ret_src = ret_tgt⌝))
                  None
                  (st_src, ksp_src.(ksb_ubody) (mn_caller, arg))
-                 (st_tgt, ksp_tgt.(ksb_ubody) (mn_caller, arg))))
+                 (st_tgt, ksp_tgt.(ksb_ubody) (mn_caller, arg)))))
     :
       sim_fsem (mk_wf wf) le (KModSem.disclose_ksb_tgt mn stb_src ksp_src)
                (KModSem.disclose_ksb_tgt mn stb_tgt ksp_tgt).
@@ -1880,7 +1966,8 @@ Section ADEQUACY.
     { gfinal. right. eapply isim_fun_to_tgt_aux; eauto. i. ss.
       exists tt. esplits; eauto. i. esplits.
       iIntros "[H0 %]". subst. iSplits; ss. iDestruct (CONTEXT with "H0") as ">H0".
-      iModIntro. iSplits; et. iApply isim_wand; eauto. iFrame. iIntros. subst. eauto.
+      iModIntro. iSplits; et. iIntros. iApply isim_wand; eauto.
+      iSplitR; [|eauto]. iIntros. subst. eauto.
     }
   Qed.
 
@@ -1889,258 +1976,25 @@ Section ADEQUACY.
         body_src body_tgt
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
         (CONTEXT: forall w mn_caller arg st_src st_tgt,
-              (inv_with le wf w st_src st_tgt) ==∗
-              (isim
+              (inv_with le wf w st_src st_tgt) ==∗ (∀ OwnT,
+               isim
                  le wf mn stb_src stb_tgt ord_top
                  (bot10, bot10, true, true)
+                 OwnT
                  (fun st_src st_tgt ret_src ret_tgt =>
                     (inv_with le wf w st_src st_tgt ** ⌜ret_src = ret_tgt⌝))
                  None
                  (st_src, body_src (mn_caller, arg))
-                 (st_tgt, body_tgt (mn_caller, arg))))
+                 (st_tgt, body_tgt (mn_caller, arg)))%I)
     :
       sim_fsem (mk_wf wf) le (KModSem.disclose_ksb_tgt mn stb_src (ksb_trivial body_src))
                (KModSem.disclose_ksb_tgt mn stb_tgt (ksb_trivial body_tgt)).
   Proof.
-    eapply isim_fun_to_tgt_open; ss; eauto. i. esplits; ss; et. i.
-    esplits.
+    eapply isim_fun_to_tgt_open; ss; eauto. i. esplits; ss; et. i. esplits.
     iIntros "[H0 %]". subst. iSplits; ss; et.
     iDestruct (CONTEXT with "H0") as ">H".
     iModIntro. iSplits; et.
-    iApply isim_wand; eauto. iFrame; eauto. iIntros. subst. eauto.
+    iIntros. iApply isim_wand; eauto. iSplitR; [|eauto]. iIntros. subst. eauto.
   Qed.
 
 End ADEQUACY.
-
-
-
-
-
-
-
-
-Section REFL.
-  Context `{Σ: GRA.t}.
-
-  Variable mn: mname.
-  Variable stb: gname -> option fspec.
-  (* Variable o: ord. *)
-  Let o := ord_top.
-  Let Q R := fun (st_src st_tgt: Any.t) (ret_src ret_tgt: R) => (⌜st_src = st_tgt ∧ ret_src = ret_tgt⌝: iProp)%I.
-  Hypothesis TOP: forall fn fsp x (SOME: stb fn = Some fsp), fsp.(measure) x = ord_top.
-
-  Let wf: _ -> Any.t -> Any.t -> iProp := (fun (_: unit) x y => (⌜x = y⌝: iProp)%I).
-
-  Let hsim := @hsim _ _ top2 wf mn stb stb o.
-
-  Let lemma: ∀ fmr_src (WF: URA.wf fmr_src) OwnT (UPD: URA.updatable fmr_src OwnT) R t r,
-      current_iProp (fmr_src) (Own OwnT ** @Q R t t r r).
-    i.
-    eapply current_iProp_entail; cycle 1.
-    { unfold Q. iIntros "A". iSplitL; eauto. }
-    econs; eauto.
-    { uipropall. refl. }
-  Qed.
-
-  Global Program Instance _hsim_refl (hsim: ∀ R_src R_tgt, Σ → (Any.t → Any.t → R_src → R_tgt → iProp)
-     → Σ → option Ord.t → bool → bool → Any.t * itree hEs R_src → Any.t * itree hEs R_tgt → Prop)
-    `{REFL: ∀ R2 OwnT2 fmr_src2 (WF: URA.wf fmr_src2) (UPD: URA.updatable fmr_src2 OwnT2) fuel2 f2,
-        Reflexive (@hsim R2 R2 OwnT2 (@Q R2) fmr_src2 fuel2 f2 f2)}
-    : ∀ R OwnT fmr_src (WF: URA.wf fmr_src) (UPD: URA.updatable fmr_src OwnT) fuel f,
-      Reflexive (@HSim2._hsim _ _ top2 wf mn stb stb o hsim R R OwnT (@Q R) fmr_src fuel f f).
-  Next Obligation.
-    i. destruct x. ides i.
-    - econs; eauto.
-    - econs. econs. econs. eapply REFL; eauto.
-    - destruct e; [|destruct e; [|destruct s]].
-      + destruct h. rewrite <- ! bind_trigger. econsr.
-        { eapply current_iProp_entail; eauto. iIntros "[$ A]". unfold inv_with. iSplitR; et. iAssumption. }
-        i. ss.
-        eapply current_iPropL_convert in ACC. unfold inv_with in ACC. unfold wf in ACC. subst Q. mDesAll. subst.
-        clear - REFL ACC.
-        inv ACC; ss.
-        eapply REFL; eauto. etrans; et. rr in IPROP. uipropall. des; subst. eapply URA.extends_updatable; et. etrans; et.
-        exists b; r_solve.
-      + destruct c. rewrite <- ! bind_trigger.
-        destruct (stb fn) as [fsp|] eqn:T; cycle 1.
-        { econsr; eauto. }
-        econs; et. i. exists x_tgt, True%I. esplits; et.
-        { eapply current_iProp_entail; et. iIntros "[$ %]". iIntros. iFrame. eauto. }
-        i. iIntros "[% B]". ss. des; subst. iModIntro. iSplits; eauto.
-        { iFrame. instantiate (1:=emp%I). ss. }
-        iPureIntro. i. eapply REFL; et.
-        { apply ACC. }
-        { eapply current_iProp_entail in ACC; cycle 1. { iIntros "[A _]". iAssumption. }
-          clear - ACC. inv ACC. etrans; et. uipropall. eapply URA.extends_updatable; et. }
-      + rewrite <- ! bind_trigger. destruct p.
-        * econs. econs. econs. eapply REFL; eauto.
-        * econs. econs. econs. eapply REFL; eauto.
-      + rewrite <- ! bind_trigger. destruct e.
-        * econsr. econs. exists x. econs. eapply REFL; eauto.
-        * econs. econsr. exists x. econs. eapply REFL; eauto.
-        * econs. i. eapply REFL; eauto.
-  Unshelve.
-    all: try (by apply unit).
-    all: ss.
-  Qed.
-
-  Global Program Instance hsim_refl:
-    ∀ R2 OwnT2 fmr_src2 (WF: URA.wf fmr_src2) (UPD: URA.updatable fmr_src2 OwnT2) fuel2 f2,
-      Reflexive (@hsim R2 R2 OwnT2 (@Q R2) fmr_src2 fuel2 f2 f2).
-  Next Obligation.
-    i.
-    ginit.
-    { eapply compat10_wcompat; eauto with paco. eapply cpn10_compat; eauto with paco. }
-    revert_until lemma.
-    gcofix CIH.
-    { i. gstep. eapply _hsim_refl; eauto. ii. gbase. eapply CIH; eauto. }
-  Unshelve.
-    all: try (by apply unit).
-    all: ss.
-  Qed.
-
-  Global Program Instance hsim_refl_gen:
-    ∀ R2 OwnT2 fmr_src2 (WF: URA.wf fmr_src2) (UPD: URA.updatable fmr_src2 OwnT2) fuel2 f2 r g,
-      Reflexive (gpaco10 (HSim2._hsim top2 wf mn stb stb o) (cpn10 (HSim2._hsim top2 wf mn stb stb o))
-                   r g R2 R2 OwnT2 (Q (R:=R2)) fmr_src2 fuel2 f2 f2).
-  Next Obligation.
-    gcofix CIH.
-    { i. gstep. eapply _hsim_refl; eauto. ii. gbase. eapply CIH; eauto. }
-  Qed.
-
-End REFL.
-
-
-
-Section COROLLARY.
-  Context `{Σ: GRA.t}.
-  Let wf: _ -> Any.t -> Any.t -> iProp := (fun (_: unit) x y => (⌜x = y⌝: iProp)%I).
-  Variable fsp: fspec.
-  Variable body: option string * Any.t → itree (hAPCE +' Es) Any.t.
-  Variable FR: iProp.
-  Hypothesis TOP: ∀ x, measure fsp x = ord_top.
-  Let fsp': fspec := mk_fspec (fsp.(measure))
-                       (fun mn x argv argp => (FR ∗ fsp.(precond) mn x argv argp)%I)
-                       (fun mn x retv retp => (FR ∗ fsp.(postcond) mn x retv retp)%I)
-  .
-
-  Theorem isim_hframe
-        mn stb
-        (PUREINCL: stb_pure_incl stb stb)
-        (TOP2: forall fn fsp x (SOME: stb fn = Some fsp), fsp.(measure) x = ord_top)
-    :
-      sim_fsem (mk_wf wf) top2 (fun_to_tgt mn stb (mk_specbody fsp' body))
-        (fun_to_tgt mn stb (mk_specbody fsp body)).
-  Proof.
-    ii. eapply isim_fun_to_tgt; eauto.
-    { typeclasses eauto. }
-    i. exists x_src. ss. esplits; et.
-    { destruct (measure fsp x_src) eqn:T; ss. refl. (*** TODO: PreOrder ***) }
-    i. esplits. iIntros "[A [B C]]". iFrame. iModIntro.
-    unfold inv_with. iDestruct "A" as (w1) "[%A _]". subst.
-    iApply isim_wand.
-    (* instantiate (1:=fun st_src st_tgt ret_src ret_tgt => *)
-    (*                   (inv_with top2 wf tt st_src st_tgt ∗ ⌜ret_src = ret_tgt⌝)%I). cbn. *)
-    instantiate (1:=fun st_src st_tgt ret_src ret_tgt => (⌜st_src = st_tgt ∧ ret_src = ret_tgt⌝)%I). cbn.
-    iSplitL.
-    { iFrame. iIntros. des; subst. iFrame. eauto. }
-    rewrite TOP.
-    iApply isim_final; cycle 1.
-    { instantiate (1:=True%I). ss. }
-    i. unfold wf.
-    eapply current_iProp_entail in CUR; cycle 1.
-    { iIntros "[A _]". iAssumption. }
-    inv CUR.
-    eapply hsim_refl_gen; eauto.
-    { etrans; et. uipropall. eapply URA.extends_updatable; ss. }
-  Qed.
-
-End COROLLARY.
-
-Section COROLLARY.
-
-  Context `{Σ: GRA.t}.
-  Variable world: Type.
-  Variable le: relation world.
-  Context `{PreOrder _ le}.
-  Variable wf: world -> Any.t -> Any.t -> iProp.
-
-  Variable fsp_src fsp_tgt: fspec.
-  Variable FRP FRQ: iProp.
-
-  Let fsp_src': fspec :=
-        mk_fspec (fsp_src.(measure))
-          (fun mn x argv argp => (FRP ∗ fsp_src.(precond) mn x argv argp)%I)
-          (fun mn x retv retp => (FRQ ∗ fsp_src.(postcond) mn x retv retp)%I)
-  .
-  Let fsp_tgt': fspec :=
-        mk_fspec (fsp_tgt.(measure))
-          (fun mn x argv argp => (FRP ∗ fsp_tgt.(precond) mn x argv argp)%I)
-          (fun mn x retv retp => (FRQ ∗ fsp_tgt.(postcond) mn x retv retp)%I)
-  .
-
-  Theorem isim_vframe
-        mn stb_src stb_tgt
-        body_src body_tgt
-        (PUREINCL: stb_pure_incl stb_tgt stb_src)
-        (PROOF: ∀ x_src, ∃ x_tgt,
-       (∀ w0 mn_caller arg_src argp st_src st_tgt,
-         ∃ arg_tgt,
-           (inv_with le wf w0 st_src st_tgt **
-            (precond fsp_src mn_caller x_src arg_src argp))
-           ⊢ #=> (precond fsp_tgt mn_caller x_tgt arg_tgt argp **
-                  isim top2 wf mn stb_src stb_tgt (measure fsp_src x_src)
-                    (bot10, bot10, true, true)
-                    (λ st_src0 st_tgt0 ret_src ret_tgt,
-                      (∀ retp,
-                        postcond fsp_tgt mn_caller x_tgt ret_tgt retp ==∗
-                        inv_with top2 wf w0 st_src0 st_tgt0 **
-                        (postcond fsp_src mn_caller x_src ret_src retp))%I) None
-                    (st_src,
-                    match measure fsp_src x_src with
-                    | ord_pure _ => ;;; trigger (Choose Any.t)
-                    | ord_top => body_src (mn_caller, arg_src)
-                    end)
-                    (st_tgt,
-                    match measure fsp_tgt x_tgt with
-                    | ord_pure _ => ;;; trigger (Choose Any.t)
-                    | ord_top => body_tgt (mn_caller, arg_tgt)
-                    end))))
-    :
-    (<<PROOF: ∀ x_src, ∃ x_tgt,
-       (∀ w0 mn_caller arg_src argp st_src st_tgt,
-         ∃ arg_tgt,
-           (inv_with le wf w0 st_src st_tgt **
-            (precond fsp_src' mn_caller x_src arg_src argp))
-           ⊢ #=> (precond fsp_tgt' mn_caller x_tgt arg_tgt argp **
-                  isim top2 wf mn stb_src stb_tgt (measure fsp_src' x_src)
-                    (bot10, bot10, true, true)
-                    (λ st_src0 st_tgt0 ret_src ret_tgt,
-                      (∀ retp,
-                        postcond fsp_tgt' mn_caller x_tgt ret_tgt retp ==∗
-                        inv_with top2 wf w0 st_src0 st_tgt0 **
-                        (postcond fsp_src' mn_caller x_src ret_src retp))%I) None
-                    (st_src,
-                    match measure fsp_src' x_src with
-                    | ord_pure _ => ;;; trigger (Choose Any.t)
-                    | ord_top => body_src (mn_caller, arg_src)
-                    end)
-                    (st_tgt,
-                    match measure fsp_tgt' x_tgt with
-                    | ord_pure _ => ;;; trigger (Choose Any.t)
-                    | ord_top => body_tgt (mn_caller, arg_tgt)
-                    end)))>>)
-  .
-  Proof.
-    ii. specialize (PROOF x_src). des. exists x_tgt.
-    i. ss. specialize (PROOF w0 mn_caller arg_src argp st_src st_tgt). des.
-    esplits. iIntros "[A [B C]]". iFrame. iStopProof. etrans; eauto.
-    iIntros ">[A B]". iFrame. iModIntro.
-    iApply (isim_wand); eauto. iFrame.
-    iIntros (st_src0 st_tgt0 ret_src ret_tgt) "A".
-    iIntros (retp) "[$ B]".
-    iDestruct ("A" with "[B]") as ">[A B]"; eauto.
-    iFrame. ss.
-  Qed.
-
-End COROLLARY.
