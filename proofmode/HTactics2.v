@@ -122,17 +122,16 @@ Section MODE.
         (eqr: Any.t -> Any.t -> Any.t -> Any.t -> Prop)
         (WF: mk_wf R a ((Any.pair mp_src mr_src↑), (Any.pair mp_tgt mr_tgt↑)))
         m n
-        (ARG: forall x_src varg_src, exists x_tgt varg_tgt FR,
-            <<SEP: bi_entails (R a mp_src mp_tgt ** P_src mn x_src varg_src argp)
-                              (bupd (P_tgt mn x_tgt varg_tgt argp ** FR))>>
-                   /\
-            <<SIM: forall mr_src' fr_src fr_tgt
+        (ARG: forall x_src varg_src, exists x_tgt,
+            <<SEP: (R a mp_src mp_tgt ** P_src mn x_src varg_src argp) ⊢
+                     (#=> ∃ varg_tgt FR, (P_tgt mn x_tgt varg_tgt argp ** FR ** ⌜(<<SIM: forall mr_src' fr_src fr_tgt
                   (TGT: P_tgt mn x_tgt varg_tgt argp fr_tgt)
                   (ACC: current_iPropL (fr_src ⋅ (mr_tgt ⋅ mr_src'))
                                        [("FR", FR); ("TF", OwnT fr_tgt); ("TM", OwnT mr_tgt)]),
                 gpaco8 (_sim_itree (mk_wf R) le) (cpn8 (_sim_itree (mk_wf R) le)) r rg _ _ eqr true true a
                        (Any.pair mp_src (mr_tgt ⋅ mr_src')↑, k_src (fr_src, ((mn, x_src), varg_src)))
-                       (Any.pair mp_tgt mr_tgt↑, k_tgt (fr_tgt, ((mn, x_tgt), varg_tgt)))>>)
+                       (Any.pair mp_tgt mr_tgt↑, k_tgt (fr_tgt, ((mn, x_tgt), varg_tgt)))>>)⌝))>>
+        )
     :
       gpaco8 (_sim_itree (mk_wf R) le) (cpn8 (_sim_itree (mk_wf R) le)) r rg _ _ eqr m n a
              ((Any.pair mp_src mr_src↑), (HoareFunArg P_src (mn, argp) >>= k_src))
@@ -151,22 +150,34 @@ Section MODE.
     exploit RSRC; et.
     { eapply URA.wf_mon. instantiate (1:=fr_src ⋅ mr_tgt). r_wf VALID. }
     i; des.
-    uipropall.
-    specialize (SEP (fr_src ⋅ mr_src')). exploit SEP; et.
-    { eapply URA.wf_mon. instantiate (1:=mr_tgt). r_wf VALID. }
-    { esplits; try eassumption; try refl; revgoals. r_solve. }
-    i; des. subst. rename b into fr_src'. rename a0 into fr_tgt.
+    assert(T: current_iPropL (fr_src ⋅ mr_src') [("A", (Own (fr_src ⋅ mr_src')))]).
+    { eapply current_iPropL_init.
+      { eapply URA.wf_mon. instantiate (1:=mr_tgt). r_wf VALID. }
+    }
+    assert(U: Own fr_src ∗ Own mr_src' ⊢ R a mp_src mp_tgt ** P_src mn x_src arg_src argp).
+    { clear - PRE x0. uipropall. i. des; subst. esplits.
+      { rewrite URA.add_comm. refl. }
+      { eapply iProp_mono; eauto. eapply URA.wf_mon. instantiate (1:=a0). r_wf WF. }
+      { eapply iProp_mono; eauto. eapply URA.wf_mon. instantiate (1:=b). r_wf WF. }
+    }
+    mAssert _%I with "A".
+    { iDestruct "A" as "[A B]". instantiate (1:=(Own fr_src ∗ Own mr_src')%I). iFrame. }
+    mAssert _%I with "A1".
+    { iStopProof. etrans; eauto. }
+    clear SEP U. mUpd "A". mDesAll.
+    inv T. rr in IPROP. uipropall. des; subst.
+    rename a0 into varg_tgt. rename a3 into fr_tgt. rename a1 into FR. rename a2 into fr_src'. clear GWF.
     repeat (ired_both; apply sim_itreeC_spec; econs). exists fr_tgt.
     repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; eauto.
     { eapply URA.updatable_wf; et. rewrite ! URA.unit_id.
       replace (fr_src ⋅ (mr_tgt ⋅ mr_src')) with ((fr_src ⋅ mr_src') ⋅ mr_tgt) by r_solve.
       eapply URA.updatable_add; et; try refl.
       etrans; et. eapply URA.extends_updatable.
-      exists (fr_src'). r_solve. }
+      exists (fr_src' ⋅ b0). r_solve. }
     repeat (ired_both; apply sim_itreeC_spec; econs). exists varg_tgt.
     repeat (ired_both; apply sim_itreeC_spec; econs). unshelve esplits; et.
     ired_both.
-    eapply SIM.
+    eapply PURE.
     { rewrite URA.unit_id. ss. }
     unshelve eassert(T:=@current_iPropL_init (fr_src ⋅ mr_src' ⋅ mr_tgt) "N" _).
     { r_wf VALID. }
@@ -174,7 +185,7 @@ Section MODE.
     { iDestruct "N" as "[A B]". iFrame.
       iDestruct (Own_Upd with "A") as "T".
       { r; et. }
-      iMod "T". iDestruct "T" as "[A B]". iFrame.
+      iMod "T". iDestruct "T" as "[A [B _]]". iFrame.
       iStopProof. eapply from_semantic; et.
     }
     mUpd "A". mDesAll. mRename "A1" into "TM". mRename "A2" into "TF". mRename "A" into "FR". ss.

@@ -1829,8 +1829,8 @@ Section ADEQUACY.
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
         (ISIM: forall x_src, exists x_tgt,
             (<<OLE: ord_le (measure fsp_tgt x_tgt) (measure fsp_src x_src)>>) /\
-            forall w mn_caller arg_src argp st_src st_tgt, ∃ arg_tgt,
-              (inv_with le wf w st_src st_tgt ** fsp_src.(precond) mn_caller x_src arg_src argp) ==∗
+            forall w mn_caller arg_src argp st_src st_tgt,
+              (inv_with le wf w st_src st_tgt ** fsp_src.(precond) mn_caller x_src arg_src argp) ==∗ ∃ arg_tgt,
               (fsp_tgt.(precond) mn_caller x_tgt arg_tgt argp ** (∀ OwnT,
 ⌜(fsp_tgt.(precond) mn_caller x_tgt arg_tgt argp OwnT)⌝ -*
                isim
@@ -1860,26 +1860,27 @@ Section ADEQUACY.
     subst. destruct y as [mn_caller arg].
     ginit. unfold fun_to_tgt. rewrite ! HoareFun_parse. inv WF. eapply harg_clo2; eauto.
     { econs; eauto. }
-    i. exploit ISIM; eauto. i; des. rename x1 into SIM. exploit SIM; eauto. i; des.
-    esplits; eauto.
+    i. exploit ISIM; eauto. i; des. rename x1 into SIM. exploit SIM; eauto. i; des. esplits; eauto.
     { iIntros "[A B]".
       iDestruct (x0 with "[A B]") as "C".
       { iFrame. unfold inv_with. iSplits; eauto. }
-      iFrame.
-    }
-    i. gfinal. right. eapply hsim_adequacy; auto.
-    ginit. { eapply cpn10_wcompat; eauto with paco. }
-    eapply isim_init; eauto.
-    { eapply current_iProp_entail; et. start_ipm_proof. iSplitR "FR"; try iAssumption.
-      - iSplitL "TF"; eauto.
-      - iApply "FR". iPureIntro. eapply iProp_mono; et.
-        + clear - ACC.
-          (*** TODO: make lemma ***)
-          mClear "J". eapply current_iProp_entail in ACC; cycle 1.
-          { start_ipm_proof. iCombine "TF" "TM" as "T". iAssumption. }
-          inv ACC. uipropall. eapply URA.wf_extends; et.
-          eapply URA.updatable_wf; et.
-        + exists mr_tgt; r_solve.
+      iMod "C". iDestruct "C" as (arg_tgt) "[A B]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro.
+      i. gfinal. right. eapply hsim_adequacy; auto.
+      ginit. { eapply cpn10_wcompat; eauto with paco. }
+      eapply isim_init; eauto.
+      { eapply current_iProp_entail; et. start_ipm_proof. iSplitR "FR"; try iAssumption.
+        - iSplitL "TF"; eauto.
+        - iApply "FR". iPureIntro. eapply iProp_mono; et.
+          + clear - ACC.
+            (*** TODO: make lemma ***)
+            mClear "J". eapply current_iProp_entail in ACC; cycle 1.
+            { start_ipm_proof. iCombine "TF" "TM" as "T". iAssumption. }
+            inv ACC. uipropall. eapply URA.wf_extends; et.
+            eapply URA.updatable_wf; et.
+          + exists mr_tgt; r_solve.
+      }
     }
   Qed.
 
@@ -1889,8 +1890,8 @@ Section ADEQUACY.
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
         (ISIM: forall x_src, exists x_tgt,
             (<<OLE: ord_le (measure fsp_tgt x_tgt) (measure fsp_src x_src)>>) /\
-            forall w mn_caller arg_src argp st_src st_tgt, ∃ arg_tgt,
-              (inv_with le wf w st_src st_tgt ** fsp_src.(precond) mn_caller x_src arg_src argp) ==∗
+            forall w mn_caller arg_src argp st_src st_tgt,
+              (inv_with le wf w st_src st_tgt ** fsp_src.(precond) mn_caller x_src arg_src argp) ==∗ ∃ arg_tgt,
               (fsp_tgt.(precond) mn_caller x_tgt arg_tgt argp ** (∀ OwnT,
 ⌜(fsp_tgt.(precond) mn_caller x_tgt arg_tgt argp OwnT)⌝ -*
                isim
@@ -1922,8 +1923,8 @@ Section ADEQUACY.
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
         (ISIM: forall x_src, exists x_tgt,
             (<<OLE: ord_le (measure ksp_tgt x_tgt) (measure ksp_src x_src)>>) /\
-            forall w mn_caller arg_src argp st_src st_tgt, ∃ arg_tgt,
-              (inv_with le wf w st_src st_tgt ** ksp_src.(precond) mn_caller x_src arg_src argp) ==∗
+            forall w mn_caller arg_src argp st_src st_tgt,
+              (inv_with le wf w st_src st_tgt ** ksp_src.(precond) mn_caller x_src arg_src argp) ==∗ ∃ arg_tgt,
               (ksp_tgt.(precond) mn_caller x_tgt arg_tgt argp ** (∀ OwnT,
 ⌜(ksp_tgt.(precond) mn_caller x_tgt arg_tgt argp OwnT)⌝ -*
                isim

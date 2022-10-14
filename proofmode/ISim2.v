@@ -1764,8 +1764,8 @@ Section ADEQUACY.
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
         (ISIM: forall x_src, exists x_tgt,
             (<<OLE: ord_le (measure fsp_tgt x_tgt) (measure fsp_src x_src)>>) /\
-            forall w mn_caller arg_src argp st_src st_tgt, ∃ arg_tgt,
-              (inv_with le wf w st_src st_tgt ** fsp_src.(precond) mn_caller x_src arg_src argp) ==∗
+            forall w mn_caller arg_src argp st_src st_tgt,
+              (inv_with le wf w st_src st_tgt ** fsp_src.(precond) mn_caller x_src arg_src argp) ==∗ ∃ arg_tgt,
               (fsp_tgt.(precond) mn_caller x_tgt arg_tgt argp ** isim
                  le wf mn stb_src stb_tgt (fsp_src.(measure) x_src)
                  (bot10, bot10, true, true)
@@ -1796,12 +1796,14 @@ Section ADEQUACY.
     { iIntros "[A B]".
       iDestruct (x0 with "[A B]") as "C".
       { iFrame. unfold inv_with. iSplits; eauto. }
-      iFrame.
+      iMod "C". iDestruct "C" as (arg_tgt) "[A B]". iModIntro. iSplits; eauto.
+      { iFrame. iAssumption. }
+      iPureIntro.
+      i. gfinal. right. eapply hsim_adequacy; auto.
+      ginit. { eapply cpn10_wcompat; eauto with paco. }
+      eapply isim_init; eauto.
+      { eapply current_iProp_entail; et. start_ipm_proof. iSplitR "FR"; try iAssumption. iSplitL "TF"; eauto. }
     }
-    i. gfinal. right. eapply hsim_adequacy; auto.
-    ginit. { eapply cpn10_wcompat; eauto with paco. }
-    eapply isim_init; eauto.
-    { eapply current_iProp_entail; et. start_ipm_proof. iSplitR "FR"; try iAssumption. iSplitL "TF"; eauto. }
   Qed.
 
   Lemma isim_fun_to_tgt
@@ -1810,8 +1812,8 @@ Section ADEQUACY.
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
         (ISIM: forall x_src, exists x_tgt,
             (<<OLE: ord_le (measure fsp_tgt x_tgt) (measure fsp_src x_src)>>) /\
-            forall w mn_caller arg_src argp st_src st_tgt, ∃ arg_tgt,
-              (inv_with le wf w st_src st_tgt ** fsp_src.(precond) mn_caller x_src arg_src argp) ==∗
+            forall w mn_caller arg_src argp st_src st_tgt,
+              (inv_with le wf w st_src st_tgt ** fsp_src.(precond) mn_caller x_src arg_src argp) ==∗ ∃ arg_tgt,
               (fsp_tgt.(precond) mn_caller x_tgt arg_tgt argp ** isim
                  le wf mn stb_src stb_tgt (fsp_src.(measure) x_src)
                  (bot10, bot10, true, true)
@@ -1840,8 +1842,8 @@ Section ADEQUACY.
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
         (ISIM: forall x_src, exists x_tgt,
             (<<OLE: ord_le (measure ksp_tgt x_tgt) (measure ksp_src x_src)>>) /\
-            forall w mn_caller arg_src argp st_src st_tgt, ∃ arg_tgt,
-              (inv_with le wf w st_src st_tgt ** ksp_src.(precond) mn_caller x_src arg_src argp) ==∗
+            forall w mn_caller arg_src argp st_src st_tgt,
+              (inv_with le wf w st_src st_tgt ** ksp_src.(precond) mn_caller x_src arg_src argp) ==∗ ∃ arg_tgt,
               (ksp_tgt.(precond) mn_caller x_tgt arg_tgt argp ** isim
                  le wf mn stb_src stb_tgt (ksp_src.(measure) x_src)
                  (bot10, bot10, true, true)
@@ -2038,7 +2040,7 @@ Section COROLLARY.
     { destruct (measure fsp x_src) eqn:T; ss. refl. (*** TODO: PreOrder ***) }
     i. esplits. iIntros "[A [B C]]". iFrame. iModIntro.
     unfold inv_with. iDestruct "A" as (w1) "[%A _]". subst.
-    iApply isim_wand.
+    iSplits; eauto. iFrame. iApply isim_wand.
     (* instantiate (1:=fun st_src st_tgt ret_src ret_tgt => *)
     (*                   (inv_with top2 wf tt st_src st_tgt ∗ ⌜ret_src = ret_tgt⌝)%I). cbn. *)
     instantiate (1:=fun st_src st_tgt ret_src ret_tgt => (⌜st_src = st_tgt ∧ ret_src = ret_tgt⌝)%I). cbn.
