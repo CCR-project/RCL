@@ -213,14 +213,17 @@ Section SIM.
        ⌜(<<SIM: forall fmr1 OwnT (TGT: fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp OwnT) (ACC: current_iProp fmr1 (Own OwnT ** J)),
             hsim _ _ OwnT Q fmr1 None true true (st_src1, ktr_src ret_src) (st_tgt1, ktr_tgt ret_tgt)>>)⌝)>>)
                   >>)
-          (* (<<POST: forall st_src1 st_tgt1 ret_src, exists ret_tgt J, *)
-          (*       (<<UPD: ∀ retp, (FR ** inv_with w0 st_src1 st_tgt1 ** *)
-          (*                               fsp_src.(postcond) (Some mn) x_src ret_src retp) *)
-          (*                ==∗ (fsp_tgt.(postcond) (Some mn) x_tgt ret_tgt retp ** J)>>) /\ *)
-          (*         (<<SIM: forall fmr1 OwnT (ACC: current_iProp fmr1 (Own OwnT ** J)), *)
-          (*             hsim _ _ OwnT Q fmr1 None true true (st_src1, ktr_src ret_src) (st_tgt1, ktr_tgt ret_tgt)>>)>>) *)
       )
       (MEASURE: o_src = ord_top)
+    :
+      _hsim hsim OwnT Q fmr fuel f_src f_tgt (st_src0, trigger (Call fn arg_src) >>= ktr_src)
+            (st_tgt0, trigger (Call fn arg_tgt) >>= ktr_tgt)
+  | hsim_call_fail
+      fn arg_src arg_tgt
+      st_src0 st_tgt0 ktr_src ktr_tgt
+      fuel f_src f_tgt
+      (SPEC: stb_src fn = None)
+      (SPEC: stb_tgt fn = None)
     :
       _hsim hsim OwnT Q fmr fuel f_src f_tgt (st_src0, trigger (Call fn arg_src) >>= ktr_src)
             (st_tgt0, trigger (Call fn arg_tgt) >>= ktr_tgt)
@@ -387,6 +390,13 @@ Section SIM.
             )
             (MEASURE: o_src = ord_top),
             P fuel f_src f_tgt (st_src0, trigger (Call fn arg_src) >>= ktr_src) (st_tgt0, trigger (Call fn arg_tgt) >>= ktr_tgt))
+        (CALLFAIL: forall
+            fn arg_src arg_tgt
+            st_src0 st_tgt0 ktr_src ktr_tgt
+            fuel f_src f_tgt
+            (SPEC: stb_src fn = None)
+            (SPEC: stb_tgt fn = None),
+            P fuel f_src f_tgt (st_src0, trigger (Call fn arg_src) >>= ktr_src) (st_tgt0, trigger (Call fn arg_tgt) >>= ktr_tgt))
         (APCSTART: forall
             fuel1
             st_src st_tgt ktr_src itr_tgt
@@ -513,6 +523,7 @@ Section SIM.
     fix IH 6. i. inv SIM.
     { eapply RET; eauto. }
     { eapply CALL; eauto. }
+    { eapply CALLFAIL; eauto. }
     { eapply APCSTART; eauto. }
     { des. eapply APCSTEP; eauto. }
     { eapply APCBOTH; eauto. }
@@ -537,24 +548,25 @@ Section SIM.
   Proof.
     ii. induction IN using _hsim_ind2.
     { econs 1; eauto. }
-    { econs 2; eauto. i. specialize (PRE x_tgt). des. esplits; et. i. exploit POST. i. etrans; eauto.
+    { econs 2; ss; try eassumption. i. specialize (PRE x_tgt). des. esplits; et. i. exploit POST. i. etrans; eauto.
       iIntros "A". iMod "A". iModIntro. iDestruct "A" as (x y) "[A %B]". iSplits; eauto. }
-    { econs 3; eauto. }
-    { des. econs 4; eauto. i. spc PRE. des. esplits; eauto. i. etrans; try apply POST.
+    { econs 3; ss; try eassumption. }
+    { econs 4; ss; try eassumption. }
+    { des. econs 5; ss; try eassumption. i. spc PRE. des. esplits; eauto. i. etrans; try apply POST.
       iIntros "A". iMod "A". iModIntro. iDestruct "A" as (x y) "[A %B]". iSplits; eauto. }
-    { econs 5; eauto. }
     { econs 6; eauto. }
     { econs 7; eauto. }
     { econs 8; eauto. }
-    { econs 9; eauto. des. esplits; eauto. }
-    { econs 10; eauto. i. hexploit SIM; eauto. i. des. eauto. }
+    { econs 9; eauto. }
+    { econs 10; eauto. des. esplits; eauto. }
     { econs 11; eauto. i. hexploit SIM; eauto. i. des. eauto. }
-    { econs 12; eauto. des. esplits; eauto. }
-    { econs 13; eauto. }
+    { econs 12; eauto. i. hexploit SIM; eauto. i. des. eauto. }
+    { econs 13; eauto. des. esplits; eauto. }
     { econs 14; eauto. }
     { econs 15; eauto. }
     { econs 16; eauto. }
     { econs 17; eauto. }
+    { econs 18; eauto. }
   Qed.
   Hint Resolve _hsim_mon: paco.
 
@@ -590,6 +602,14 @@ Section SIM.
                   >>)
             )
             (MEASURE: o_src = ord_top),
+            P fuel f_src f_tgt (st_src0, trigger (Call fn arg_src) >>= ktr_src)
+                  (st_tgt0, trigger (Call fn arg_tgt) >>= ktr_tgt))
+        (CALLFAIL: forall
+            fn arg_src arg_tgt
+            st_src0 st_tgt0 ktr_src ktr_tgt
+            fuel f_src f_tgt
+            (SPEC: stb_src fn = None)
+            (SPEC: stb_tgt fn = None),
             P fuel f_src f_tgt (st_src0, trigger (Call fn arg_src) >>= ktr_src)
                   (st_tgt0, trigger (Call fn arg_tgt) >>= ktr_tgt))
         (APCSTART: forall
@@ -720,6 +740,7 @@ Section SIM.
     { eapply CALL; try eassumption. i. hexploit PRE. i; des. esplits; et. i.
       etrans; try apply POST. iIntros ">A". iModIntro. iDestruct "A" as (x y) "[A %]". iSplits; ss.
       iPureIntro. ii. exploit H; eauto. i; des. pclearbot. eauto. }
+    { eapply CALLFAIL; try eassumption. }
     { eapply APCSTART; eauto. pfold. eauto. }
     { des. eapply APCSTEP; eauto. i. spc PRE. des. esplits; eauto. i.
       etrans; try apply POST. iIntros ">A". iModIntro. iDestruct "A" as (x y) "[A %]". iSplits; ss.
@@ -855,6 +876,7 @@ Section SIM.
         }
       }
     }
+    { destruct fuel; steps. }
     { destruct fuel; steps.
       { astop. steps. exploit IHSIM; eauto. i. destruct fuel1; ss.
         { astart t0.
@@ -1014,21 +1036,22 @@ Section SIM.
     induction SIM using _hsim_ind2; i; clarify.
     { econs 1; eauto. }
     { econs 2; eauto. }
-    { econs 3. eapply IHSIM; eauto. }
-    { econs 4; eauto. }
+    { econs 3; eauto. }
+    { econs 4. eapply IHSIM; eauto. }
     { econs 5; eauto. }
-    { econs 6. eauto. }
-    { econs 7. eapply IHSIM; eauto. }
-    { econs 8; eauto. }
-    { econs 9; eauto. des. esplits. eapply IH; eauto. }
-    { econs 10; eauto. i. hexploit SIM; eauto. i. des. eauto. }
-    { econs 11; eauto. i. hexploit SIM; eauto. i. des. eapply IH; eauto. }
-    { econs 12; eauto. des. esplits; eauto. }
-    { econs 13. eapply IHSIM; auto. }
+    { econs 6; eauto. }
+    { econs 7. eauto. }
+    { econs 8. eapply IHSIM; eauto. }
+    { econs 9; eauto. }
+    { econs 10; eauto. des. esplits. eapply IH; eauto. }
+    { econs 11; eauto. i. hexploit SIM; eauto. i. des. eauto. }
+    { econs 12; eauto. i. hexploit SIM; eauto. i. des. eapply IH; eauto. }
+    { econs 13; eauto. des. esplits; eauto. }
     { econs 14. eapply IHSIM; auto. }
     { econs 15. eapply IHSIM; auto. }
     { econs 16. eapply IHSIM; auto. }
-    { exploit SRC; auto. exploit TGT; auto. i. clarify. econs 17; eauto. }
+    { econs 17. eapply IHSIM; auto. }
+    { exploit SRC; auto. exploit TGT; auto. i. clarify. econs 18; eauto. }
   Qed.
 
   Variant fuelC (r: forall R_src R_tgt
@@ -1061,32 +1084,33 @@ Section SIM.
     econs; eauto with paco. i. inv PR. eapply GF in SIM.
     revert x5 ORD. induction SIM using _hsim_ind2; i; clarify.
     { econs 1; eauto. }
-    { econs 2; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
+    { econs 2; ss; try eassumption. i. hexploit PRE; try eassumption. i; des. esplits; eauto.
       i. etrans; try apply POST.
       iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
       { iFrame. iAssumption. }
       iPureIntro. i. exploit C; eauto. eapply rclo10_base. }
-    { econs 3; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base. auto. }
-    { destruct x5; ss. econs 4; eauto. des. esplits; eauto.
+    { econs 3; ss. }
+    { econs 4; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base. auto. }
+    { destruct x5; ss. econs 5; [eassumption|eassumption| |].
       { eapply Ord.lt_le_lt; eauto. }
       { i. specialize (PRE x_tgt). i; des. esplits; eauto. i. etrans; try apply POST.
       iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
       { iFrame. iAssumption. }
       iPureIntro. i. exploit C; eauto. eapply rclo10_base. }
     }
-    { econs 5; eauto. i. eapply rclo10_base. auto. }
     { econs 6; eauto. i. eapply rclo10_base. auto. }
-    { econs 7; eauto. eapply _hsim_mon; eauto. i. apply rclo10_base. auto. }
-    { econs 8; eauto. }
-    { econs 9; eauto. des. esplits; eauto. eapply _hsim_mon; eauto. i. apply rclo10_base. auto. }
-    { econs 10; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
-    { econs 11; eauto. i. hexploit SIM; eauto. i. des. eapply _hsim_mon; eauto. i. eapply rclo10_base; auto. }
-    { econs 12; eauto. des. esplits; eauto. }
-    { econs 13; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base; eauto. }
-    { econs 14; eauto. }
-    { econs 15; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base; eauto. }
-    { econs 16; eauto. }
-    { econs 17; eauto. eapply rclo10_clo_base. econs; eauto. }
+    { econs 7; eauto. i. eapply rclo10_base. auto. }
+    { econs 8; eauto. eapply _hsim_mon; eauto. i. apply rclo10_base. auto. }
+    { econs 9; eauto. }
+    { econs 10; eauto. des. esplits; eauto. eapply _hsim_mon; eauto. i. apply rclo10_base. auto. }
+    { econs 11; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
+    { econs 12; eauto. i. hexploit SIM; eauto. i. des. eapply _hsim_mon; eauto. i. eapply rclo10_base; auto. }
+    { econs 13; eauto. des. esplits; eauto. }
+    { econs 14; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base; eauto. }
+    { econs 15; eauto. }
+    { econs 16; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base; eauto. }
+    { econs 17; eauto. }
+    { econs 18; eauto. eapply rclo10_clo_base. econs; eauto. }
   Qed.
 
   Variant hflagC (r: forall R_src R_tgt
@@ -1200,6 +1224,15 @@ Section SIM.
       )
       (MEASURE: o_src = ord_top)
       (NPURE: fsp_src.(measure) x_src = ord_top)
+    :
+      hsimC r g OwnT Q fmr fuel f_src f_tgt (st_src0, trigger (Call fn arg_src) >>= ktr_src)
+            (st_tgt0, trigger (Call fn arg_tgt) >>= ktr_tgt)
+  | hsimC_call_fail
+      fn arg_src arg_tgt
+      st_src0 st_tgt0 ktr_src ktr_tgt
+      fuel f_src f_tgt
+      (SPEC: stb_src fn = None)
+      (SPEC: stb_tgt fn = None)
     :
       hsimC r g OwnT Q fmr fuel f_src f_tgt (st_src0, trigger (Call fn arg_src) >>= ktr_src)
             (st_tgt0, trigger (Call fn arg_tgt) >>= ktr_tgt)
@@ -1337,21 +1370,22 @@ Section SIM.
     { econs 2; eauto. i. specialize (PRE x_tgt). des. esplits; et. i. exploit POST. i. etrans; eauto.
       iIntros "A". iMod "A". iModIntro. iDestruct "A" as (x y) "[A %B]". iSplits; eauto. }
     { econs 3; eauto. }
-    { des. econs 4; eauto. i. spc PRE. des. esplits; eauto. i. etrans; try apply POST.
+    { econs 4; eauto. }
+    { des. econs 5; eauto. i. spc PRE. des. esplits; eauto. i. etrans; try apply POST.
       iIntros "A". iMod "A". iModIntro. iDestruct "A" as (x y) "[A %B]". iSplits; eauto. }
-    { econs 5; eauto. }
     { econs 6; eauto. }
     { econs 7; eauto. }
     { econs 8; eauto. }
-    { econs 9; eauto. des. esplits; eauto. }
-    { econs 10; eauto. }
+    { econs 9; eauto. }
+    { econs 10; eauto. des. esplits; eauto. }
     { econs 11; eauto. }
-    { econs 12; eauto. des. esplits; eauto. }
-    { econs 13; eauto. }
+    { econs 12; eauto. }
+    { econs 13; eauto. des. esplits; eauto. }
     { econs 14; eauto. }
     { econs 15; eauto. }
     { econs 16; eauto. }
     { econs 17; eauto. }
+    { econs 18; eauto. }
   Qed.
 
   Lemma hsim_indC_mon: monotone10 (fun r => @hsimC r r).
@@ -1371,25 +1405,26 @@ Section SIM.
       iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
       { iFrame. iAssumption. }
       iPureIntro. i. exploit C; eauto. i. eapply rclo10_base. eauto. }
-    { econs 3; eauto. eapply GF in SIM. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
-    { econs 4; try eassumption. i. specialize (PRE x_tgt). des. esplits; eauto.
+    { econs 3; eauto. }
+    { econs 4; eauto. eapply GF in SIM. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
+    { econs 5; try eassumption. i. specialize (PRE x_tgt). des. esplits; eauto.
       i. etrans; try apply POST.
       iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
       { iFrame. iAssumption. }
       iPureIntro. i. exploit C; eauto. i. eapply rclo10_base. eauto. }
-    { econs 5; eauto. i. eapply rclo10_base. eauto. }
     { econs 6; eauto. i. eapply rclo10_base. eauto. }
-    { econs 7; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
+    { econs 7; eauto. i. eapply rclo10_base. eauto. }
     { econs 8; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
-    { econs 9; eauto. des. esplits; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
-    { econs 10; eauto. i. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
+    { econs 9; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
+    { econs 10; eauto. des. esplits; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
     { econs 11; eauto. i. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
-    { econs 12; eauto. des. esplits; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
-    { econs 13; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
+    { econs 12; eauto. i. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
+    { econs 13; eauto. des. esplits; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
     { econs 14; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
     { econs 15; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
     { econs 16; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
-    { econs 17; eauto. eapply rclo10_base. eauto. }
+    { econs 17; eauto. eapply _hsim_mon; eauto. i. eapply rclo10_base. eauto. }
+    { econs 18; eauto. eapply rclo10_base. eauto. }
   Qed.
 
   Lemma hsimC_spec:
@@ -1402,25 +1437,26 @@ Section SIM.
       iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
       { iFrame. iAssumption. }
       iPureIntro. i. exploit C; eauto. i. gbase. eauto. }
-    { guclo hsim_indC_spec. ss. econs 3; eauto. gbase. eauto. }
-    { gstep. econs 4; try eassumption. i. specialize (PRE x_tgt). des. esplits; eauto.
+    { guclo hsim_indC_spec. ss. econs 3; eauto. }
+    { guclo hsim_indC_spec. ss. econs 4; eauto. gbase. eauto. }
+    { gstep. econs 5; try eassumption. i. specialize (PRE x_tgt). des. esplits; eauto.
       i. etrans; try apply POST.
       iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
       { iFrame. iAssumption. }
       iPureIntro. i. exploit C; eauto. i. gbase. eauto. }
-    { gstep. econs 5; eauto. des. esplits; eauto. i. gbase. eauto. }
-    { gstep. econs 6; eauto. i. gbase. eauto. }
-    { guclo hsim_indC_spec. ss. econs 7; eauto. gbase. eauto. }
+    { gstep. econs 6; eauto. des. esplits; eauto. i. gbase. eauto. }
+    { gstep. econs 7; eauto. i. gbase. eauto. }
     { guclo hsim_indC_spec. ss. econs 8; eauto. gbase. eauto. }
-    { guclo hsim_indC_spec. ss. econs 9; eauto. des. esplits; eauto. gbase. eauto. }
-    { guclo hsim_indC_spec. ss. econs 10; eauto. gbase. eauto. }
+    { guclo hsim_indC_spec. ss. econs 9; eauto. gbase. eauto. }
+    { guclo hsim_indC_spec. ss. econs 10; eauto. des. esplits; eauto. gbase. eauto. }
     { guclo hsim_indC_spec. ss. econs 11; eauto. gbase. eauto. }
-    { guclo hsim_indC_spec. ss. econs 12; eauto. des. esplits; eauto. gbase. eauto. }
-    { guclo hsim_indC_spec. ss. econs 13; eauto. gbase. eauto. }
+    { guclo hsim_indC_spec. ss. econs 12; eauto. gbase. eauto. }
+    { guclo hsim_indC_spec. ss. econs 13; eauto. des. esplits; eauto. gbase. eauto. }
     { guclo hsim_indC_spec. ss. econs 14; eauto. gbase. eauto. }
     { guclo hsim_indC_spec. ss. econs 15; eauto. gbase. eauto. }
     { guclo hsim_indC_spec. ss. econs 16; eauto. gbase. eauto. }
-    { gstep. econs 17; eauto. i. gbase. eauto. }
+    { guclo hsim_indC_spec. ss. econs 17; eauto. gbase. eauto. }
+    { gstep. econs 18; eauto. i. gbase. eauto. }
   Qed.
 
   Lemma hsimC_uclo r g:
@@ -1479,27 +1515,28 @@ Section SIM.
       iPureIntro. i. gbase. eapply rclo10_clo_base. left. econs; eauto.
     }
     { eapply hsimC_uclo. econs 3; eauto. }
-    { gstep. econs 4; try eassumption. i. specialize (PRE x_tgt). des. esplits; eauto.
+    { eapply hsimC_uclo. econs 4; eauto. }
+    { gstep. econs 5; try eassumption. i. specialize (PRE x_tgt). des. esplits; eauto.
       i. etrans; try apply POST.
       iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
       { iFrame. iAssumption. }
       iPureIntro. i. gbase. eapply rclo10_clo_base. left. econs; eauto.
     }
-    { des. gstep. econs 5; eauto. esplits; eauto. i.
+    { des. gstep. econs 6; eauto. esplits; eauto. i.
       hexploit SIM; eauto. i. gbase. eapply rclo10_clo_base. left. econs; eauto.
     }
-    { gstep. econs 6; eauto. i. gbase. eapply rclo10_clo_base. left. econs; eauto. }
-    { eapply hsimC_uclo. econs 7; eauto. }
+    { gstep. econs 7; eauto. i. gbase. eapply rclo10_clo_base. left. econs; eauto. }
     { eapply hsimC_uclo. econs 8; eauto. }
-    { des. eapply hsimC_uclo. econs 9; eauto. }
-    { eapply hsimC_uclo. econs 10; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
+    { eapply hsimC_uclo. econs 9; eauto. }
+    { des. eapply hsimC_uclo. econs 10; eauto. }
     { eapply hsimC_uclo. econs 11; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
-    { des. eapply hsimC_uclo. econs 12; eauto. }
-    { eapply hsimC_uclo. econs 13; eauto. }
+    { eapply hsimC_uclo. econs 12; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
+    { des. eapply hsimC_uclo. econs 13; eauto. }
     { eapply hsimC_uclo. econs 14; eauto. }
     { eapply hsimC_uclo. econs 15; eauto. }
     { eapply hsimC_uclo. econs 16; eauto. }
-    { gstep. econs 17; eauto. gbase. eapply rclo10_clo_base. left. econs; eauto. }
+    { eapply hsimC_uclo. econs 17; eauto. }
+    { gstep. econs 18; eauto. gbase. eapply rclo10_clo_base. left. econs; eauto. }
   Unshelve. all: try by ss.
   Qed.
 
@@ -1548,16 +1585,17 @@ Section SIM.
     { apply f_equal with (f:=_observe) in H0. ss. }
     { apply f_equal with (f:=_observe) in H0. ss. }
     { apply f_equal with (f:=_observe) in H0. ss. }
-    { eapply hsimC_uclo. econs 8; eauto. }
     { apply f_equal with (f:=_observe) in H0. ss. }
-    { eapply hsimC_uclo. econs 10; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
+    { eapply hsimC_uclo. econs 9; eauto. }
     { apply f_equal with (f:=_observe) in H0. ss. }
-    { des. eapply hsimC_uclo. econs 12; eauto. }
+    { eapply hsimC_uclo. econs 11; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
     { apply f_equal with (f:=_observe) in H0. ss. }
-    { eapply hsimC_uclo. econs 14; eauto. }
+    { des. eapply hsimC_uclo. econs 13; eauto. }
     { apply f_equal with (f:=_observe) in H0. ss. }
-    { eapply hsimC_uclo. econs 16; eauto. }
-    { gstep. econs 17; eauto. gbase. eapply rclo10_clo_base. left. econs; eauto. }
+    { eapply hsimC_uclo. econs 15; eauto. }
+    { apply f_equal with (f:=_observe) in H0. ss. }
+    { eapply hsimC_uclo. econs 17; eauto. }
+    { gstep. econs 18; eauto. gbase. eapply rclo10_clo_base. left. econs; eauto. }
   Qed.
 
   Variant hsplitC (r: forall R_src R_tgt
@@ -1603,7 +1641,8 @@ Section SIM.
     }
     { apply f_equal with (f:=_observe) in H0. ss. }
     { apply f_equal with (f:=_observe) in H0. ss. }
-    { des. gstep. econs 4; [..|M]; Mskip eauto.
+    { apply f_equal with (f:=_observe) in H0. ss. }
+    { des. gstep. econs 5; [..|M]; Mskip eauto.
       { eapply OrdArith.lt_add_r. eauto. }
       i. specialize (PRE x_tgt). des. esplits; eauto. etrans; try apply POST.
       iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
@@ -1612,16 +1651,16 @@ Section SIM.
     }
     { apply f_equal with (f:=_observe) in H0. ss. }
     { apply f_equal with (f:=_observe) in H0. ss. }
-    { eapply hsimC_uclo. econs 8; eauto. }
+    { eapply hsimC_uclo. econs 9; eauto. }
     { apply f_equal with (f:=_observe) in H0. ss. }
-    { eapply hsimC_uclo. econs 10; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
+    { eapply hsimC_uclo. econs 11; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
     { apply f_equal with (f:=_observe) in H0. ss. }
-    { des. eapply hsimC_uclo. econs 12; eauto. }
+    { des. eapply hsimC_uclo. econs 13; eauto. }
     { apply f_equal with (f:=_observe) in H0. ss. }
-    { eapply hsimC_uclo. econs 14; eauto. }
+    { eapply hsimC_uclo. econs 15; eauto. }
     { apply f_equal with (f:=_observe) in H0. ss. }
-    { eapply hsimC_uclo. econs 16; eauto. }
-    { gstep. econs 17; eauto. gbase. eapply rclo10_clo_base. left. econs; eauto. }
+    { eapply hsimC_uclo. econs 17; eauto. }
+    { gstep. econs 18; eauto. gbase. eapply rclo10_clo_base. left. econs; eauto. }
   Qed.
 
   Variant hmonoC (r: forall R_src R_tgt
@@ -1665,25 +1704,26 @@ Section SIM.
       iPureIntro. i. eapply rclo10_clo_base. econs; eauto.
     }
     { econs 3; eauto. }
-    { econs 4; try eassumption.
+    { econs 4; eauto. }
+    { econs 5; try eassumption.
       i. specialize (PRE x_tgt). des. esplits; eauto. etrans; try apply POST.
       iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
       { iFrame. iAssumption. }
       iPureIntro. i. eapply rclo10_clo_base. econs; eauto.
     }
-    { econs 5; eauto. des. esplits; eauto. i. hexploit SIM; eauto. i. eapply rclo10_clo_base. econs; eauto. }
-    { econs 6; eauto. i. eapply rclo10_clo_base. econs; eauto. }
-    { econs 7; eauto. }
+    { econs 6; eauto. des. esplits; eauto. i. hexploit SIM; eauto. i. eapply rclo10_clo_base. econs; eauto. }
+    { econs 7; eauto. i. eapply rclo10_clo_base. econs; eauto. }
     { econs 8; eauto. }
-    { econs 9; eauto. des. esplits; eauto. }
-    { econs 10; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
+    { econs 9; eauto. }
+    { econs 10; eauto. des. esplits; eauto. }
     { econs 11; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
-    { econs 12; eauto. des. esplits; eauto. }
-    { econs 13; eauto. }
+    { econs 12; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
+    { econs 13; eauto. des. esplits; eauto. }
     { econs 14; eauto. }
     { econs 15; eauto. }
     { econs 16; eauto. }
-    { econs 17; eauto. eapply rclo10_clo_base. econs; eauto. }
+    { econs 17; eauto. }
+    { econs 18; eauto. eapply rclo10_clo_base. econs; eauto. }
   Qed.
 
   Variant hframeC_aux (r: forall R_src R_tgt
@@ -1745,7 +1785,8 @@ Section SIM.
       }
     }
     { econs 3; eauto. }
-    { econs 4; eauto. i. hexpl PRE0; eauto. esplits; eauto.
+    { econs 4; eauto. }
+    { econs 5; eauto. i. hexpl PRE0; eauto. esplits; eauto.
       { eapply current_iProp_updatable; et. eapply current_iProp_frame_own; eauto.
         { eapply URA.updatable_wf; et. }
         eapply current_iProp_entail.
@@ -1766,7 +1807,7 @@ Section SIM.
         econs; et.
       }
     }
-    { econs 5; eauto.
+    { econs 6; eauto.
       { eapply current_iProp_updatable; et.
         eapply current_iProp_frame_own; et.
         { eapply URA.updatable_wf; et. }
@@ -1788,18 +1829,18 @@ Section SIM.
         }
       }
     }
-    { econs 6; eauto. i. eapply rclo10_clo_base. econs; eauto. }
-    { econs 7; eauto. }
+    { econs 7; eauto. i. eapply rclo10_clo_base. econs; eauto. }
     { econs 8; eauto. }
-    { econs 9; eauto. des. esplits; eauto. }
-    { econs 10; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
+    { econs 9; eauto. }
+    { econs 10; eauto. des. esplits; eauto. }
     { econs 11; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
-    { econs 12; eauto. des. esplits; eauto. }
-    { econs 13; eauto. }
+    { econs 12; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
+    { econs 13; eauto. des. esplits; eauto. }
     { econs 14; eauto. }
     { econs 15; eauto. }
     { econs 16; eauto. }
-    { econs 17; eauto. eapply rclo10_clo_base. econs; eauto. }
+    { econs 17; eauto. }
+    { econs 18; eauto. eapply rclo10_clo_base. econs; eauto. }
   Qed.
 
   Variant hframeC (r: forall R_src R_tgt
@@ -1886,29 +1927,30 @@ Section SIM.
       iPureIntro. i. eapply rclo10_clo_base. econs; eauto; try refl. apply ACC.
     }
     { econs 3; eauto. }
-    { econs 4; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
+    { econs 4; eauto. }
+    { econs 5; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
       { eapply current_iProp_updatable; et. }
       i. etrans; try apply POST.
       iIntros ">A". iDestruct "A" as (ret_tgt J) "[[A B] %C]". iModIntro. iSplits; eauto.
       { iFrame. iAssumption. }
       iPureIntro. i. eapply rclo10_clo_base. econs; eauto; try refl. apply ACC.
     }
-    { econs 5; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
+    { econs 6; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
       { eapply current_iProp_updatable; et. }
       i. eapply rclo10_clo_base. econs; eauto; try refl. apply ACC.
     }
-    { econs 6; eauto. i. eapply rclo10_clo_base. econs; eauto. }
-    { econs 7; eauto. }
+    { econs 7; eauto. i. eapply rclo10_clo_base. econs; eauto. }
     { econs 8; eauto. }
-    { econs 9; eauto. des. esplits; eauto. }
-    { econs 10; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
+    { econs 9; eauto. }
+    { econs 10; eauto. des. esplits; eauto. }
     { econs 11; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
-    { econs 12; eauto. des. esplits; eauto. }
-    { econs 13; eauto. }
+    { econs 12; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
+    { econs 13; eauto. des. esplits; eauto. }
     { econs 14; eauto. }
     { econs 15; eauto. }
     { econs 16; eauto. }
-    { econs 17; eauto. eapply rclo10_clo_base. econs; eauto. }
+    { econs 17; eauto. }
+    { econs 18; eauto. eapply rclo10_clo_base. econs; eauto. }
   Qed.
 
   Variant hupdC2 (r: forall R_src R_tgt
@@ -1955,7 +1997,8 @@ Section SIM.
       iPureIntro. i. eapply rclo10_clo_base. econs; eauto; try refl.
     }
     { econs 3; eauto. }
-    { econs 4; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
+    { econs 4; eauto. }
+    { econs 5; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
       { eapply current_iProp_upd. eapply current_iProp_entail; eauto.
         iIntros "[A B]". iFrame. iApply Own_Upd; eauto. }
       i. etrans; try apply POST.
@@ -1963,23 +2006,23 @@ Section SIM.
       { iFrame. iAssumption. }
       iPureIntro. i. eapply rclo10_clo_base. econs; eauto; try refl.
     }
-    { econs 5; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
+    { econs 6; eauto. i. hexploit PRE; eauto. i; des. esplits; eauto.
       { eapply current_iProp_upd. eapply current_iProp_entail; eauto.
         iIntros "[[A B] C]". instantiate (1:=FR). iFrame. iApply Own_Upd; eauto. }
       i. eapply rclo10_clo_base. econs; eauto; try refl.
     }
-    { econs 6; eauto. i. eapply rclo10_clo_base. econs; eauto. }
-    { econs 7; eauto. }
+    { econs 7; eauto. i. eapply rclo10_clo_base. econs; eauto. }
     { econs 8; eauto. }
-    { econs 9; eauto. des. esplits; eauto. }
-    { econs 10; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
+    { econs 9; eauto. }
+    { econs 10; eauto. des. esplits; eauto. }
     { econs 11; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
-    { econs 12; eauto. des. esplits; eauto. }
-    { econs 13; eauto. }
+    { econs 12; eauto. i. hexploit SIM; eauto. i. des. esplits; eauto. }
+    { econs 13; eauto. des. esplits; eauto. }
     { econs 14; eauto. }
     { econs 15; eauto. }
     { econs 16; eauto. }
-    { econs 17; eauto. eapply rclo10_clo_base. econs; eauto. }
+    { econs 17; eauto. }
+    { econs 18; eauto. eapply rclo10_clo_base. econs; eauto. }
   Qed.
 
 End SIM.

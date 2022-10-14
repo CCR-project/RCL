@@ -1912,26 +1912,125 @@ Section ADEQUACY.
 
 End ADEQUACY.
 
+
+
+
+
+
+
+
+Section REFL.
+  Context `{Σ: GRA.t}.
+
+  Variable mn: mname.
+  Variable stb: gname -> option fspec.
+  (* Variable o: ord. *)
+  Let o := ord_top.
+  Let Q R := fun (st_src st_tgt: Any.t) (ret_src ret_tgt: R) => (⌜st_src = st_tgt ∧ ret_src = ret_tgt⌝: iProp)%I.
+  Hypothesis TOP: forall fn fsp x (SOME: stb fn = Some fsp), fsp.(measure) x = ord_top.
+
+  Let wf: _ -> Any.t -> Any.t -> iProp := (fun (_: unit) x y => (⌜x = y⌝: iProp)%I).
+
+  Let hsim := @hsim _ _ top2 wf mn stb stb o.
+
+  Let lemma: ∀ fmr_src (WF: URA.wf fmr_src) OwnT (UPD: URA.updatable fmr_src OwnT) R t r,
+      current_iProp (fmr_src) (Own OwnT ** @Q R t t r r).
+    i.
+    eapply current_iProp_entail; cycle 1.
+    { unfold Q. iIntros "A". iSplitL; eauto. }
+    econs; eauto.
+    { uipropall. refl. }
+  Qed.
+
+  Global Program Instance _hsim_refl (hsim: ∀ R_src R_tgt, Σ → (Any.t → Any.t → R_src → R_tgt → iProp)
+     → Σ → option Ord.t → bool → bool → Any.t * itree hEs R_src → Any.t * itree hEs R_tgt → Prop)
+    `{REFL: ∀ R2 OwnT2 fmr_src2 (WF: URA.wf fmr_src2) (UPD: URA.updatable fmr_src2 OwnT2) fuel2 f2,
+        Reflexive (@hsim R2 R2 OwnT2 (@Q R2) fmr_src2 fuel2 f2 f2)}
+    : ∀ R OwnT fmr_src (WF: URA.wf fmr_src) (UPD: URA.updatable fmr_src OwnT) fuel f,
+      Reflexive (@HSim2._hsim _ _ top2 wf mn stb stb o hsim R R OwnT (@Q R) fmr_src fuel f f).
+  Next Obligation.
+    i. destruct x. ides i.
+    - econs; eauto.
+    - econs. econs. econs. eapply REFL; eauto.
+    - destruct e; [|destruct e; [|destruct s]].
+      + destruct h. rewrite <- ! bind_trigger. econsr.
+        { eapply current_iProp_entail; eauto. iIntros "[$ A]". unfold inv_with. iSplitR; et. iAssumption. }
+        i. ss.
+        eapply current_iPropL_convert in ACC. unfold inv_with in ACC. unfold wf in ACC. subst Q. mDesAll. subst.
+        clear - REFL ACC.
+        inv ACC; ss.
+        eapply REFL; eauto. etrans; et. rr in IPROP. uipropall. des; subst. eapply URA.extends_updatable; et. etrans; et.
+        exists b; r_solve.
+      + destruct c. rewrite <- ! bind_trigger.
+        destruct (stb fn) as [fsp|] eqn:T; cycle 1.
+        { econsr; eauto. }
+        econs; et. i. exists x_tgt, True%I. esplits; et.
+        { eapply current_iProp_entail; et. iIntros "[$ %]". iIntros. iFrame. eauto. }
+        i. iIntros "[% B]". ss. des; subst. iModIntro. iSplits; eauto.
+        { iFrame. instantiate (1:=emp%I). ss. }
+        iPureIntro. i. eapply REFL; et.
+        { apply ACC. }
+        { eapply current_iProp_entail in ACC; cycle 1. { iIntros "[A _]". iAssumption. }
+          clear - ACC. inv ACC. etrans; et. uipropall. eapply URA.extends_updatable; et. }
+      + rewrite <- ! bind_trigger. destruct p.
+        * econs. econs. econs. eapply REFL; eauto.
+        * econs. econs. econs. eapply REFL; eauto.
+      + rewrite <- ! bind_trigger. destruct e.
+        * econsr. econs. exists x. econs. eapply REFL; eauto.
+        * econs. econsr. exists x. econs. eapply REFL; eauto.
+        * econs. i. eapply REFL; eauto.
+  Unshelve.
+    all: try (by apply unit).
+    all: ss.
+  Qed.
+
+  Global Program Instance hsim_refl:
+    ∀ R2 OwnT2 fmr_src2 (WF: URA.wf fmr_src2) (UPD: URA.updatable fmr_src2 OwnT2) fuel2 f2,
+      Reflexive (@hsim R2 R2 OwnT2 (@Q R2) fmr_src2 fuel2 f2 f2).
+  Next Obligation.
+    i.
+    ginit.
+    { eapply compat10_wcompat; eauto with paco. eapply cpn10_compat; eauto with paco. }
+    revert_until lemma.
+    gcofix CIH.
+    { i. gstep. eapply _hsim_refl; eauto. ii. gbase. eapply CIH; eauto. }
+  Unshelve.
+    all: try (by apply unit).
+    all: ss.
+  Qed.
+
+  Global Program Instance hsim_refl_gen:
+    ∀ R2 OwnT2 fmr_src2 (WF: URA.wf fmr_src2) (UPD: URA.updatable fmr_src2 OwnT2) fuel2 f2 r g,
+      Reflexive (gpaco10 (HSim2._hsim top2 wf mn stb stb o) (cpn10 (HSim2._hsim top2 wf mn stb stb o))
+                   r g R2 R2 OwnT2 (Q (R:=R2)) fmr_src2 fuel2 f2 f2).
+  Next Obligation.
+    gcofix CIH.
+    { i. gstep. eapply _hsim_refl; eauto. ii. gbase. eapply CIH; eauto. }
+  Qed.
+
+End REFL.
+
+
+
 Section COROLLARY.
   Context `{Σ: GRA.t}.
   Let wf: _ -> Any.t -> Any.t -> iProp := (fun (_: unit) x y => (⌜x = y⌝: iProp)%I).
-  (* Variable world: Type. *)
-  (* Variable le: relation world. *)
-  (* Context `{PreOrder _ le}. *)
   Variable fsp: fspec.
   Variable body: option string * Any.t → itree (hAPCE +' Es) Any.t.
   Variable FR: iProp.
+  Hypothesis TOP: ∀ x, measure fsp x = ord_top.
   Let fsp': fspec := mk_fspec (fsp.(measure))
                        (fun mn x argv argp => (FR ∗ fsp.(precond) mn x argv argp)%I)
                        (fun mn x retv retp => (FR ∗ fsp.(postcond) mn x retv retp)%I)
   .
 
-  Lemma isim_hframe
-        mn stb_src stb_tgt
-        (PUREINCL: stb_pure_incl stb_tgt stb_src)
+  Theorem isim_hframe
+        mn stb
+        (PUREINCL: stb_pure_incl stb stb)
+        (TOP2: forall fn fsp x (SOME: stb fn = Some fsp), fsp.(measure) x = ord_top)
     :
-      sim_fsem (mk_wf wf) top2 (fun_to_tgt mn stb_src (mk_specbody fsp' body))
-        (fun_to_tgt mn stb_tgt (mk_specbody fsp body)).
+      sim_fsem (mk_wf wf) top2 (fun_to_tgt mn stb (mk_specbody fsp' body))
+        (fun_to_tgt mn stb (mk_specbody fsp body)).
   Proof.
     ii. eapply isim_fun_to_tgt; eauto.
     { typeclasses eauto. }
@@ -1939,20 +2038,22 @@ Section COROLLARY.
     { destruct (measure fsp x_src) eqn:T; ss. refl. (*** TODO: PreOrder ***) }
     i. esplits. iIntros "[A [B C]]". iFrame. iModIntro.
     unfold inv_with. iDestruct "A" as (w1) "[%A _]". subst.
-    (*** TODO: define reflexivity ***)
     iApply isim_wand.
-    instantiate (1:=fun st_src st_tgt ret_src ret_tgt =>
-                      (inv_with top2 wf tt st_src st_tgt ∗ ⌜ret_src = ret_tgt⌝)%I). cbn.
+    (* instantiate (1:=fun st_src st_tgt ret_src ret_tgt => *)
+    (*                   (inv_with top2 wf tt st_src st_tgt ∗ ⌜ret_src = ret_tgt⌝)%I). cbn. *)
+    instantiate (1:=fun st_src st_tgt ret_src ret_tgt => (⌜st_src = st_tgt ∧ ret_src = ret_tgt⌝)%I). cbn.
     iSplitL.
     { iFrame. iIntros. des; subst. iFrame. eauto. }
-    set (match measure fsp x_src with
-             | ord_pure _ => ;;; trigger (Choose Any.t)
-             | ord_top => body (mn_caller, arg_src)
-             end) as tmp.
-    erewrite idK_spec with (i0:=tmp).
-    iApply isim_frame.
-    iApply isim_bind.
-  Abort.
+    rewrite TOP.
+    iApply isim_final; cycle 1.
+    { instantiate (1:=True%I). ss. }
+    i. unfold wf.
+    eapply current_iProp_entail in CUR; cycle 1.
+    { iIntros "[A _]". iAssumption. }
+    inv CUR.
+    eapply hsim_refl_gen; eauto.
+    { etrans; et. uipropall. eapply URA.extends_updatable; ss. }
+  Qed.
 
 End COROLLARY.
 
@@ -1978,7 +2079,7 @@ Section COROLLARY.
           (fun mn x retv retp => (FRQ ∗ fsp_tgt.(postcond) mn x retv retp)%I)
   .
 
-  Lemma isim_vframe
+  Theorem isim_vframe
         mn stb_src stb_tgt
         body_src body_tgt
         (PUREINCL: stb_pure_incl stb_tgt stb_src)
