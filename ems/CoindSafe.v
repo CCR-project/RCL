@@ -404,8 +404,9 @@ Section DOWNTO.
       (MON : monotone1 clo)
       (* (SOUND : forall (u: (conat -> Prop) -> (conat -> Prop)), let r := paco1 (_is_even <*> u) bot1 in *)
       (*                    forall (PFIX: _is_even (clo r) <1= r), paco1 _is_even bot1 <1= r) *)
-      (SOUND : let r := paco1 (_is_even <*> clo) bot1 in
-               forall (PFIX: _is_even (clo r) <1= r), paco1 _is_even bot1 <1= r)
+      (* (SOUND : let r := paco1 (_is_even <*> clo) bot1 in *)
+      (*          forall (PFIX: _is_even (clo r) <1= r), paco1 _is_even bot1 <1= r) *)
+      (SOUND: paco1 _is_even bot1 <1= paco1 (_is_even <*> clo) bot1)
   .
   Hint Constructors soundclo.
 
@@ -416,17 +417,35 @@ Section DOWNTO.
   Lemma soundclo_spec: forall clo (UPTO: soundclo clo),
       paco1 _is_even bot1 <1= paco1 (_is_even <*> clo) bot1.
   Proof.
-    {
-      i.
-      inv UPTO. eapply (SOUND); [clear PR|exact PR].
-      { i. pfold. rr. eapply (@clo_mon clo); eauto. }
-    }
+    i. inv UPTO. eapply SOUND. eauto.
   Qed.
 
-  Variant lsoundclo (r: conat -> Prop) (x: conat) : Prop :=
-    _lsoundclo (LEAST: forall clo (RES: soundclo clo), <<CLO: clo r x>>)
+  Variant compatclo (clo: (conat -> Prop) -> (conat -> Prop)) : Prop := _respectfulclo
+      (MON: monotone1 clo)
+      (COMPAT: _is_even <*> clo <2= clo <*> _is_even)
   .
-  Hint Constructors lsoundclo.
+  Hint Constructors compatclo.
+
+  Lemma compatclo_compose clo0 clo1: compatclo clo0 -> compatclo clo1 -> compatclo (clo0 <*> clo1).
+  Proof.
+    ii. inv H. inv H0.
+    econs.
+    { eapply monotone1_compose; eauto. }
+    ii. unfold compose in *. eauto.
+  Qed.
+
+  Lemma compatclo_is_sound: forall clo, compatclo clo -> soundclo clo.
+  Proof.
+    {
+      ii. inv H. econs; eauto. pcofix CIH. ii. pfold. rr.
+      eapply is_even_mon.
+      { unfold compose in *.
+  Abort.
+
+  Variant cpn (r: conat -> Prop) (x: conat) : Prop :=
+    _cpn (LEAST: forall clo (RES: compatclo clo), <<CLO: clo r x>>)
+  .
+  Hint Constructors cpn.
 
   (* Lemma sound_compose: forall clo1 clo2 (RES1: soundclo clo1) (RES2: soundclo clo2), *)
   (*     soundclo (clo1 <*> clo2). *)
@@ -436,27 +455,183 @@ Section DOWNTO.
   (*   eapply SOUND. 2: { eapply PR0. } *)
   (* Qed. *)
 
-  Lemma lsound_mon: monotone1 (_is_even <*> lsoundclo).
-  Proof.
-    ii. unfold compose in *. eapply is_even_mon; eauto. ii. inv PR. econs. ii. inv RES. eapply MON; eauto. eapply LEAST. eauto.
-  Qed.
-  Hint Resolve lsound_mon : paco.
+  (* Lemma cpn_mon: monotone1 (_is_even <*> cpn). *)
+  (* Proof. *)
+  (*   ii. unfold compose in *. eapply is_even_mon; eauto. ii. inv PR. econs. ii. inv RES. eapply MON; eauto. eapply LEAST. eauto. *)
+  (* Qed. *)
+  (* Hint Resolve cpn_mon : paco. *)
 
-  Lemma lsoundclo_least: forall clo (RES: soundclo clo), lsoundclo <2= clo.
+  Lemma cpn_mon: monotone1 (cpn).
+  Proof.
+    ii. ii. inv IN. econs. ii. inv RES. eapply MON; eauto. eapply LEAST. eauto.
+  Qed.
+  Hint Resolve cpn_mon : paco.
+
+  Lemma cpn_least: forall clo (RES: compatclo clo), cpn <2= clo.
   Proof. i. inv PR. eapply LEAST. eauto. Qed.
 
-  Lemma lsoundclo_id: lsoundclo <2= id.
+  Lemma cpn_id: cpn <2= id.
   Proof.
     ii. r. inv PR. eapply LEAST. eauto.
   Qed.
-  Hint Resolve lsoundclo_id.
+  Hint Resolve cpn_id.
 
-  Lemma lsoundclo_idem: (lsoundclo) <2= lsoundclo <*> lsoundclo.
+  Lemma cpn_compat: compatclo cpn.
   Proof.
-    ii. rr. inv PR. econs.
-    ii. r. eapply LEAST. inv RES.
-    econs.
+    econs; eauto with paco.
+    i. unfold compose in *. econs. ii. inv RES. eapply COMPAT. rr. eapply is_even_mon; eauto.
+    ii. eapply MON. { eapply cpn_least; eauto. } ss.
   Qed.
+
+  Lemma cpn_idem: (cpn) <2= cpn <*> cpn.
+  Proof.
+    ii. eapply cpn_least; eauto. eapply compatclo_compose; eauto.
+    { eapply cpn_compat. }
+    { eapply cpn_compat. }
+  Qed.
+
+  Lemma is_even_compat: compatclo _is_even.
+  Proof.
+    econs; eauto with paco.
+  Qed.
+
+  Lemma _is_even_compat: compatclo (paco1 _is_even).
+  Proof.
+    econs; eauto with paco.
+    { eapply paco1_mon. }
+    ii. rename x0 into r. rename x1 into _x. unfold compose in *.
+    revert_until r. revert r. pcofix CIH.
+    { i. pfold. eapply is_even_mon; eauto. i.
+      rename r into rx. rename r0 into ry. right. eapply CIH0. punfold PR0.
+      eapply is_even_mon; eauto. i. r in PR1. des; eauto.
+  Abort.
+  (* pmult didn't help *)
+
+  Lemma _is_even_compat: compatclo (upaco1 _is_even).
+  Proof.
+    econs; eauto with paco.
+    { eapply upaco1_mon. }
+    ii. rename x0 into r. rename x1 into _x. unfold compose in *. left.
+    revert_until r. revert r. pcofix CIH.
+    { i. rename r into rx. rename r0 into ry.
+      pfold. eapply is_even_mon; eauto. i. rename x0 into _x0.
+      rr in PR0. des; cycle 1.
+      - right. eapply CIH. admit "????".
+      - right. eapply CIH0. punfold PR0.
+        eapply is_even_mon; eauto. i. rename x0 into _x1. r in PR1. des; eauto.
+  Abort.
+
+  Theorem cpn_bot: cpn bot1 = is_even.
+  Proof.
+    extensionality _x.
+    eapply prop_ext. split; i.
+    2: { econs. i. punfold H. inv RES. unfold compose in *. admit "??". }
+    - inv H. eapply LEAST.
+      (* { eapply compatclo_compose; eauto. } *)
+      econs.
+      { eapply paco1_mon; eauto. }
+      ii. unfold compose in *.
+  Abort.
+
+  (* (_is_even <*> cpn) *)
+  (* (cpn <*> _is_even) *)
+
+  (*** this statement is wrong... coind appears in the goal. cannot erase cpn (not backward compatible)
+
+what do we want?
+
+cpn <*> f ...
+---------------------
+...
+
+
+or
+
+...
+---------------------
+cpn <*> f ...
+
+
+is_evenB_spec2
+former? later?
+
+what if we have later... does it capture what we want?
+~(dclo P) -> ~P
+P -> dclo P
+
+what is the difference with upto? upto didn't work for our purpose?
+
+   ***)
+  Theorem cpn_sound: paco1 _is_even bot1 = paco1 (cpn <*> _is_even) bot1.
+  Proof.
+    extensionality _x.
+    eapply prop_ext. split; i; cycle 1.
+    - eapply paco1_mon_gen; eauto. i. r in PR. eapply is_even_mon; et. i. eapply cpn_id; et.
+    - (*
+vb <= vtb
+it suffices to show that
+∀ x. x <= bx, x <= vtb
+
+ETS: x <= tbx
+ETS: x <= ttbx
+ETS: x <= tbtx
+
+bt <2= tb
+
+x <= tx (X)
+tx <= x (O)
+t = tt
+
+
+we have:
+x <= bx
+tx <= bx <= vb
+
+tx = ttx <= ttbx <= tvb
+
+
+tx <= tbx
+
+ets: x <= tbx
+
+
+
+
+
+
+
+btx <= bttx <= tbtx <= tbx
+btx <=                 tbx
+
+
+tx <= tbx <= ttbx <= ...
+
+bx <= x
+
+--------------------------------------------------
+(another direction)
+vb <= vbt
+
+∀ x. x <= bx,
+ets: x <= btx.
+
+--------------------------------------------------
+(upto)
+vbt <= vb
+
+∀ x <= btx, x <= vb
+
+tx <= tbtx <= bttx <= btx
+x <= tx <= vb
+
+       *)
+              
+      revert _x H. pcofix CIH. i. r in H0. punfold H0. pfold. rr.
+      assert(T:=cpn_compat). inv T. ss.
+      eapply cpn_compat. rr.
+      eapply is_even_mon; et. ii. eapply cpn_id.
+  Qed.
+  (cpn <*> _is_even )
 
   Lemma twoC_sound: soundclo twoC.
   Proof.
