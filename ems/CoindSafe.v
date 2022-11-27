@@ -264,7 +264,7 @@ Proof.
   (* if x1 is (S O), it does not help here. *)
 Abort.
 
-Lemma compat
+Lemma reverse_compat
   :
   _is_even <*> is_evenB <2= is_evenB <*> _is_even
 .
@@ -274,10 +274,25 @@ Proof.
   { econs; ss. }
   econs 2; ss.
   esplits; et.
-  inv PR; ss.
-  2: { rr in H0.
+  inv PR.
+  - rr in H0. admit "not true".
+  - rr in H0. admit "not true".
 Abort.
 (* it also does not hold? *)
+
+CoFixpoint myinf: conat := S myinf.
+
+
+Definition _unfold_conat n := match n with S n => S n | O => O end.
+
+Lemma unfold_conat: forall n, n = _unfold_conat n.
+Proof. i. destruct n; ss. Qed.
+
+Goal is_even myinf.
+Proof.
+  pcofix CIH.
+  pfold. rewrite unfold_conat. ss. rewrite (unfold_conat myinf). ss. econs; eauto.
+Qed.
 
 
 (* Variant _is_evenB (is_even: conat -> Prop) (n: conat): Prop := *)
