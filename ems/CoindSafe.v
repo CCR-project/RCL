@@ -128,7 +128,8 @@ Notation "p -1> q" :=
 
 Definition is_evenB (is_even: conat -> Prop) : conat -> Prop := _is_evenB_cond -1> _is_evenB is_even.
 
-Theorem is_evenB_spec2 r
+Theorem is_evenB_spec2
+  r
   :
   paco1 _is_even r <1= is_evenB (upaco1 _is_even r)
 .
@@ -142,6 +143,164 @@ Proof.
     + econs 2; eauto.
     + econs 2; eauto.
 Qed.
+
+Theorem is_evenB_spec3
+  r
+  (COND: r <1= _is_even r)
+  :
+  paco1 _is_even r <1= is_evenB (upaco1 _is_even r)
+.
+Proof.
+  i. punfold PR. induction PR.
+  - econs; eauto.
+  - r in H. des.
+    + ii. inv PR. econs 2; eauto. esplits; eauto. punfold H. dependent induction H; eauto.
+    + ii. inv PR. econs 2; eauto. esplits; eauto. eapply COND in H. inv H; eauto with paco.
+      left. pfold. econs; eauto.
+  - r in H. des.
+    + econs 2; eauto.
+    + econs 2; eauto.
+Qed.
+
+(** Note: if we assume we use pmult_strong everytime, than we can assume (upaco r) instead of r.
+but that does not help much here...?
+ **)
+Lemma _is_evenB_mon: monotone1 _is_evenB.
+Proof.
+  ii. inv IN.
+  - econs 1; eauto.
+  - des. econs 2; eauto.
+Qed.
+Hint Resolve _is_evenB_mon: paco.
+
+Lemma is_evenB_mon: monotone1 is_evenB.
+Proof.
+  ii. rr in IN. eapply _is_evenB_mon; eauto.
+Qed.
+Hint Resolve is_evenB_mon: paco.
+
+Theorem is_evenB_spec4
+  r
+  :
+  paco1 _is_even (upaco1 _is_even r) <1= is_evenB (upaco1 _is_even r)
+.
+Proof.
+  i. ss.
+  cut(is_evenB (upaco1 _is_even (upaco1 _is_even r)) x0).
+  { i. eapply is_evenB_mon; et. ii. clear - PR0.
+    r in PR0. des; ss.
+    left. eapply _paco1_mult_strong; ss.
+    (*** upaco upaco = upaco ***)
+  }
+  eapply is_evenB_spec3; ss.
+  i. r in PR0. des.
+  - punfold PR0.
+  - admit "???".
+Qed.
+
+Theorem is_evenB_spec4_
+  r
+  :
+  paco1 _is_even (upaco1 _is_even r) <1= is_evenB (upaco1 _is_even (upaco1 _is_even r))
+.
+Proof.
+  i. punfold PR. induction PR.
+  - econs; eauto.
+  - r in H. des.
+    + ii. inv PR. econs 2; eauto. esplits; eauto. punfold H. dependent induction H; eauto.
+    + ii. inv PR. econs 2; eauto. esplits; eauto.
+      r in H. des.
+      * punfold H. inv H; eauto with paco. left. pfold. econs; eauto.
+      * admit "???".
+  - r in H. des.
+    + econs 2; eauto.
+    + econs 2; eauto.
+Qed.
+
+Theorem is_evenB_spec5
+  r
+  :
+  paco1 _is_even (paco1 _is_even r) <1= is_evenB (upaco1 _is_even r)
+.
+Proof.
+  i. ss.
+  cut(is_evenB (upaco1 _is_even (paco1 _is_even r)) x0).
+  { i. eapply is_evenB_mon; et. ii. clear - PR0.
+    r in PR0. des; eauto.
+    left. eapply paco1_mult; ss.
+  }
+  eapply is_evenB_spec3; ss.
+  i. punfold PR0. eapply is_even_mon; et. ii. r in PR1. des; eauto. admit "??".
+Qed.
+
+(*
+G_f(r) <1= f G_f(r)
+
+
+
+?? <1= f ??
+*)
+
+Theorem is_evenB_spec2_simpl
+  :
+  paco1 _is_even bot1 <1= is_evenB (paco1 _is_even bot1)
+.
+Proof.
+  i. punfold PR. induction PR.
+  - econs; eauto.
+  - pclearbot.
+    + ii. inv PR. econs 2; eauto. esplits; eauto. punfold H. dependent induction H; eauto. pclearbot. ss.
+  - pclearbot.
+    + econs 2; eauto.
+Qed.
+
+Lemma compat
+  :
+  is_evenB <*> _is_even <2= _is_even <*> is_evenB
+.
+Proof.
+  ii. unfold compose in *.
+  rr in PR.
+  (* if x1 is (S O), it does not help here. *)
+Abort.
+
+Lemma compat
+  :
+  _is_even <*> is_evenB <2= is_evenB <*> _is_even
+.
+Proof.
+  ii. unfold compose in *.
+  inv PR0.
+  { econs; ss. }
+  econs 2; ss.
+  esplits; et.
+  inv PR; ss.
+  2: { rr in H0.
+Abort.
+(* it also does not hold? *)
+
+
+(* Variant _is_evenB (is_even: conat -> Prop) (n: conat): Prop := *)
+(* | is_even_BO: (n = O) -> _is_evenB is_even n *)
+(* | is_even_B4: (exists m, n = S (S (S (S m))) /\ is_even m) -> _is_evenB is_even n *)
+(* . *)
+
+(* Variant _is_evenB_cond: conat -> Prop := *)
+(* | is_even_cond_BO: _is_evenB_cond O *)
+(* | is_even_cond_B4: forall n, _is_evenB_cond (S (S (S (S n)))) *)
+(* . *)
+
+Notation "p -1> q" :=
+  (fun x0 => forall (PR: p x0 : Prop), q x0 : Prop)
+  (at level 50, no associativity).
+
+Notation "~1 p" :=
+  (fun x0 => ~p x0 : Prop)
+  (at level 50, no associativity).
+
+Definition is_evenC (is_even: conat -> Prop) : conat -> Prop := _is_evenB_cond -1> _is_evenB is_even.
+
+
 
 
 
