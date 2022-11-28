@@ -124,7 +124,7 @@ Variant _is_evenB_cond: conat -> Prop :=
 
 Notation "p -1> q" :=
   (fun x0 => forall (PR: p x0 : Prop), q x0 : Prop)
-  (at level 50, no associativity).
+  (at level 51, right associativity).
 
 Definition is_evenB (is_even: conat -> Prop) : conat -> Prop := _is_evenB_cond -1> _is_evenB is_even.
 
@@ -305,16 +305,27 @@ Qed.
 (* | is_even_cond_B4: forall n, _is_evenB_cond (S (S (S (S n)))) *)
 (* . *)
 
-Notation "p -1> q" :=
-  (fun x0 => forall (PR: p x0 : Prop), q x0 : Prop)
-  (at level 50, no associativity).
-
 Notation "~1 p" :=
   (fun x0 => ~p x0 : Prop)
   (at level 50, no associativity).
 
-Definition is_evenC (is_even: conat -> Prop) : conat -> Prop := _is_evenB_cond -1> _is_evenB is_even.
+Definition is_evenC (r is_even: conat -> Prop) : conat -> Prop := ~1 r -1> _is_evenB_cond -1> _is_evenB is_even.
 
+Theorem is_evenC_spec2
+  r
+  :
+  paco1 _is_even r <1= is_evenC r (upaco1 _is_even r)
+.
+Proof.
+  i. punfold PR. induction PR.
+  - econs; eauto.
+  - r in H. des.
+    + ii. inv PR0. econs 2; eauto. esplits; eauto. punfold H. dependent induction H; eauto.
+    + ii. inv PR0. econs 2; eauto. esplits; eauto. right. admit "it didn't help here..".
+  - r in H. des.
+    + econs 2; eauto.
+    + econs 2; eauto.
+Qed.
 
 
 
