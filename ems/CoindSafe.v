@@ -74,6 +74,97 @@ Proof.
     + econs; eauto. econs; eauto.
 Qed.
 
+Lemma is_evenA_compat
+  :
+  _is_evenA <*> _is_even <2= _is_even <*> _is_evenA
+.
+Proof.
+  ii. unfold compose in *.
+  inv PR.
+  { econs; eauto. }
+  { econs; eauto. admit "it seems wrong".
+Abort.
+
+Lemma is_evenA_reverse_compat
+  :
+  _is_even <*> _is_evenA <2= _is_evenA <*> _is_even
+.
+Proof.
+  ii. unfold compose in *.
+  inv PR.
+  { econs; ss. }
+  { econs; eauto. inv H; eauto. }
+  { econs; eauto. inv H; eauto. econs; eauto. admit "????". }
+Abort.
+
+Lemma is_evenA_compat
+  :
+  _is_evenA <*> (_is_even /2\ id) <2= (_is_even /2\ id) <*> _is_evenA
+.
+Proof.
+  ii. unfold compose in *.
+  inv PR.
+  { econs; eauto. rr. econs; eauto. }
+  { des. r in H0. econs; eauto.
+    - econs; eauto. admit "it seems wrong".
+Abort.
+
+Lemma is_evenA_reverse_compat
+  :
+  (_is_even /2\ id) <*> _is_evenA <2= _is_evenA <*> (_is_even /2\ id)
+.
+Proof.
+  ii. unfold compose in *.
+  des. r in PR0.
+  inv PR.
+  { econs; ss. }
+  { econs; eauto. inv H; eauto.
+    - esplits; eauto. rr. inv PR0; eauto.
+    - esplits; eauto. rr. inv PR0; eauto.
+  }
+  { econs; eauto. inv PR0; eauto.
+    inv H; eauto.
+    esplits; eauto. econs; eauto.
+    admit "????". }
+Abort.
+
+Lemma is_evenA_reverse_compat
+  :
+  (_is_even \2/ id) <*> _is_evenA <2= _is_evenA <*> (_is_even \2/ id)
+.
+Proof.
+  ii. set x1 as VAL. unfold compose in *.
+  des.
+  - inv PR.
+    { econs; ss. }
+    { econs; eauto. left. inv H; eauto. }
+    { econs; eauto. inv H; eauto. left. econs; eauto. admit "??". }
+  - r in PR.
+    inv PR.
+    { econs; eauto. }
+    { econs; eauto. }
+Qed.
+
+Lemma is_evenA_reverse_compat2
+  :
+  (((fun r n => is_even n <0= r n) /2\ _is_even) <*> _is_evenA) <2= _is_evenA <*> _is_even
+.
+Proof.
+  ii.
+  set (R := x0).
+  set (VAL := x1).
+  unfold compose in *. des.
+  inv PR0.
+  { econs; ss. }
+  { econs; eauto. inv H; eauto. }
+  { econs; eauto. inv H; eauto. econs; eauto.
+    exploit PR; eauto.
+    { pfold. econs; eauto. left. pfold; econs; eauto. }
+    intro T. inv T.
+    admit "????". }
+Abort.
+
+
 Variant _is_evenB (is_even: bool -> conat -> Prop): conat -> Prop :=
 | is_even_BO: _is_evenB is_even O
 | is_even_B4: forall n, is_even true n -> _is_evenB is_even (S (S (S (S n))))
@@ -520,6 +611,32 @@ Module UPTOMINIMAL.
   (*   Qed. *)
   (* End TEST. *)
 
+
+
+
+  Lemma respectful_compat': forall clo (MON: monotone1 clo),
+      (<<RSP: forall x y, (x <1= y /\ x <1= _is_even y) -> (clo x <1= _is_even (clo y))>>) <->
+        (<<CMPT: clo <*> (_is_even /2\ id) <2= (_is_even /2\ id) <*> clo>>)
+  .
+  Proof.
+    i. split; ii; des.
+    - unfold compose in *. split.
+      { eapply H; eauto. split; i; des; ss. }
+      { rr. eapply MON; eauto. ii. ss. des; ss. }
+    - eapply H. rr. eapply MON; eauto.
+  Qed.
+
+(*
+x <= y ∧ x <= fy -> clo x <= f clo y
+-----------------------------------
+clo (f ∧ 1) <= (f ∧ 1) clo
+
+respectful -> compat'
+
+clo (f ∧ 1) x <= (f ∧ 1) clo x
+
+ *)
+
 End UPTOMINIMAL.
 
 
@@ -654,6 +771,9 @@ Section DOWNTO.
 
   Lemma cpn_least: forall clo (RES: compatclo clo), cpn <2= clo.
   Proof. i. inv PR. eapply LEAST. eauto. Qed.
+
+  Lemma cpn_self: cpn <2= _is_even.
+  Proof. i. inv PR. eapply LEAST. econs; eauto. eapply is_even_mon; eauto. Qed.
 
   Lemma cpn_id: cpn <2= id.
   Proof.
