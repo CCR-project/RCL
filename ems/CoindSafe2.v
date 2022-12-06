@@ -106,9 +106,10 @@ Section MINKI.
     { admit "ez". }
     eapply wrespect2_companion; eauto.
     { admit "ez". }
-    { eapply WRES. }
-    r in PR.
-  Qed.
+  (*   { eapply WRES. } *)
+  (*   r in PR. *)
+  (* Qed. *)
+  Abort.
 
 End MINKI.
 
