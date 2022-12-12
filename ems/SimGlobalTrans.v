@@ -1715,23 +1715,11 @@ Proof.
   (* (* SIM0 : simg eq false false itr_src (Ret r_tgt) *) *)
   (* (* ============================ *) *)
   (* (* gpaco7 _simg (cpn7 _simg) bot7 r R R eq true f_tgt itr_src (Ret r_tgt) *) *)
-    + remember (Ret r_tgt) as tmp. revert Heqtmp.
-      remember false as tmp1 in SIM0 at 1. revert Heqtmp1.
-      remember false as tmp2 in SIM0 at 1. revert Heqtmp2.
-      induction SIM0 using simg_ind; intros ???EQ; irw in EQ; csc.
-      * gstep. econs; eauto.
-      * guclo simg_indC_spec. econs; et. guclo flagC_spec. econs.
-        3: { gfinal. right. eapply paco7_mon; et. i; ss. }
-        { ss. }
-        { ss. }
-      * des. guclo simg_indC_spec. econs; et. esplits; et. guclo flagC_spec. econs.
-        3: { gfinal. right. eapply paco7_mon; et. i; ss. }
-        { ss. }
-        { ss. }
-      * des. guclo simg_indC_spec. econs; et. esplits; et. guclo flagC_spec. econs.
-        3: { gfinal. right. eapply paco7_mon; try apply SIM. i; ss. }
-        { ss. }
-        { ss. }
+    + guclo flagC_spec.
+      econs.
+      3: { gfinal. right. eapply paco7_mon; et. i; ss. }
+      { ss. }
+      { ss. }
     + remember (` x : _ <- trigger (Syscall fn varg rvs);; ktr_src0 x) as tmp. revert Heqtmp.
       assert(T: simg eq true true itr_src tmp).
       { ginit. guclo flagC_spec. }
