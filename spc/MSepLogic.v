@@ -34,12 +34,19 @@ Hypothesis unit_id: forall x, add x unit = x.
 Context `{PRE: PreOrder _ ctxref}.
 Hypothesis hcomp: forall a b c d, ctxref a b -> ctxref c d -> ctxref (a ++ c) (b ++ d).
 Hypothesis ctxref_comm: forall a b, ctxref (a ++ b) (b ++ a).
+Hypothesis ctxref_assoc: forall a b c, ctxref (a ++ (b ++ c)) ((a ++ b) ++ c).
 Hypothesis mod_affine: forall a, ctxref [a] [].
 
 Variable core: Mod -> Mod.
 Hypothesis core_spec: forall a, ctxref [a] ([a] ++ [core a]).
 Hypothesis core_idem: forall a, core (core a) = core a.
 (* Hypothesis core_mono: forall a b, exists c, core (a b) = add (core a) c. *)
+
+Lemma ctxref_assoc_rev: forall a b c, ctxref ((a ++ b) ++ c) (a ++ (b ++ c)).
+Proof.
+  i. etrans. { eapply ctxref_comm. } rewrite ctxref_assoc.
+  rewrite ctxref_comm. rewrite ctxref_assoc. rewrite ctxref_comm. refl.
+Qed.
 
 Lemma mods_affine: forall a, ctxref a [].
 Proof.
@@ -59,6 +66,48 @@ Lemma unit_id2: forall x, add2 unit x = x.
   { i. unfold add2. rewrite <- map_id. f_equal. extensionality sm. des_ifs. rewrite unit_id. ss. }
 Qed.
 
+Require Import Permutation.
+Notation "(≡)" := (Permutation).
+Notation "A ≡ B" := (Permutation A B).
+
+Lemma app_Permutation_assoc X (p q r: list X): (p ++ q) ++ r ≡ p ++ (q ++ r).
+Proof.
+  revert q r. induction p; i; ss.
+  rewrite IHp. ss.
+Qed.
+
+Lemma ctxref_perm: forall a b, a ≡ b -> ctxref a b.
+Proof.
+  i. induction H.
+  { refl. }
+  { rewrite cons_app. erewrite cons_app with (xtl:=l'). eapply hcomp; et. refl. }
+  { change (y :: x :: l) with ([y] ++ [x] ++ l).
+    change (x :: y :: l) with ([x] ++ [y] ++ l).
+    rewrite ctxref_comm.
+    rewrite ctxref_assoc_rev. eapply hcomp; try refl.
+    rewrite ctxref_comm. eapply hcomp; try refl.
+  }
+  { etrans; et. }
+Qed.
+
+Global Program Instance ctxref_perm_Proper: Proper ((≡) ==> (≡) ==> eq) ctxref.
+Next Obligation.
+  ii. eapply Axioms.prop_ext. split; i.
+  - etrans. { eapply ctxref_perm. sym. et. } etrans; et. eapply ctxref_perm; et.
+  - etrans. 2: { eapply ctxref_perm. sym. et. } etrans; et. eapply ctxref_perm; et.
+Qed.
+
+Global Program Instance ctxref_perm_Proper2: Proper ((≡) ==> (≡) ==> impl) ctxref.
+Next Obligation.
+  ii.
+  - etrans. { eapply ctxref_perm. sym. et. } etrans; et. eapply ctxref_perm; et.
+Qed.
+
+Global Program Instance ctxref_perm_Proper3: Proper ((≡) ==> (≡) ==> (flip impl)) ctxref.
+Next Obligation.
+  ii.
+  - etrans. 2: { eapply ctxref_perm. sym. et. } etrans; et. eapply ctxref_perm; et.
+Qed.
 
 
 Module HARDER.
@@ -69,73 +118,102 @@ Module HARDER.
   Record mProp :=
     mProp_intro {
         mProp_pred :> mPred;
-        mProp_mono: forall r0 r1 (LE: incl r0 r1), mProp_pred r0 -> mProp_pred r1;
+        (* mProp_perm: forall r0 r1 (LE: r0 ≡ r1), mProp_pred r0 -> mProp_pred r1; *)
+        mProp_perm :> Proper ((≡) ==> (flip impl)) mProp_pred;
       }.
+  Arguments mProp_intro: clear implicits.
 
   Program Definition Sepconj (P Q: mProp): mProp :=
-    mProp_intro (fun m => exists a b, m = a ++ b /\ (P: mPred) a /\ (Q: mPred) b) _.
+    mProp_intro (fun m => exists a b, m ≡ a ++ b /\ (P: mPred) a /\ (Q: mPred) b) _.
   Next Obligation.
-    i. ss. des. clarify. esplits; et.
+    ii. ss. des. clarify. esplits; et. etrans; [|et]. ss.
   Qed.
 
-  Definition Pure (P: Prop): mProp := fun _ => P.
+  Program Definition Pure (P: Prop): mProp := mProp_intro (fun _ => P) _.
 
-  Definition Ex {X: Type} (P: X -> mProp): mProp := fun sm => exists x, P x sm.
+  Program Definition Ex {X: Type} (P: X -> mProp): mProp := mProp_intro (fun sm => exists x, (P x: mPred) sm) _.
+  Next Obligation.
+    ii. ss. des. esplits; et. eapply mProp_perm; et.
+  Qed.
 
-  Definition Univ {X: Type} (P: X -> mProp): mProp := fun sm => forall x, P x sm.
+  Program Definition Univ {X: Type} (P: X -> mProp): mProp := mProp_intro (fun sm => forall x, (P x: mPred) sm) _.
+  Next Obligation.
+    ii. ss. des. esplits; et. eapply mProp_perm; et.
+  Qed.
 
-  Definition Own (m0: list (Stb * Mod)): mProp := fun sm => m0 = sm. (* sublist m0 sm. *)
+  Program Definition Own (m0: list (Stb * Mod)): mProp := mProp_intro (fun sm => m0 ≡ sm) _. (* sublist m0 sm. *)
+  Next Obligation.
+    ii. ss. etrans; et. sym; ss.
+  Qed.
+
   Definition OwnM (m0: list Mod): mProp := Own (map (pair unit) m0).
 
-  Definition Wrp (s0: Stb) (P: mProp): mProp := fun sm => exists sm0, sm = add2 s0 sm0 /\ P sm0.
+  Program Definition Wrp (s0: Stb) (P: mProp): mProp :=
+    mProp_intro (fun sm => exists sm0, sm ≡ add2 s0 sm0 /\ (P: mPred) sm0) _.
+  Next Obligation.
+    ii. ss. des. esplits; et. etrans; [|et]. et.
+  Qed.
 
-  Definition Entails (P Q : mProp) : Prop :=
-    forall sm0, P sm0 -> Q sm0
-  .
+  Definition Entails (P Q : mProp) : Prop := (forall sm0, (P: mPred) sm0 -> (Q: mPred) sm0).
 
-  Definition Wand (P Q: mProp): mProp :=
-    fun sm => forall smp, P smp -> Q (sm ++ smp)
-  .
+  Program Instance Entails_PreOrder: PreOrder Entails.
+  Next Obligation. ii. ss. Qed.
+  Next Obligation. ii. eapply H0; ss. eapply H; ss. Qed.
 
-  Definition And (P Q : mProp) : mProp :=
-    fun sm0 => P sm0 /\ Q sm0
+  Program Definition Wand (P Q: mProp): mProp :=
+    mProp_intro (fun sm => forall smp, (P: mPred) smp -> (Q: mPred) (sm ++ smp)) _
   .
+  Next Obligation.
+    ii. ss. eapply mProp_perm; [|eapply H0]; et. eapply Permutation_app; et.
+  Qed.
+
+  Program Definition And (P Q : mProp) : mProp :=
+    mProp_intro (fun sm0 => (P: mPred) sm0 /\ (Q: mPred) sm0) _
+  .
+  Next Obligation.
+    ii. ss. des. esplits; eapply mProp_perm; et.
+  Qed.
 
   (*** Refining ***)
-  Definition Ref (Q: mProp): mProp :=
-    fun tgt => exists src, Q src /\ (forall x, ctxref (map wrap (add2 x tgt)) (map wrap (add2 x src)))
+  Program Definition Ref (Q: mProp): mProp :=
+    mProp_intro (fun tgt => exists src, (Q: mPred) src /\ (forall x, ctxref (map wrap (add2 x tgt)) (map wrap (add2 x src)))) _
   .
+  Next Obligation.
+    ii. ss. des. esplits; et. ii. etrans; et. eapply ctxref_perm; et. unfold add2. rewrite ! map_map.
+    f_equiv. ss.
+  Qed.
 
   Lemma ref_mono: forall P Q, Entails P Q -> Entails (Ref P) (Ref Q).
   Proof.
-    unfold Ref, Entails, Wrp, add2. ii. des. esplits; eauto.
+    unfold Ref, Entails, Wrp, add2. ii; ss. des. esplits; eauto.
   Qed.
 
   Lemma ref_intro: forall P, Entails P (Ref P).
   Proof.
-    unfold Ref, Entails, Wrp, add2. ii. esplits; eauto.
+    unfold Ref, Entails, Wrp, add2. ii; ss. esplits; eauto.
     i. erewrite f_equal; try refl.
   Qed.
 
   Lemma ref_elim: forall P, Entails (Ref (Ref P)) (Ref P).
   Proof.
-    unfold Ref, Entails, Wrp, add2. ii. des. esplits; eauto.
+    unfold Ref, Entails, Wrp, add2. ii; ss. des. esplits; eauto.
     i. specialize (H0 x). specialize (H1 x). etrans; eauto.
   Qed.
 
   (*** ref is like an update modality ***)
   Lemma ref_frame: forall P Q, Entails (Sepconj Q (Ref P)) (Ref (Sepconj Q P)).
   Proof.
-    unfold Ref, Entails, Wrp, add2, Sepconj. ii. des. subst. esplits; eauto.
-    i. specialize (H2 x). rewrite ! map_app. eapply hcomp; eauto.
-    { refl. }
+    unfold Ref, Entails, Wrp, add2, Sepconj. ii; ss. des. subst. exists (a ++ src). esplits; eauto.
+    i. specialize (H2 x). rewrite H. rewrite ! map_map. rewrite ! map_app. eapply hcomp; try refl.
+    rewrite <- map_map. etrans; et. rewrite map_map. refl.
   Qed.
 
   (*** ref-wrp-comm ***)
   Lemma ref_wrp: forall s0 P, Entails (Wrp s0 (Ref P)) (Ref (Wrp s0 P)).
   Proof.
-    unfold Ref, Entails, Wrp, add2. ii. des. subst. esplits; eauto.
+    unfold Ref, Entails, Wrp, add2. ii; ss. des. esplits; try refl; eauto.
     i. specialize (H1 (add s0 x)).
+    rewrite H.
     rp; et.
     - rewrite ! map_map. do 2 f_equal. extensionality sm. des_ifs. f_equal. rewrite add_assoc. f_equal.
     - rewrite ! map_map. do 2 f_equal. extensionality sm. des_ifs. f_equal. rewrite add_assoc. f_equal.
@@ -143,19 +221,19 @@ Module HARDER.
 
   Definition Refines (P Q: mProp): Prop := Entails P (Ref Q).
 
-  Theorem Ref_Absorbing: forall P, Entails (Sepconj (Pure True) (Ref P)) (Ref P).
+  Definition Emp := Pure True.
+
+  Theorem Ref_Absorbing: forall P, Entails (Sepconj Emp (Ref P)) (Ref P).
   Proof.
-    unfold Sepconj, Entails, Pure, Ref. ii. des. clarify. esplits; et. ii. etrans; et.
-    unfold add2. rewrite ! map_map. rewrite map_app.
+    unfold Sepconj, Entails, Pure, Ref. ii; ss. des. clarify. esplits; et. ii. etrans; et.
+    unfold add2. rewrite ! map_map. rewrite H. rewrite map_app.
     rewrite <- app_nil_l.
     eapply hcomp; try refl.
     eapply mods_affine.
   Qed.
 
-  Theorem affine: forall P, Refines P (Pure True).
-  Proof.
-    ii. unfold Ref. exists []. esplits; ss. i. eapply mods_affine.
-  Qed.
+  Theorem Emp_spec: forall P, Entails P Emp.
+  Proof. ii. ss. Qed.
 
   Theorem adequacy: forall x y, Refines (Own x) (Own y) -> ctxref (map wrap x) (map wrap y).
   Proof.
@@ -165,7 +243,7 @@ Module HARDER.
     intro T; des.
     specialize (T0 unit).
     rewrite ! unit_id2 in *.
-    rr in T. subst. ss.
+    rr in T. rewrite T. ss.
   Qed.
 
 
@@ -173,8 +251,8 @@ Module HARDER.
   (*** wrp-elim ***)
   Lemma wrp_elim: forall s0 s1 P, Entails (Wrp s0 (Wrp s1 P)) (Wrp (add s0 s1) P).
   Proof.
-    unfold Refines, Ref, Entails, Wrp, add2. ii. des. subst. esplits; eauto.
-    rewrite ! map_map.
+    unfold Refines, Ref, Entails, Wrp, add2. ii; ss. des. subst. esplits; eauto.
+    etrans; et. rewrite H0. rewrite ! map_map.
     erewrite f_equal; try refl. repeat f_equal. extensionality sm. des_ifs.
     rewrite add_assoc. f_equal. f_equal. rewrite add_comm. ss.
   Qed.
@@ -182,13 +260,13 @@ Module HARDER.
   (*** wrp-intro ***)
   Lemma wrp_intro: forall P, Entails P (Wrp unit P).
   Proof.
-    unfold Entails, Wrp. ii. esplits; eauto. rewrite unit_id2. ss.
+    unfold Entails, Wrp. ii; ss. esplits; eauto. rewrite unit_id2. ss.
   Qed.
 
   (*** wrp-mono ***)
   Lemma wrp_mono: forall s0 P Q, Entails P Q -> Entails (Wrp s0 P) (Wrp s0 Q).
   Proof.
-    unfold Refines, Ref, Entails, Wrp, add2. ii. des. subst.
+    unfold Refines, Ref, Entails, Wrp, add2. ii; ss. des. subst.
     exploit H; eauto.
   Qed.
 
@@ -198,52 +276,53 @@ Module HARDER.
     i. red. red. i. eapply wrp_mono in H0; eauto. eapply ref_wrp; eauto.
   Qed.
 
-
-  Definition Emp := Pure True.
-
   Lemma Sep_mono: forall P P' Q Q', Entails P Q -> Entails P' Q' -> Entails (Sepconj P P') (Sepconj Q Q').
   Proof.
-    unfold Entails, Sepconj. ii. des. esplits; et.
+    unfold Entails, Sepconj. ii; ss. des. esplits; et.
   Qed.
 
   Lemma Sep_emp1: forall P, Entails P (Sepconj Emp P).
   Proof.
-    unfold Entails, Sepconj, Emp. ii. des. esplits; et.
+    unfold Entails, Sepconj, Emp. ii; ss. des. esplits; et.
     { rewrite app_nil_l. ss. }
-    { ss. }
   Qed.
 
   Lemma Sep_emp2: forall P, Entails P (Sepconj P Emp).
   Proof.
-    unfold Entails, Sepconj, Emp. ii. des. esplits; et.
+    unfold Entails, Sepconj, Emp. ii; ss. des. esplits; et.
     { rewrite app_nil_r. ss. }
-    { ss. }
   Qed.
 
   Lemma Sep_comm: forall P Q, Entails (Sepconj P Q) (Sepconj Q P).
   Proof.
-    unfold Entails, Sepconj, Emp. ii. des. subst. esplits. try eassumption. et.
-    { rewrite app_nil_r. ss. }
-    { ss. }
+    unfold Entails, Sepconj, Emp. ii; ss. des. esplits; revgoals; try eassumption. etrans; et.
+    rewrite app_Permutation_comm. ss.
   Qed.
 
-    bi_mixin_sep_comm' : ∀ P Q : PROP, bi_entails (bi_sep P Q) (bi_sep Q P);
-    bi_mixin_sep_assoc' : ∀ P Q R : PROP, bi_entails (bi_sep (bi_sep P Q) R) (bi_sep P (bi_sep Q R));
+  Lemma Sep_assoc: forall P Q R, Entails (Sepconj (Sepconj P Q) R) (Sepconj P (Sepconj Q R)).
+  Proof.
+    unfold Entails, Sepconj, Emp. ii; ss. des. esplits; revgoals; try eassumption; try refl.
+    rewrite H. rewrite H0.
+    rewrite app_Permutation_assoc; ss.
+  Qed.
 
   Lemma Wand_intro_r: forall P Q R : mProp, Entails (Sepconj P Q) R -> Entails P (Wand Q R).
   Proof.
-    unfold Entails, Sepconj, Wand. ii. eapply H; et.
+    unfold Entails, Sepconj, Wand. ii; ss. eapply H; et.
   Qed.
 
   Lemma Wand_elim_l: forall P Q R : mProp, Entails P (Wand Q R) -> Entails (Sepconj P Q) R.
   Proof.
-    unfold Entails, Sepconj, Wand. ii. des; subst. eapply H; et.
+    unfold Entails, Sepconj, Wand. ii; ss. des; subst. eapply mProp_perm; et.
   Qed.
 
   (* bi_persistently *)
-  Definition Pers (P: mProp): mProp :=
-    fun sm => P (map (fun '(s, m) => (s, core m)) sm)
+  Program Definition Pers (P: mProp): mProp :=
+    mProp_intro (fun sm => (P: mPred) (map (fun sm => (sm.1, core sm.2)) sm)) _
   .
+  Next Obligation.
+    ii; ss. eapply mProp_perm; [|et]. rewrite H. ss.
+  Qed.
 
   Lemma Pers_mono: forall P Q, Entails P Q -> Entails (Pers P) (Pers Q).
   Proof.
@@ -252,11 +331,11 @@ Module HARDER.
 
   Lemma Pers_idemp_2: forall P, Entails (Pers P) (Pers (Pers P)).
   Proof.
-    unfold Entails, Pers. ii. rewrite map_map.
-    erewrite f_equal; et. f_equal. extensionality x. des_ifs. rewrite core_idem. ss.
+    unfold Entails, Pers. ii; ss. rewrite map_map.
+    erewrite f_equal; et. f_equal. extensionality x. destruct x; ss. rewrite core_idem. ss.
   Qed.
 
-  Lemma Pers_emp_2: Entails (Pure True) (Pers (Pure True)).
+  Lemma Pers_emp_2: Entails Emp (Pers Emp).
   Proof.
     unfold Entails, Pers, Pure. ii. ss.
   Qed.
@@ -271,35 +350,33 @@ Module HARDER.
     unfold Entails, Pers, Ex. ii. ss.
   Qed.
 
-  (* Lemma Pers_absorbing: forall P Q, Entails (Sepconj (Pers P) Q) (Pers P). *)
-  (* Proof. *)
-  (*   unfold Entails, Pers, Sepconj. ii. des. clarify. *)
-  (* Qed. *)
-
   (* Lemma Pers_and_sep_elim: forall P Q, Entails (And (Pers P) Q) (Sepconj P Q). *)
   (* Proof. *)
-  (*   unfold Entails, Pers, And, Sepconj. ii. des. esplits; eauto. *)
+  (*   unfold Entails, Pers, And, Sepconj. ii; ss. des. esplits; eauto. *)
+  (* Qed. *)
+
+  (* Lemma Pers_absorbing: forall P Q, Entails (Sepconj (Pers P) Q) (Pers P). *)
+  (* Proof. *)
+  (*   unfold Entails, Pers, Sepconj. ii; ss. des. eapply mProp_perm; [|et]. rewrite H. rewrite map_app. *)
   (* Qed. *)
 
   Definition PersR: mProp -> mProp := Ref ∘ Pers.
 
-  Lemma Pers_absorbing: forall P Q, Entails (Sepconj (PersR P) Q) (PersR P).
+  Lemma PersR_Absorbing: forall P Q, Entails (Sepconj (PersR P) Q) (PersR P).
   Proof.
     intros.
-    replace (PersR P) with (Sepconj (PersR P) (Pure True)); cycle 1.
-    { extensionality x. eapply Axioms.prop_ext. split; i.
-      - r. eapply Ref_Absorbing. eapply Sepconj_comm.
-        unfold Sepconj, Pure.
-        des; clarify. r. unfold PersR, Ref in *. des. esplits; et. ii. etrans; et.
-        Entails P (Ref (Pure True))
-        Entails P (Ref Q)
-    eapply affine.
-    unfold Entails, PersR, Pers, Sepconj. ii. des. clarify.
+    etrans.
+    2: { eapply Ref_Absorbing. }
+    etrans.
+    2: { eapply Sep_comm. }
+    eapply Sep_mono; et.
+    { refl. }
+    { eapply Emp_spec. }
   Qed.
 
-  Lemma Pers_and_sep_elim: forall P Q, Entails (And (Pers P) Q) (Sepconj P Q).
+  Lemma PersR_and_sep_elim: forall P Q, Entails (And (Pers P) Q) (Sepconj P Q).
   Proof.
-    unfold Entails, Pers, And, Sepconj. ii. des. esplits; eauto.
+    unfold Entails, Pers, And, Sepconj. ii; ss. des. esplits; eauto.
   Qed.
 
 
