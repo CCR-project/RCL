@@ -80,32 +80,33 @@ Qed.
 
 Class ToMod X := toMod:> X -> Mod.
 Global Program Instance Mod_ToMod: ToMod Mod := id.
-Global Program Instance SMod_ToMod: ToMod (Stb * Mod) := wrap.
+(* Global Program Instance SMod_ToMod: ToMod (Stb * Mod) := wrap. *)
+Global Program Instance SMod_ToMod: ToMod (Stb * Mod) := snd.
 
 Definition eqv `{ToMod X} (x y: list X): Prop := ctxref (map toMod x) (map toMod y) /\ ctxref (map toMod y) (map toMod x).
 Notation "(≡)" := (eqv).
 Notation "A ≡ B" := (eqv A B).
-Global Program Instance eqv_Equivalence: Equivalence (≡).
+Global Program Instance eqv_Equivalence `{ToMod X}: Equivalence (≡).
 Next Obligation.
   ii. r. esplits; try refl.
 Qed.
 Next Obligation.
-  ii. r in H. des. r. esplits; et.
+  ii. r in H0. des. r. esplits; et.
 Qed.
 Next Obligation.
-  ii. r in H. r in H0. des. r. esplits; etrans; et.
+  ii. r in H0. r in H1. des. r. esplits; etrans; et.
 Qed.
-Lemma eqv_hcomp: forall a b c d, a ≡ b -> c ≡ d -> (a ++ c) ≡ (b ++ d).
+Lemma eqv_hcomp: forall `{ToMod X} a b c d, a ≡ b -> c ≡ d -> (a ++ c) ≡ (b ++ d).
 Proof.
-  i. r in H. r in H0. r. des. esplits; et.
+  i. r in H0. r in H1. r. des. esplits; et.
   { rewrite ! map_app. eapply hcomp; et. }
   { rewrite ! map_app. eapply hcomp; et. }
 Qed.
-Lemma eqv_comm: forall a b, (a ++ b) ≡ (b ++ a).
+Lemma eqv_comm: forall `{ToMod X} a b, (a ++ b) ≡ (b ++ a).
 Proof.
   ii. r. rewrite ! map_app. split; try apply ctxref_comm.
 Qed.
-Lemma eqv_assoc: forall a b c, (a ++ (b ++ c)) ≡ ((a ++ b) ++ c).
+Lemma eqv_assoc: forall `{ToMod X} a b c, (a ++ (b ++ c)) ≡ ((a ++ b) ++ c).
 Proof.
   ii. r. rewrite ! map_app. split; try apply ctxref_assoc. apply ctxref_assoc_rev.
 Qed.
@@ -117,10 +118,10 @@ Proof.
 Qed.
 
 Global Program Instance eqv_ctxref: subrelation (≡) ctxref.
-Next Obligation. ii. r in H0. des; ss. rewrite ! map_id in *. ss. Qed.
-Global Program Instance perm_eqv: subrelation (≃) (≡).
+Next Obligation. ii. r in H. des; ss. rewrite ! map_id in *. ss. Qed.
+Global Program Instance perm_eqv `{ToMod X}: subrelation (≃) (≡).
 Next Obligation.
-  ii. induction H.
+  ii. induction H0.
   { refl. }
   { rewrite cons_app. erewrite cons_app with (xtl:=l'). eapply eqv_hcomp; et. refl. }
   { change (y :: x :: l) with ([y] ++ [x] ++ l).
@@ -174,6 +175,27 @@ Next Obligation.
   - etrans. { etrans; [|eapply H1]. eapply eqv_ctxref. ss. } eapply eqv_ctxref; sym; ss.
 Qed.
 
+(* Global Program Instance wrap_eqv: Proper ((≡) ==> (≡)) (map wrap). *)
+(* Next Obligation. *)
+(*   ii. r in H. r. des. esplits; et. *)
+(*   - rewrite ! map_map. ss. *)
+(*   - rewrite ! map_map. ss. *)
+(* Qed. *)
+
+(* Global Program Instance add2_eqv s0: Proper ((≡) ==> (≡)) (add2 s0). *)
+(* Next Obligation. *)
+(*   ii. r in H. r. des. esplits; et. *)
+(*   - unfold add2. rewrite ! map_map. rp; try apply H. *)
+(*     + f_equiv. extensionality sm. des_ifs. ss. *)
+(*     unfold toMod, SMod_ToMod. *)
+(* Abort. *)
+
+(* this is what we have been avoiding *)
+(* some idea: adjunction? wrap the context with anti-wrapper where (A + antiwrap s ctx) ≡ (wrap s A + ctx).
+Use this to prove the above lemma.
+--> What is such an adjunction...
+ *)
+
 
 Module HARDER.
   (* Definition mProp := list Mod. *)
@@ -184,7 +206,7 @@ Module HARDER.
     mProp_intro {
         mProp_pred :> mPred;
         (* mProp_perm: forall r0 r1 (LE: r0 ≡ r1), mProp_pred r0 -> mProp_pred r1; *)
-        mProp_perm :> Proper ((≡) ==> (flip impl)) mProp_pred;
+        mProp_eqv :> Proper ((≡) ==> (flip impl)) mProp_pred;
       }.
   Arguments mProp_intro: clear implicits.
 
@@ -198,12 +220,12 @@ Module HARDER.
 
   Program Definition Ex {X: Type} (P: X -> mProp): mProp := mProp_intro (fun sm => exists x, (P x: mPred) sm) _.
   Next Obligation.
-    ii. ss. des. esplits; et. eapply mProp_perm; et.
+    ii. ss. des. esplits; et. eapply mProp_eqv; et.
   Qed.
 
   Program Definition Univ {X: Type} (P: X -> mProp): mProp := mProp_intro (fun sm => forall x, (P x: mPred) sm) _.
   Next Obligation.
-    ii. ss. des. esplits; et. eapply mProp_perm; et.
+    ii. ss. des. esplits; et. eapply mProp_eqv; et.
   Qed.
 
   Program Definition Own (m0: list (Stb * Mod)): mProp := mProp_intro (fun sm => m0 ≡ sm) _. (* sublist m0 sm. *)
@@ -229,14 +251,14 @@ Module HARDER.
     mProp_intro (fun sm => forall smp, (P: mPred) smp -> (Q: mPred) (sm ++ smp)) _
   .
   Next Obligation.
-    ii. ss. eapply mProp_perm; [|eapply H0]; et. eapply Permutation_app; et.
+    ii. ss. eapply mProp_eqv; [|eapply H0]; et. eapply eqv_hcomp; et. refl.
   Qed.
 
   Program Definition And (P Q : mProp) : mProp :=
     mProp_intro (fun sm0 => (P: mPred) sm0 /\ (Q: mPred) sm0) _
   .
   Next Obligation.
-    ii. ss. des. esplits; eapply mProp_perm; et.
+    ii. ss. des. esplits; eapply mProp_eqv; et.
   Qed.
 
   (*** Refining ***)
@@ -244,8 +266,8 @@ Module HARDER.
     mProp_intro (fun tgt => exists src, (Q: mPred) src /\ (forall x, ctxref (map wrap (add2 x tgt)) (map wrap (add2 x src)))) _
   .
   Next Obligation.
-    ii. ss. des. esplits; et. ii. etrans; et. eapply ctxref_perm; et. unfold add2. rewrite ! map_map.
-    f_equiv. ss.
+    ii. ss. des. esplits; et. ii. etrans; et. eapply eqv_ctxref; et. eapply wrap_eqv. unfold add2. rewrite ! map_map.
+    f_equiv.
   Qed.
 
   Lemma ref_mono: forall P Q, Entails P Q -> Entails (Ref P) (Ref Q).
@@ -378,7 +400,7 @@ Module HARDER.
 
   Lemma Wand_elim_l: forall P Q R : mProp, Entails P (Wand Q R) -> Entails (Sepconj P Q) R.
   Proof.
-    unfold Entails, Sepconj, Wand. ii; ss. des; subst. eapply mProp_perm; et.
+    unfold Entails, Sepconj, Wand. ii; ss. des; subst. eapply mProp_eqv; et.
   Qed.
 
   (* bi_persistently *)
@@ -386,7 +408,7 @@ Module HARDER.
     mProp_intro (fun sm => (P: mPred) (map (fun sm => (sm.1, core sm.2)) sm)) _
   .
   Next Obligation.
-    ii; ss. eapply mProp_perm; [|et]. rewrite H. ss.
+    ii; ss. eapply mProp_eqv; [|et]. rewrite H. ss.
   Qed.
 
   Lemma Pers_mono: forall P Q, Entails P Q -> Entails (Pers P) (Pers Q).
@@ -422,7 +444,7 @@ Module HARDER.
 
   (* Lemma Pers_absorbing: forall P Q, Entails (Sepconj (Pers P) Q) (Pers P). *)
   (* Proof. *)
-  (*   unfold Entails, Pers, Sepconj. ii; ss. des. eapply mProp_perm; [|et]. rewrite H. rewrite map_app. *)
+  (*   unfold Entails, Pers, Sepconj. ii; ss. des. eapply mProp_eqv; [|et]. rewrite H. rewrite map_app. *)
   (* Qed. *)
 
   Definition PersR: mProp -> mProp := Ref ∘ Pers.
