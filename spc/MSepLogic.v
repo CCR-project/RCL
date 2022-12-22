@@ -67,46 +67,111 @@ Lemma unit_id2: forall x, add2 unit x = x.
 Qed.
 
 Require Import Permutation.
-Notation "(≡)" := (Permutation).
-Notation "A ≡ B" := (Permutation A B).
 
-Lemma app_Permutation_assoc X (p q r: list X): (p ++ q) ++ r ≡ p ++ (q ++ r).
+
+Notation "(≃)" := (Permutation).
+Notation " A '≃' B " := (Permutation A B) (at level 50).
+Lemma app_Permutation_assoc X (p q r: list X): ((p ++ q) ++ r) ≃ (p ++ (q ++ r)).
 Proof.
   revert q r. induction p; i; ss.
   rewrite IHp. ss.
 Qed.
 
-Lemma ctxref_perm: forall a b, a ≡ b -> ctxref a b.
+
+Class ToMod X := toMod:> X -> Mod.
+Global Program Instance Mod_ToMod: ToMod Mod := id.
+Global Program Instance SMod_ToMod: ToMod (Stb * Mod) := wrap.
+
+Definition eqv `{ToMod X} (x y: list X): Prop := ctxref (map toMod x) (map toMod y) /\ ctxref (map toMod y) (map toMod x).
+Notation "(≡)" := (eqv).
+Notation "A ≡ B" := (eqv A B).
+Global Program Instance eqv_Equivalence: Equivalence (≡).
+Next Obligation.
+  ii. r. esplits; try refl.
+Qed.
+Next Obligation.
+  ii. r in H. des. r. esplits; et.
+Qed.
+Next Obligation.
+  ii. r in H. r in H0. des. r. esplits; etrans; et.
+Qed.
+Lemma eqv_hcomp: forall a b c d, a ≡ b -> c ≡ d -> (a ++ c) ≡ (b ++ d).
 Proof.
-  i. induction H.
+  i. r in H. r in H0. r. des. esplits; et.
+  { rewrite ! map_app. eapply hcomp; et. }
+  { rewrite ! map_app. eapply hcomp; et. }
+Qed.
+Lemma eqv_comm: forall a b, (a ++ b) ≡ (b ++ a).
+Proof.
+  ii. r. rewrite ! map_app. split; try apply ctxref_comm.
+Qed.
+Lemma eqv_assoc: forall a b c, (a ++ (b ++ c)) ≡ ((a ++ b) ++ c).
+Proof.
+  ii. r. rewrite ! map_app. split; try apply ctxref_assoc. apply ctxref_assoc_rev.
+Qed.
+Theorem core_eqv: forall a, [a] ≡ [a] ++ [core a].
+Proof.
+  ii. r. split; i.
+  - eapply core_spec.
+  - erewrite <- app_nil_r. rewrite ! map_app. eapply hcomp; try refl. eapply mod_affine.
+Qed.
+
+Global Program Instance eqv_ctxref: subrelation (≡) ctxref.
+Next Obligation. ii. r in H0. des; ss. rewrite ! map_id in *. ss. Qed.
+Global Program Instance perm_eqv: subrelation (≃) (≡).
+Next Obligation.
+  ii. induction H.
   { refl. }
-  { rewrite cons_app. erewrite cons_app with (xtl:=l'). eapply hcomp; et. refl. }
+  { rewrite cons_app. erewrite cons_app with (xtl:=l'). eapply eqv_hcomp; et. refl. }
   { change (y :: x :: l) with ([y] ++ [x] ++ l).
     change (x :: y :: l) with ([x] ++ [y] ++ l).
-    rewrite ctxref_comm.
-    rewrite ctxref_assoc_rev. eapply hcomp; try refl.
-    rewrite ctxref_comm. eapply hcomp; try refl.
+    rewrite eqv_comm.
+    rewrite <- eqv_assoc. eapply eqv_hcomp; try refl.
+    rewrite eqv_comm. refl.
   }
   { etrans; et. }
 Qed.
+Global Program Instance perm_ctxref: subrelation (≃) ctxref.
+Next Obligation.
+  i. eapply eqv_ctxref. eapply perm_eqv. ss.
+Qed.
 
-Global Program Instance ctxref_perm_Proper: Proper ((≡) ==> (≡) ==> eq) ctxref.
+(* Global Program Instance ctxref_perm_Proper: Proper ((≡) ==> (≡) ==> eq) ctxref. *)
+(* Next Obligation. *)
+(*   ii. eapply Axioms.prop_ext. split; i. *)
+(*   - etrans. { eapply ctxref_perm. sym. et. } etrans; et. eapply ctxref_perm; et. *)
+(*   - etrans. 2: { eapply ctxref_perm. sym. et. } etrans; et. eapply ctxref_perm; et. *)
+(* Qed. *)
+
+(* Global Program Instance ctxref_perm_Proper2: Proper ((≡) ==> (≡) ==> impl) ctxref. *)
+(* Next Obligation. *)
+(*   ii. *)
+(*   - etrans. { eapply ctxref_perm. sym. et. } etrans; et. eapply ctxref_perm; et. *)
+(* Qed. *)
+
+(* Global Program Instance ctxref_perm_Proper3: Proper ((≡) ==> (≡) ==> (flip impl)) ctxref. *)
+(* Next Obligation. *)
+(*   ii. *)
+(*   - etrans. 2: { eapply ctxref_perm. sym. et. } etrans; et. eapply ctxref_perm; et. *)
+(* Qed. *)
+
+Global Program Instance ctxref_eqv_Proper: Proper ((≡) ==> (≡) ==> eq) ctxref.
 Next Obligation.
   ii. eapply Axioms.prop_ext. split; i.
-  - etrans. { eapply ctxref_perm. sym. et. } etrans; et. eapply ctxref_perm; et.
-  - etrans. 2: { eapply ctxref_perm. sym. et. } etrans; et. eapply ctxref_perm; et.
+  - etrans. { etrans; [|eapply H1]. eapply eqv_ctxref. sym; ss. } eapply eqv_ctxref; ss.
+  - etrans. { etrans; [|eapply H1]. eapply eqv_ctxref. ss. } eapply eqv_ctxref; sym; ss.
 Qed.
 
-Global Program Instance ctxref_perm_Proper2: Proper ((≡) ==> (≡) ==> impl) ctxref.
+Global Program Instance ctxref_eqv_Proper2: Proper ((≡) ==> (≡) ==> impl) ctxref.
 Next Obligation.
   ii.
-  - etrans. { eapply ctxref_perm. sym. et. } etrans; et. eapply ctxref_perm; et.
+  - etrans. { etrans; [|eapply H1]. eapply eqv_ctxref. sym; ss. } eapply eqv_ctxref; ss.
 Qed.
 
-Global Program Instance ctxref_perm_Proper3: Proper ((≡) ==> (≡) ==> (flip impl)) ctxref.
+Global Program Instance ctxref_eqv_Proper3: Proper ((≡) ==> (≡) ==> (flip impl)) ctxref.
 Next Obligation.
   ii.
-  - etrans. 2: { eapply ctxref_perm. sym. et. } etrans; et. eapply ctxref_perm; et.
+  - etrans. { etrans; [|eapply H1]. eapply eqv_ctxref. ss. } eapply eqv_ctxref; sym; ss.
 Qed.
 
 
