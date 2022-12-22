@@ -64,9 +64,19 @@ Qed.
 Module HARDER.
   (* Definition mProp := list Mod. *)
   (* Definition mProp := (Stb * (list Mod -> Prop))%type. *)
-  Definition mProp := (list (Stb * Mod) -> Prop)%type.
+  Definition mPred := (list (Stb * Mod) -> Prop)%type.
 
-  Definition Sepconj (P Q: mProp): mProp := (fun m => exists a b, m = a ++ b /\ P a /\ Q b).
+  Record mProp :=
+    mProp_intro {
+        mProp_pred :> mPred;
+        mProp_mono: forall r0 r1 (LE: incl r0 r1), mProp_pred r0 -> mProp_pred r1;
+      }.
+
+  Program Definition Sepconj (P Q: mProp): mProp :=
+    mProp_intro (fun m => exists a b, m = a ++ b /\ (P: mPred) a /\ (Q: mPred) b) _.
+  Next Obligation.
+    i. ss. des. clarify. esplits; et.
+  Qed.
 
   Definition Pure (P: Prop): mProp := fun _ => P.
 
