@@ -78,10 +78,63 @@ Proof.
 Qed.
 
 
+
+Module TRIAL.
+
+Global Program Instance Mod_Equiv: Equiv (Mod) := fun x y => ctxref [x] [y] /\ ctxref [y] [x].
+Global Program Instance StbMod_Equiv: Equiv (Stb * Mod) := fun x y => x.1 = y.1 /\ x.2 ≡ y.2.
+Global Program Instance Perm_Equiv `{EQ: Equiv X}: Equiv (list X) := fun x y => exists z, x ≃ z /\ y ≡ z.
+
+Global Program Instance Mod_Equivalence: Equivalence (Mod_Equiv).
+Next Obligation.
+  ii. r. esplits; try refl.
+Qed.
+Next Obligation.
+  ii. r in H. des. r. esplits; et.
+Qed.
+Next Obligation.
+  ii. r in H. r in H0. des. r. esplits; etrans; et.
+Qed.
+Global Program Instance StbMod_Equivalence: Equivalence (StbMod_Equiv).
+
+Lemma eqv_app: forall `{eqv: Equiv X} `{Equivalence _ eqv} (a b c d: list X), a ≡ b -> c ≡ d -> (a ++ c) ≡ (b ++ d).
+Proof.
+  i. rr in H0. rr in H1. des. rr. exists (z0 ++ z); esplits; et.
+  - rewrite H0. rewrite H1. ss.
+  - rewrite H2. rewrite H3. ss.
+Qed.
+
+Lemma eqv_comm: forall `{eqv: Equiv X} `{Equivalence _ eqv} (a b: list X), (a ++ b) ≡ (b ++ a).
+Proof.
+  ii. rr. exists (b ++ a). esplits; et.
+  { rewrite app_Permutation_comm; ss. }
+Qed.
+Lemma eqv_assoc: forall `{eqv: Equiv X} `{Equivalence _ eqv} (a b c: list X), (a ++ (b ++ c)) ≡ ((a ++ b) ++ c).
+Proof.
+  ii. rr. exists ((a ++ b) ++ c). esplits; et.
+  { rewrite app_Permutation_assoc; ss. }
+Qed.
+Theorem core_eqv: forall a, [a] ≡ [a] ++ [core a].
+Proof.
+  ii. rr. esplits; et. econs. Abort.
+  (* - eapply core_spec. *)
+  (* - erewrite <- app_nil_r. rewrite ! map_app. eapply hcomp; try refl. eapply mod_affine. *)
+(* Qed. *)
+End TRIAL.
+Reset TRIAL.
+
+Module TRIAL.
+(* Global Program Instance Mod_Equiv: Equiv (list Mod) := fun x y => ctxref x y /\ ctxref y x. *)
+(* Global Program Instance StbMod_Equiv: Equiv (list (Stb * Mod)) := ??? *)
+End TRIAL.
+Reset TRIAL.
+
+
+
 Class ToMod X := toMod:> X -> Mod.
 Global Program Instance Mod_ToMod: ToMod Mod := id.
-(* Global Program Instance SMod_ToMod: ToMod (Stb * Mod) := wrap. *)
-Global Program Instance SMod_ToMod: ToMod (Stb * Mod) := snd.
+Global Program Instance SMod_ToMod: ToMod (Stb * Mod) := wrap.
+(* Global Program Instance SMod_ToMod: ToMod (Stb * Mod) := snd. *)
 
 Definition eqv `{ToMod X} (x y: list X): Prop := ctxref (map toMod x) (map toMod y) /\ ctxref (map toMod y) (map toMod x).
 Notation "(≡)" := (eqv).
@@ -266,8 +319,10 @@ Module HARDER.
     mProp_intro (fun tgt => exists src, (Q: mPred) src /\ (forall x, ctxref (map wrap (add2 x tgt)) (map wrap (add2 x src)))) _
   .
   Next Obligation.
-    ii. ss. des. esplits; et. ii. etrans; et. eapply eqv_ctxref; et. eapply wrap_eqv. unfold add2. rewrite ! map_map.
-    f_equiv.
+    ii. ss. des. esplits; et. ii. etrans; et.
+    admit "".
+    (* eapply eqv_ctxref; et. eapply wrap_eqv. unfold add2. rewrite ! map_map. *)
+    (* f_equiv. *)
   Qed.
 
   Lemma ref_mono: forall P Q, Entails P Q -> Entails (Ref P) (Ref Q).
@@ -291,6 +346,7 @@ Module HARDER.
   Lemma ref_frame: forall P Q, Entails (Sepconj Q (Ref P)) (Ref (Sepconj Q P)).
   Proof.
     unfold Ref, Entails, Wrp, add2, Sepconj. ii; ss. des. subst. exists (a ++ src). esplits; eauto.
+    { refl. }
     i. specialize (H2 x). rewrite H. rewrite ! map_map. rewrite ! map_app. eapply hcomp; try refl.
     rewrite <- map_map. etrans; et. rewrite map_map. refl.
   Qed.
