@@ -37,6 +37,13 @@ Section MODSEM.
   }
   .
 
+  Record wf (ms: t): Prop := mk_wf {
+    wf_fnsems: NoDup (List.map fst ms.(fnsems));
+  }
+  .
+
+
+
   (*** using "Program Definition" makes the definition uncompilable; why?? ***)
   Definition add (ms0 ms1: t): t := {|
     (* sk := Sk.add md0.(sk) md1.(sk); *)
@@ -57,12 +64,19 @@ Section MODSEM.
 
   Definition prog: callE ~> itree Es :=
     fun _ '(Call fn args) =>
-      n <- trigger (Take _);;
-      assume(exists sem, nth_error ms.(fnsems) n = Some (fn, sem));;;
-      '(_, sem) <- (nth_error ms.(fnsems) n)?;;
+      sem <- (alist_find fn ms.(fnsems))?;;
       rv <- (sem args);;
       Ret rv
   .
+
+  (* Definition prog: callE ~> itree Es := *)
+  (*   fun _ '(Call fn args) => *)
+  (*     n <- trigger (Take _);; *)
+  (*     assume(exists sem, nth_error ms.(fnsems) n = Some (fn, sem));;; *)
+  (*     '(_, sem) <- (nth_error ms.(fnsems) n)?;; *)
+  (*     rv <- (sem args);; *)
+  (*     Ret rv *)
+  (* . *)
 
 
 
@@ -339,7 +353,8 @@ Section MOD.
   }
   .
 
-  Definition wf (md: t): Prop := (<<SK: Sk.wf (md.(sk))>>).
+  (* Definition wf (md: t): Prop := (<<SK: Sk.wf (md.(sk))>>). *)
+  Definition wf (md: t): Prop := (<<WF: ModSem.wf md.(enclose)>> /\ <<SK: Sk.wf (md.(sk))>>).
 
   Section BEH.
 
