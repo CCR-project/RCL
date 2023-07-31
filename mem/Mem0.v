@@ -14,6 +14,7 @@ Set Typeclasses Depth 5.
 
 
 Section PROOF.
+
   Section BODY.
     Context {Es: Type -> Type}.
     Context `{has_pE: pE -< Es}.

@@ -3,12 +3,11 @@ Require Export sflib.
 Require Export ITreelib.
 Require Export AList.
 Require Import Any.
+Require Import Skeleton.
 
 Set Implicit Arguments.
 
 
-Notation gname := string (only parsing). (*** convention: not capitalized ***)
-Notation mname := string (only parsing). (*** convention: capitalized ***)
 
 Section EVENTSCOMMON.
 
@@ -90,7 +89,7 @@ Goal (tt ↑↓ǃ) = Ret tt. rewrite Any.upcast_downcast. ss. Qed.
 
 Section EVENTSCOMMON.
 
-  Definition p_state: Type := (mname -> Any.t).
+  Definition p_state: Type := (Any.t).
 
   (*** Same as State.pure_state, but does not use "Vis" directly ***)
   Definition pure_state {S E}: E ~> stateT S (itree E) := fun _ e s => x <- trigger e;; Ret (s, x).
@@ -108,16 +107,16 @@ End EVENTSCOMMON.
 
 
 
-Module EventsL.
-Section EVENTSL.
+Module Events.
+Section EVENTS.
 
   Inductive callE: Type -> Type :=
-  | Call (mn: option mname) (fn: gname) (args: Any.t): callE Any.t
+  | Call (fn: gname) (args: Any.t): callE Any.t
   .
 
   Inductive pE: Type -> Type :=
-  | PPut (mn: mname) (p: Any.t): pE unit
-  | PGet (mn: mname): pE Any.t
+  | PPut (p: Any.t): pE unit
+  | PGet : pE Any.t
   .
 
   (*** TODO: we don't want to require "mname" here ***)
@@ -147,13 +146,13 @@ Section EVENTSL.
   (*************************** Interpretation *************************)
   (********************************************************************)
 
-  Definition handle_pE {E}: pE ~> stateT p_state (itree E) :=
-    fun _ e mps =>
+  Definition handle_pE `{eventE -< E}: pE ~> stateT p_state (itree E) :=
+    fun _ e p =>
       match e with
-      | PPut mn p => Ret (update mps mn p, tt)
-      | PGet mn => Ret (mps, mps mn)
+      | PPut p => Ret (p, tt)
+      | PGet => Ret (p, p)
       end.
-  Definition interp_pE {E}: itree (pE +' E) ~> stateT p_state (itree E) :=
+  Definition interp_pE `{eventE -< E}: itree (pE +' E) ~> stateT p_state (itree E) :=
     (* State.interp_state (case_ ((fun _ e s0 => resum_itr (handle_pE e s0)): _ ~> stateT _ _) State.pure_state). *)
     State.interp_state (case_ handle_pE pure_state).
 
@@ -255,6 +254,6 @@ Section EVENTSL.
     unfold interp_Es, interp_pE, pure_state, triggerNB. grind.
   Qed.
   Opaque interp_Es.
-End EVENTSL.
-End EventsL.
-Opaque EventsL.interp_Es.
+End EVENTS.
+End Events.
+Opaque Events.interp_Es.
