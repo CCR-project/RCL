@@ -713,13 +713,13 @@ Section SIM.
     { exploit SRC0; auto. exploit TGT0; auto. i. clarify. econs 14; eauto. }
   Qed.
 
-  Definition sim_fsem: relation (mname * Any.t -> itree Es Any.t) :=
+  Definition sim_fsem: relation (Any.t -> itree Es Any.t) :=
     (eq ==> (fun it_src it_tgt => forall w mrs_src mrs_tgt (SIMMRS: wf w (mrs_src, mrs_tgt)),
                  sim_itree false false w (mrs_src, it_src)
                            (mrs_tgt, it_tgt)))%signature
   .
 
-  Definition sim_fnsem: relation (string * (mname * Any.t -> itree Es Any.t)) := RelProd eq sim_fsem.
+  Definition sim_fnsem: relation (string * (Any.t -> itree Es Any.t)) := RelProd eq sim_fsem.
 
 
   Variant lflagC (r: forall (R_src R_tgt: Type) (RR: st_local -> st_local -> R_src -> R_tgt -> Prop), bool -> bool -> world -> st_local * itree Es R_src -> st_local * itree Es R_tgt -> Prop)
@@ -941,7 +941,6 @@ Section SIMMODSEM.
     le: world -> world -> Prop;
     le_PreOrder: PreOrder le;
     sim_fnsems: Forall2 (sim_fnsem wf le) ms_src.(ModSem.fnsems) ms_tgt.(ModSem.fnsems);
-    sim_mn: ms_src.(ModSem.mn) = ms_tgt.(ModSem.mn);
     sim_initial: exists w_init, wf w_init (ms_src.(ModSem.initial_st), ms_tgt.(ModSem.initial_st));
   }.
 
@@ -954,7 +953,7 @@ Proof.
   - instantiate (1:=fun (_ _: unit) => True). ss.
   - instantiate (1:=(fun (_: unit) '(src, tgt) => src = tgt)). (* fun p => fst p = snd p *)
     generalize (ModSem.fnsems ms).
-    induction l; ii; ss.
+    induction a; ii; ss.
     econs; eauto. econs; ss. ii; clarify.
     destruct w. exploit self_sim_itree; et.
   - ss.
@@ -989,48 +988,6 @@ End ModPair.
 
 
 
-Section SIMMOD.
-
-  Context {CONF: EMSConfig}.
-
-  Lemma ModL_add_fnsems md0 md1 sk
-    :
-      (ModSemL.fnsems (ModL.get_modsem (ModL.add md0 md1) sk)) =
-      (ModSemL.fnsems (ModL.get_modsem md0 sk)) ++ (ModSemL.fnsems (ModL.get_modsem md1 sk)).
-  Proof.
-    ss.
-  Qed.
-
-  Lemma ModL_add_sk md0 md1
-    :
-      ModL.sk (ModL.add md0 md1) = ModL.sk md0 ++ ModL.sk md1.
-  Proof.
-    ss.
-  Qed.
-
-  Lemma Mod_list_incl_sk (mds: list Mod.t) md
-        (IN: In md mds)
-    :
-      Sk.incl (Mod.sk md) (ModL.sk (Mod.add_list mds)).
-  Proof.
-    rewrite Mod.add_list_sk. revert IN. induction mds; ss.
-    i. des; clarify.
-    { ii. eapply in_or_app. auto. }
-    { ii. eapply in_or_app. right. eapply IHmds; et. }
-  Qed.
-
-  Lemma Mod_add_list_get_modsem (mds: list Mod.t) sk
-    :
-      ModL.get_modsem (Mod.add_list mds) sk
-      =
-      fold_right ModSemL.add {| ModSemL.fnsems := []; ModSemL.initial_mrs := [] |}
-                 (List.map (fun (md: Mod.t) => ModL.get_modsem md sk) mds).
-  Proof.
-    induction mds; ss. f_equal. rewrite <- IHmds. ss.
-  Qed.
-
-End SIMMOD.
-
 Require Import SimGlobal.
 Require Import Red IRed.
 
@@ -1050,10 +1007,9 @@ Import TAC.
 
 Section ADEQUACY.
   Section SEMPAIR.
-    Variable ms_src: ModSemL.t.
-    Variable ms_tgt: ModSemL.t.
+    Variable ms_src: ModSem.t.
+    Variable ms_tgt: ModSem.t.
 
-    Variable mn: mname.
     Variable world: Type.
     Variable wf: world -> Any.t * Any.t -> Prop.
     Variable le: world -> world -> Prop.

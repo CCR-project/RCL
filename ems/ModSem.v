@@ -33,32 +33,8 @@ Section MODSEM.
   Record t: Type := mk {
     (* initial_ld: mname -> GRA; *)
     fnsems: alist gname (Any.t -> itree Es Any.t);
-    initial_mrs: Any.t;
+    initial_st: Any.t;
   }
-  .
-
-  Definition focus_left_h: Handler pE Es :=
-    fun _ pE => match pE with
-                | PPut p => ('(_, r) <- (Any.split p)?;; trigger (PPut (Any.pair p r));;; Ret ())
-                | PGet => (p <- trigger PGet;; '(l, _) <- (Any.split p)?;; Ret l)
-                end
-  .
-
-  Definition focus_right_h: Handler pE Es :=
-    fun _ pE => match pE with
-                | PPut p => ('(l, _) <- (Any.split p)?;; trigger (PPut (Any.pair l p));;; Ret ())
-                | PGet => (p <- trigger PGet;; '(_, r) <- (Any.split p)?;; Ret r)
-                end
-  .
-
-  Definition focus_left: itree Es Any.t -> itree Es Any.t :=
-    fun itr =>
-      interp (case_ trivial_Handler (case_ focus_left_h trivial_Handler)) itr
-  .
-
-  Definition focus_right: itree Es Any.t -> itree Es Any.t :=
-    fun itr =>
-      interp (case_ trivial_Handler (case_ focus_right_h trivial_Handler)) itr
   .
 
   (*** using "Program Definition" makes the definition uncompilable; why?? ***)
@@ -67,9 +43,9 @@ Section MODSEM.
     (* initial_ld := URA.add (t:=URA.pointwise _ _) md0.(initial_ld) md1.(initial_ld); *)
     (* sem := fun _ '(Call fn args) => *)
     (*          (if List.in_dec string_dec fn md0.(sk) then md0.(sem) else md1.(sem)) _ (Call fn args); *)
-    fnsems := app (List.map (map_snd (fun ktr => focus_left ∘ ktr)) ms0.(fnsems))
-                  (List.map (map_snd (fun ktr => focus_right ∘ ktr)) ms1.(fnsems));
-    initial_mrs := Any.pair ms0.(initial_mrs) ms1.(initial_mrs);
+    fnsems := app (List.map (map_snd (fun ktr => (@focus_left _) ∘ ktr)) ms0.(fnsems))
+                  (List.map (map_snd (fun ktr => (@focus_right _) ∘ ktr)) ms1.(fnsems));
+    initial_st := Any.pair ms0.(initial_st) ms1.(initial_st);
   |}
   .
 
@@ -90,7 +66,7 @@ Section MODSEM.
 
 
 
-  Definition initial_p_state: p_state := ms.(initial_mrs).
+  Definition initial_p_state: p_state := ms.(initial_st).
 
   Context `{CONF: EMSConfig}.
   Definition initial_itr (P: option Prop): itree (eventE) Any.t :=
@@ -488,80 +464,281 @@ Section AUX.
       (mk_box interp_Es_ext)
   .
 
-  Lemma transl_all_unwrapU
-        mn R (r: option R)
+  Lemma focus_left_bind
+        A B
+        (itr: itree Es A) (ktr: A -> itree Es B)
     :
-      transl_all mn (unwrapU r) = unwrapU r
+      focus_left (itr >>= ktr) = a <- (focus_left itr);; (focus_left (ktr a))
+  .
+  Proof. unfold focus_left. grind. Qed.
+
+  Lemma focus_left_tau
+        A
+        (itr: itree Es A)
+    :
+      focus_left (tau;; itr) = tau;; (focus_left itr)
+  .
+  Proof. unfold focus_left. grind. Qed.
+
+  Lemma focus_left_ret
+        A
+        (a: A)
+    :
+      focus_left (Ret a) = Ret a
+  .
+  Proof. unfold focus_left. grind. Qed.
+
+  Lemma focus_left_callE
+        fn args
+    :
+      focus_left (trigger (Call fn args)) =
+      r <- (trigger (Events.Call fn args));;
+      tau;; Ret r
+  .
+  Proof. unfold focus_left. rewrite unfold_interp. ss. grind. Qed.
+
+  Lemma focus_left_pE
+        T (e: pE T)
+    :
+      focus_left (trigger e) = r <- (focus_left_h e);; tau;; Ret r
+  .
+  Proof. dependent destruction e; ss; unfold focus_left; rewrite unfold_interp; ss; grind. Qed.
+
+  Lemma focus_left_eventE
+        T (e: eventE T)
+    :
+      focus_left (trigger e) = r <- trigger e;; tau;; Ret r
+  .
+  Proof. dependent destruction e; ss; unfold focus_left; rewrite unfold_interp; ss; grind. Qed.
+
+  Lemma focus_left_triggerUB
+        T
+    :
+      focus_left (triggerUB: itree _ T) = triggerUB
+  .
+  Proof. unfold triggerUB. unfold focus_left; rewrite unfold_interp; ss; grind. Qed.
+
+  Lemma focus_left_triggerNB
+        T
+    :
+      focus_left (triggerNB: itree _ T) = triggerNB
+  .
+  Proof. unfold triggerNB. unfold focus_left; rewrite unfold_interp; ss; grind. Qed.
+
+
+  Lemma focus_left_unwrapU
+        R (r: option R)
+    :
+      focus_left (unwrapU r) = unwrapU r
   .
   Proof.
     unfold unwrapU. des_ifs.
-    - rewrite transl_all_ret. grind.
-    - rewrite transl_all_triggerUB. unfold triggerUB. grind.
+    - rewrite focus_left_ret. grind.
+    - rewrite focus_left_triggerUB. unfold triggerUB. grind.
   Qed.
 
-  Lemma transl_all_unwrapN
-        mn R (r: option R)
+  Lemma focus_left_unwrapN
+        R (r: option R)
     :
-      transl_all mn (unwrapN r) = unwrapN r
+      focus_left (unwrapN r) = unwrapN r
   .
   Proof.
     unfold unwrapN. des_ifs.
-    - rewrite transl_all_ret. grind.
-    - rewrite transl_all_triggerNB. unfold triggerNB. grind.
+    - rewrite focus_left_ret. grind.
+    - rewrite focus_left_triggerNB. unfold triggerNB. grind.
   Qed.
 
-  Lemma transl_all_assume
-        mn (P: Prop)
+  Lemma focus_left_assume
+        (P: Prop)
     :
-      transl_all mn (assume P) = assume P;;; tau;; Ret (tt)
+      focus_left (assume P) = assume P;;; tau;; Ret (tt)
   .
   Proof.
     unfold assume.
-    repeat (try rewrite transl_all_bind; try rewrite bind_bind). grind.
-    rewrite transl_all_eventE.
-    repeat (try rewrite transl_all_bind; try rewrite bind_bind). grind.
-    rewrite transl_all_ret.
+    repeat (try rewrite focus_left_bind; try rewrite bind_bind). grind.
+    rewrite focus_left_eventE.
+    repeat (try rewrite focus_left_bind; try rewrite bind_bind). grind.
+    rewrite focus_left_ret.
     refl.
   Qed.
 
-  Lemma transl_all_guarantee
-        mn (P: Prop)
+  Lemma focus_left_guarantee
+        (P: Prop)
     :
-      transl_all mn (guarantee P) = guarantee P;;; tau;; Ret (tt)
+      focus_left (guarantee P) = guarantee P;;; tau;; Ret (tt)
   .
   Proof.
     unfold guarantee.
-    repeat (try rewrite transl_all_bind; try rewrite bind_bind). grind.
-    rewrite transl_all_eventE.
-    repeat (try rewrite transl_all_bind; try rewrite bind_bind). grind.
-    rewrite transl_all_ret.
+    repeat (try rewrite focus_left_bind; try rewrite bind_bind). grind.
+    rewrite focus_left_eventE.
+    repeat (try rewrite focus_left_bind; try rewrite bind_bind). grind.
+    rewrite focus_left_ret.
     refl.
   Qed.
 
-  Lemma transl_all_ext
-        mn R (itr0 itr1: itree _ R)
+  Lemma focus_left_ext
+        R (itr0 itr1: itree _ R)
         (EQ: itr0 = itr1)
     :
-      transl_all mn itr0 = transl_all mn itr1
+      focus_left itr0 = focus_left itr1
   .
   Proof. subst; refl. Qed.
 
-  Global Program Instance transl_all_rdb: red_database (mk_box (@transl_all)) :=
+  Global Program Instance focus_left_rdb: red_database (mk_box (@focus_left)) :=
     mk_rdb
       0
-      (mk_box transl_all_bind)
-      (mk_box transl_all_tau)
-      (mk_box transl_all_ret)
-      (mk_box transl_all_pE)
-      (mk_box transl_all_pE)
-      (mk_box transl_all_callE)
-      (mk_box transl_all_eventE)
-      (mk_box transl_all_triggerUB)
-      (mk_box transl_all_triggerNB)
-      (mk_box transl_all_unwrapU)
-      (mk_box transl_all_unwrapN)
-      (mk_box transl_all_assume)
-      (mk_box transl_all_guarantee)
-      (mk_box transl_all_ext)
+      (mk_box focus_left_bind)
+      (mk_box focus_left_tau)
+      (mk_box focus_left_ret)
+      (mk_box focus_left_pE)
+      (mk_box focus_left_pE)
+      (mk_box focus_left_callE)
+      (mk_box focus_left_eventE)
+      (mk_box focus_left_triggerUB)
+      (mk_box focus_left_triggerNB)
+      (mk_box focus_left_unwrapU)
+      (mk_box focus_left_unwrapN)
+      (mk_box focus_left_assume)
+      (mk_box focus_left_guarantee)
+      (mk_box focus_left_ext)
+  .
+
+  Lemma focus_right_bind
+        A B
+        (itr: itree Es A) (ktr: A -> itree Es B)
+    :
+      focus_right (itr >>= ktr) = a <- (focus_right itr);; (focus_right (ktr a))
+  .
+  Proof. unfold focus_right. grind. Qed.
+
+  Lemma focus_right_tau
+        A
+        (itr: itree Es A)
+    :
+      focus_right (tau;; itr) = tau;; (focus_right itr)
+  .
+  Proof. unfold focus_right. grind. Qed.
+
+  Lemma focus_right_ret
+        A
+        (a: A)
+    :
+      focus_right (Ret a) = Ret a
+  .
+  Proof. unfold focus_right. grind. Qed.
+
+  Lemma focus_right_callE
+        fn args
+    :
+      focus_right (trigger (Call fn args)) =
+      r <- (trigger (Events.Call fn args));;
+      tau;; Ret r
+  .
+  Proof. unfold focus_right. rewrite unfold_interp. ss. grind. Qed.
+
+  Lemma focus_right_pE
+        T (e: pE T)
+    :
+      focus_right (trigger e) = r <- (focus_right_h e);; tau;; Ret r
+  .
+  Proof. dependent destruction e; ss; unfold focus_right; rewrite unfold_interp; ss; grind. Qed.
+
+  Lemma focus_right_eventE
+        T (e: eventE T)
+    :
+      focus_right (trigger e) = r <- trigger e;; tau;; Ret r
+  .
+  Proof. dependent destruction e; ss; unfold focus_right; rewrite unfold_interp; ss; grind. Qed.
+
+  Lemma focus_right_triggerUB
+        T
+    :
+      focus_right (triggerUB: itree _ T) = triggerUB
+  .
+  Proof. unfold triggerUB. unfold focus_right; rewrite unfold_interp; ss; grind. Qed.
+
+  Lemma focus_right_triggerNB
+        T
+    :
+      focus_right (triggerNB: itree _ T) = triggerNB
+  .
+  Proof. unfold triggerNB. unfold focus_right; rewrite unfold_interp; ss; grind. Qed.
+
+
+  Lemma focus_right_unwrapU
+        R (r: option R)
+    :
+      focus_right (unwrapU r) = unwrapU r
+  .
+  Proof.
+    unfold unwrapU. des_ifs.
+    - rewrite focus_right_ret. grind.
+    - rewrite focus_right_triggerUB. unfold triggerUB. grind.
+  Qed.
+
+  Lemma focus_right_unwrapN
+        R (r: option R)
+    :
+      focus_right (unwrapN r) = unwrapN r
+  .
+  Proof.
+    unfold unwrapN. des_ifs.
+    - rewrite focus_right_ret. grind.
+    - rewrite focus_right_triggerNB. unfold triggerNB. grind.
+  Qed.
+
+  Lemma focus_right_assume
+        (P: Prop)
+    :
+      focus_right (assume P) = assume P;;; tau;; Ret (tt)
+  .
+  Proof.
+    unfold assume.
+    repeat (try rewrite focus_right_bind; try rewrite bind_bind). grind.
+    rewrite focus_right_eventE.
+    repeat (try rewrite focus_right_bind; try rewrite bind_bind). grind.
+    rewrite focus_right_ret.
+    refl.
+  Qed.
+
+  Lemma focus_right_guarantee
+        (P: Prop)
+    :
+      focus_right (guarantee P) = guarantee P;;; tau;; Ret (tt)
+  .
+  Proof.
+    unfold guarantee.
+    repeat (try rewrite focus_right_bind; try rewrite bind_bind). grind.
+    rewrite focus_right_eventE.
+    repeat (try rewrite focus_right_bind; try rewrite bind_bind). grind.
+    rewrite focus_right_ret.
+    refl.
+  Qed.
+
+  Lemma focus_right_ext
+        R (itr0 itr1: itree _ R)
+        (EQ: itr0 = itr1)
+    :
+      focus_right itr0 = focus_right itr1
+  .
+  Proof. subst; refl. Qed.
+
+  Global Program Instance focus_right_rdb: red_database (mk_box (@focus_right)) :=
+    mk_rdb
+      0
+      (mk_box focus_right_bind)
+      (mk_box focus_right_tau)
+      (mk_box focus_right_ret)
+      (mk_box focus_right_pE)
+      (mk_box focus_right_pE)
+      (mk_box focus_right_callE)
+      (mk_box focus_right_eventE)
+      (mk_box focus_right_triggerUB)
+      (mk_box focus_right_triggerNB)
+      (mk_box focus_right_unwrapU)
+      (mk_box focus_right_unwrapN)
+      (mk_box focus_right_assume)
+      (mk_box focus_right_guarantee)
+      (mk_box focus_right_ext)
   .
 End AUX.

@@ -508,7 +508,7 @@ Qed.
 
 
 Lemma step_trigger_choose_iff X k itr e
-      (STEP: ModSemL.step (trigger (Choose X) >>= k) e itr)
+      (STEP: ModSem.step (trigger (Choose X) >>= k) e itr)
   :
     exists x,
       e = None /\ itr = k x.
@@ -523,7 +523,7 @@ Proof.
 Qed.
 
 Lemma step_trigger_take_iff X k itr e
-      (STEP: ModSemL.step (trigger (Take X) >>= k) e itr)
+      (STEP: ModSem.step (trigger (Take X) >>= k) e itr)
   :
     exists x,
       e = None /\ itr = k x.
@@ -538,7 +538,7 @@ Proof.
 Qed.
 
 Lemma step_tau_iff itr0 itr1 e
-      (STEP: ModSemL.step (Tau itr0) e itr1)
+      (STEP: ModSem.step (Tau itr0) e itr1)
   :
     e = None /\ itr0 = itr1.
 Proof.
@@ -546,7 +546,7 @@ Proof.
 Qed.
 
 Lemma step_ret_iff rv itr e
-      (STEP: ModSemL.step (Ret rv) e itr)
+      (STEP: ModSem.step (Ret rv) e itr)
   :
     False.
 Proof.
@@ -554,7 +554,7 @@ Proof.
 Qed.
 
 Lemma step_trigger_syscall_iff fn args rvs k e itr
-      (STEP: ModSemL.step (trigger (Syscall fn args rvs) >>= k) e itr)
+      (STEP: ModSem.step (trigger (Syscall fn args rvs) >>= k) e itr)
   :
     exists rv, itr = k rv /\ e = Some (event_sys fn args rv)
                /\ <<RV: rvs rv>> /\ <<SYS: syscall_sem (event_sys fn args rv)>>.
@@ -581,11 +581,11 @@ Qed.
 
 Lemma step_trigger_choose X k x
   :
-    ModSemL.step (trigger (Choose X) >>= k) None (k x).
+    ModSem.step (trigger (Choose X) >>= k) None (k x).
 Proof.
   unfold trigger. ss.
   match goal with
-  | [ |- ModSemL.step ?itr _ _] =>
+  | [ |- ModSem.step ?itr _ _] =>
     replace itr with (Subevent.vis (Choose X) k)
   end; ss.
   { econs. }
@@ -595,11 +595,11 @@ Qed.
 
 Lemma step_trigger_take X k x
   :
-    ModSemL.step (trigger (Take X) >>= k) None (k x).
+    ModSem.step (trigger (Take X) >>= k) None (k x).
 Proof.
   unfold trigger. ss.
   match goal with
-  | [ |- ModSemL.step ?itr _ _] =>
+  | [ |- ModSem.step ?itr _ _] =>
     replace itr with (Subevent.vis (Take X) k)
   end; ss.
   { econs. }
@@ -610,11 +610,11 @@ Qed.
 Lemma step_trigger_syscall fn args (rvs: Any.t -> Prop) k rv
       (RV: rvs rv) (SYS: syscall_sem (event_sys fn args rv))
   :
-    ModSemL.step (trigger (Syscall fn args rvs) >>= k) (Some (event_sys fn args rv)) (k rv).
+    ModSem.step (trigger (Syscall fn args rvs) >>= k) (Some (event_sys fn args rv)) (k rv).
 Proof.
   unfold trigger. ss.
   match goal with
-  | [ |- ModSemL.step ?itr _ _] =>
+  | [ |- ModSem.step ?itr _ _] =>
     replace itr with (Subevent.vis (Syscall fn args rvs) k)
   end; ss.
   { econs; et. }
@@ -624,7 +624,7 @@ Qed.
 
 Lemma step_tau itr
   :
-    ModSemL.step (Tau itr) None itr.
+    ModSem.step (Tau itr) None itr.
 Proof.
   econs.
 Qed.
@@ -635,9 +635,9 @@ Hypothesis (FINSAME: (@finalize CONFS) = (@finalize CONFT)).
 Theorem adequacy_global_itree itr_src itr_tgt
         (SIM: simg eq false false itr_src itr_tgt)
   :
-    Beh.of_program (@ModSemL.compile_itree CONFT itr_tgt)
+    Beh.of_program (@ModSem.compile_itree CONFT itr_tgt)
     <1=
-    Beh.of_program (@ModSemL.compile_itree CONFS itr_src).
+    Beh.of_program (@ModSem.compile_itree CONFS itr_src).
 Proof.
   unfold Beh.of_program. ss.
   remember false as o_src0 in SIM at 1.
@@ -685,15 +685,15 @@ Proof.
 Qed.
 
 
-Variable md_src md_tgt: ModL.t.
-Let ms_src: ModSemL.t := md_src.(ModL.enclose).
-Let ms_tgt: ModSemL.t := md_tgt.(ModL.enclose).
+Variable md_src md_tgt: Mod.t.
+Let ms_src: ModSem.t := md_src.(Mod.enclose).
+Let ms_tgt: ModSem.t := md_tgt.(Mod.enclose).
 
 Section ADEQUACY.
-Hypothesis (SIM: simg eq false false (@ModSemL.initial_itr ms_src CONFS (Some (ModL.wf md_src))) (@ModSemL.initial_itr ms_tgt CONFT (Some (ModL.wf md_tgt)))).
+Hypothesis (SIM: simg eq false false (@ModSem.initial_itr ms_src CONFS (Some (Mod.wf md_src))) (@ModSem.initial_itr ms_tgt CONFT (Some (Mod.wf md_tgt)))).
 
 
-Theorem adequacy_global: Beh.of_program (@ModL.compile _ CONFT md_tgt) <1= Beh.of_program (@ModL.compile _ CONFS md_src).
+Theorem adequacy_global: Beh.of_program (@Mod.compile _ CONFT md_tgt) <1= Beh.of_program (@Mod.compile _ CONFS md_src).
 Proof.
   eapply adequacy_global_itree. eapply SIM.
 Qed.

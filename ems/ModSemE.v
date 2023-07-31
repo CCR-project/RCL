@@ -164,6 +164,30 @@ Section EVENTS.
     Ret (st1, v)
   .
 
+  Definition focus_left_h: Handler pE Es :=
+    fun _ pE => match pE with
+                | PPut p => ('(_, r) <- (Any.split p)?;; trigger (PPut (Any.pair p r));;; Ret ())
+                | PGet => (p <- trigger PGet;; '(l, _) <- (Any.split p)?;; Ret l)
+                end
+  .
+
+  Definition focus_right_h: Handler pE Es :=
+    fun _ pE => match pE with
+                | PPut p => ('(l, _) <- (Any.split p)?;; trigger (PPut (Any.pair l p));;; Ret ())
+                | PGet => (p <- trigger PGet;; '(_, r) <- (Any.split p)?;; Ret r)
+                end
+  .
+
+  Definition focus_left: itree Es ~> itree Es :=
+    fun _ itr =>
+      interp (case_ trivial_Handler (case_ focus_left_h trivial_Handler)) itr
+  .
+
+  Definition focus_right: itree Es ~> itree Es :=
+    fun _ itr =>
+      interp (case_ trivial_Handler (case_ focus_right_h trivial_Handler)) itr
+  .
+
 
 
   Lemma interp_Es_bind
