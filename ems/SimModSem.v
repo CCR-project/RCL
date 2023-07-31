@@ -970,29 +970,64 @@ Lemma compose_aux:
     let wf_both := fun '(u0, w0) '(lrs0, lrt0) =>
                      exists ls0 rs0 lt0 rt0 : Any.t,
                        lrs0 = Any.pair ls0 rs0 /\ lrt0 = Any.pair lt0 rt0 /\ wf0 u0 (ls0, lt0) /\ wf1 w0 (rs0, rt0) in
+(*     forall *)
+(*       (le_both_PreOrder: PreOrder le_both) *)
+(*       R sems semt (x: R) *)
+(*       (SIM: forall (w : world0) (mrs_src mrs_tgt : Any.t), *)
+(*        wf0 w (mrs_src, mrs_tgt) -> sim_itree wf0 le0 false false w (mrs_src, sems x) (mrs_tgt, semt x)) *)
+(*     , *)
+(*     forall (w : world0 * world1) (mrs_src mrs_tgt : Any.t), *)
+(*        wf_both w (mrs_src, mrs_tgt) -> sim_itree wf_both le_both false false w (mrs_src, sems x) (mrs_tgt, semt x) *)
+(* . *)
     forall
       (le_both_PreOrder: PreOrder le_both)
-      R sems semt (x: R)
-      (SIM: forall (w : world0) (mrs_src mrs_tgt : Any.t),
-       wf0 w (mrs_src, mrs_tgt) -> sim_itree wf0 le0 false false w (mrs_src, sems x) (mrs_tgt, semt x))
+      (sems semt: itree _ _) wl0 wr_begin wr0 sl0 sr0 tl0 tr0 fs ft
+      (LE: le1 wr_begin wr0)
+      (WF: wf1 wr0 (sr0, tr0))
+      (SIM: sim_itree wf0 le0 fs ft wl0 (sl0, sems) (tl0, semt))
     ,
-    forall (w : world0 * world1) (mrs_src mrs_tgt : Any.t),
-       wf_both w (mrs_src, mrs_tgt) -> sim_itree wf_both le_both false false w (mrs_src, sems x) (mrs_tgt, semt x)
+      sim_itree wf_both le_both fs ft (wl0, wr_begin) (Any.pair sl0 sr0, sems) (Any.pair tl0 tr0, semt)
 .
 Proof.
+  (* ii. ginit. revert_until le_both_PreOrder. gcofix CIH. *)
+  (* i. destruct w. ss. des. subst. *)
+  (* exploit SIM; et. intro T. *)
+  (* punfold T. *)
+  (* dependent induction T using _sim_itree_ind2; i; simpl_depind. *)
+  (* - gstep. econs 1; eauto. rr. rr in RET. des. subst. esplits; et. *)
+  (*   { refl. } *)
+  (*   { rr. esplits; et. } *)
+  (* - gstep. rename w0 into u0. rename w into w0. econs 2; eauto. *)
+  (*   { instantiate (1:=(_, _)). ss. esplits; et. } *)
+  (*   i. ss. des_ifs. des. exploit K. et. { etrans; et. *)
   ii. ginit. revert_until le_both_PreOrder. gcofix CIH.
-  i. destruct w. ss. des. subst.
-  exploit SIM; et. intro T.
-  punfold T.
-  (* remember (ls0, sems x) as tmp0. remember (lt0, semt x) as tmp1. revert Heqtmp0. revert Heqtmp1. *)
-  (* induction T using _sim_itree_ind2; i; clarify. *)
-  dependent induction T using _sim_itree_ind2; i; simpl_depind.
+  i.
+  punfold SIM.
+  remember (lift_rel wf0 le0 wl0 eq) as tmp.
+  remember (sl0, sems) as tmp0.
+  remember (tl0, semt) as tmp1.
+  revert Heqtmp. revert Heqtmp0. revert Heqtmp1.
+  revert semt. revert sems. revert tl0. revert sl0.
+  induction SIM using _sim_itree_ind2; i; clarify; simpl_depind.
+  (* dependent induction SIM using _sim_itree_ind2; i; simpl_depind. *)
   - gstep. econs 1; eauto. rr. rr in RET. des. subst. esplits; et.
-    { refl. }
-    { rr. esplits; et. }
-  - gstep. rename w0 into u. econs 2; eauto.
     { instantiate (1:=(_, _)). ss. esplits; et. }
-    i. ss. des_ifs. des. exploit K. et. { etrans; et.
+    { rr. esplits; et. }
+  - gstep. rename w0 into wl0. rename w into wl1. econs 2; eauto.
+    { instantiate (1:=(_, _)). ss. esplits; et. }
+    i. ss. des_ifs. des. ss. des. subst. exploit K; et. intro T; des. pclearbot.
+    gbase. eapply CIH; [|et|et].
+    { etrans; et. }
+  - gstep. econs 3; eauto.
+    i. gbase. eapply CIH; et.
+    specialize (K vret); pclearbot. et.
+  - guclo sim_itree_indC_spec. econs 4; eauto.
+  - guclo sim_itree_indC_spec. des. econs 5; eauto.
+  - guclo sim_itree_indC_spec. econs 6; eauto. i. spc K. des. eapply IH; et.
+  - guclo sim_itree_indC_spec. econs 7; eauto. exploit IHSIM; revgoals. intro T. eapply T. et. intro T. eapply T.
+  - guclo sim_itree_indC_spec. des. econs 5; eauto.
+    { instantiate (1:=(_, _)). ss. esplits; et. }
+    { rr. esplits; et. }
   -
   rr in H1. 
 Qed.
