@@ -5,7 +5,6 @@ Require Import STS.
 Require Import Behavior.
 Require Import ModSem.
 Require Import Skeleton.
-Require Import PCM.
 
 Set Implicit Arguments.
 Set Typeclasses Depth 5.
@@ -15,12 +14,6 @@ Set Typeclasses Depth 5.
 
 
 Section PROOF.
-  Let memRA: URA.t := (RA.excl Mem.t).
-  Context `{@GRA.inG memRA Σ}.
-  Let GURA: URA.t := GRA.to_URA Σ.
-  Local Existing Instance GURA.
-
-  Compute (URA.car (t:=memRA)).
 
   Section BODY.
     Context {Es: Type -> Type}.

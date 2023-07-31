@@ -713,13 +713,13 @@ Section SIM.
     { exploit SRC0; auto. exploit TGT0; auto. i. clarify. econs 14; eauto. }
   Qed.
 
-  Definition sim_fsem: relation (option mname * Any.t -> itree Es Any.t) :=
+  Definition sim_fsem: relation (mname * Any.t -> itree Es Any.t) :=
     (eq ==> (fun it_src it_tgt => forall w mrs_src mrs_tgt (SIMMRS: wf w (mrs_src, mrs_tgt)),
                  sim_itree false false w (mrs_src, it_src)
                            (mrs_tgt, it_tgt)))%signature
   .
 
-  Definition sim_fnsem: relation (string * (option mname * Any.t -> itree Es Any.t)) := RelProd eq sim_fsem.
+  Definition sim_fnsem: relation (string * (mname * Any.t -> itree Es Any.t)) := RelProd eq sim_fsem.
 
 
   Variant lflagC (r: forall (R_src R_tgt: Type) (RR: st_local -> st_local -> R_src -> R_tgt -> Prop), bool -> bool -> world -> st_local * itree Es R_src -> st_local * itree Es R_tgt -> Prop)
