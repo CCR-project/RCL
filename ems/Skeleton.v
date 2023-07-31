@@ -8,9 +8,6 @@ Set Implicit Arguments.
 Local Open Scope nat_scope.
 
 Notation gname := string (only parsing). (*** convention: not capitalized ***)
-Variant mname := | mn_some: string -> mname | mn_core. (*** convention: capitalized ***)
-Coercion mn_some: string >-> mname.
-Global Program Instance mname_Dec: Dec mname. Next Obligation. decide equality. eapply string_Dec. Defined.
 
 
 Fixpoint _find_idx {A} (f: A -> bool) (l: list A) (acc: nat): option (nat * A) :=
