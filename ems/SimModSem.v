@@ -961,6 +961,77 @@ Unshelve.
 all: try (exact 0).
 Qed.
 
+Lemma compose_aux:
+  forall
+  world0 (wf0: world0 -> Any.t * Any.t -> Prop) (le0: world0 -> world0 -> Prop) (le_PreOrder0: PreOrder le0)
+  world1 (wf1: world1 -> Any.t * Any.t -> Prop) (le1: world1 -> world1 -> Prop) (le_PreOrder1: PreOrder le1)
+  ,
+    let le_both := fun '(u0, w0) '(u1, w1) => le0 u0 u1 /\ le1 w0 w1 in
+    let wf_both := fun '(u0, w0) '(lrs0, lrt0) =>
+                     exists ls0 rs0 lt0 rt0 : Any.t,
+                       lrs0 = Any.pair ls0 rs0 /\ lrt0 = Any.pair lt0 rt0 /\ wf0 u0 (ls0, lt0) /\ wf1 w0 (rs0, rt0) in
+    forall
+      (le_both_PreOrder: PreOrder le_both)
+      R sems semt (x: R)
+      (SIM: forall (w : world0) (mrs_src mrs_tgt : Any.t),
+       wf0 w (mrs_src, mrs_tgt) -> sim_itree wf0 le0 false false w (mrs_src, sems x) (mrs_tgt, semt x))
+    ,
+    forall (w : world0 * world1) (mrs_src mrs_tgt : Any.t),
+       wf_both w (mrs_src, mrs_tgt) -> sim_itree wf_both le_both false false w (mrs_src, sems x) (mrs_tgt, semt x)
+.
+Proof.
+  ii. ginit. revert_until le_both_PreOrder. gcofix CIH.
+  i. destruct w. ss. des. subst.
+  exploit SIM; et. intro T.
+  punfold T.
+  (* remember (ls0, sems x) as tmp0. remember (lt0, semt x) as tmp1. revert Heqtmp0. revert Heqtmp1. *)
+  (* induction T using _sim_itree_ind2; i; clarify. *)
+  dependent induction T using _sim_itree_ind2; i; simpl_depind.
+  - gstep. econs 1; eauto. rr. rr in RET. des. subst. esplits; et.
+    { refl. }
+    { rr. esplits; et. }
+  - gstep. rename w0 into u. econs 2; eauto.
+    { instantiate (1:=(_, _)). ss. esplits; et. }
+    i. ss. des_ifs. des. exploit K. et. { etrans; et.
+  -
+  rr in H1. 
+Qed.
+
+
+
+Theorem compose
+  md_src0 md_tgt0 md_src1 md_tgt1
+  (SIM0: sim md_src0 md_tgt0)
+  (SIM1: sim md_src1 md_tgt1)
+  :
+  <<SIM: sim (ModSem.add md_src0 md_src1) (ModSem.add md_tgt0 md_tgt1)>>
+.
+Proof.
+  inv SIM0. des.
+  inv SIM1. des.
+  set(le_both := (fun '(u0, w0) '(u1, w1) => le u0 u1 /\ le0 w0 w1): (world * world0) -> (world * world0) -> Prop).
+  set(wf_both := (fun '(u0, w0) '(lrs0, lrt0) => exists ls0 rs0 lt0 rt0, lrs0 = Any.pair ls0 rs0 /\ lrt0 = Any.pair lt0 rt0 /\
+                                                                           wf u0 (ls0, lt0) /\ wf0 w0 (rs0, rt0))).
+  econs; ss.
+  { instantiate (1:=le_both).
+    econs; et.
+    - ii. rr. des_ifs; split; try refl.
+    - ii. rr. des_ifs; ss. des_ifs. des; ss. des. split; try etrans; et.
+  }
+  2: { instantiate (1:=wf_both). esplits ;ss. r. instantiate (1:=(w_init, w_init0)). ss. esplits; ss. }
+  eapply Forall2_app.
+  - eapply Forall2_apply_Forall2; et.
+    ii. destruct a, b; ss. rr in H. rr. unfold RelCompFun in *. ss. des. subst. esplits; ss.
+    do 2 r in H0. do 2 r.
+    rr in H0. rr. ii. subst. destruct w as [u w]. ss. des; subst. specialize (H0 y y eq_refl).
+  -
+  2:{ rewrite sim_sk. rewrite sim_sk0. refl. }
+  ii; ss.
+  eapply sk_add_incl in SKINCL; et. des.
+  exploit sim_modsem; et. intro T.
+  exploit sim_modsem0; et. intro U.
+Qed.
+
 End ModSemPair.
 
 
@@ -984,6 +1055,34 @@ Section SIMMOD.
 
 End SIMMOD.
 
+Lemma sk_add_incl
+  sk0 sk1 sk2
+  (INCL: Sk.incl (Sk.add sk0 sk1) sk2)
+  :
+  <<INCL: Sk.incl sk0 sk2 /\ Sk.incl sk1 sk2>>
+.
+Proof.
+  esplits; ii; ss; eapply INCL; et; unfold Sk.add in *; ss; rewrite in_app_iff; et.
+Qed.
+
+Theorem sim_compose
+  md_src0 md_tgt0 md_src1 md_tgt1
+  (SIM0: ModPair.sim md_src0 md_tgt0)
+  (SIM1: ModPair.sim md_src1 md_tgt1)
+  :
+  <<SIM: ModPair.sim (Mod.add md_src0 md_src1) (Mod.add md_tgt0 md_tgt1)>>
+.
+Proof.
+  inv SIM0.
+  inv SIM1.
+  des.
+  econs; ss.
+  2:{ rewrite sim_sk. rewrite sim_sk0. refl. }
+  ii; ss.
+  eapply sk_add_incl in SKINCL; et. des.
+  exploit sim_modsem; et. intro T.
+  exploit sim_modsem0; et. intro U.
+Qed.
 End ModPair.
 
 
@@ -1003,6 +1102,10 @@ Module TAC.
   Ltac force := ired_both; guclo simg_indC_spec; econs; et.
 End TAC.
 Import TAC.
+
+
+
+
 
 
 Section ADEQUACY.
