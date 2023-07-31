@@ -166,14 +166,14 @@ Section EVENTS.
 
   Definition focus_left_h: Handler pE Es :=
     fun _ pE => match pE with
-                | PPut p => ('(_, r) <- (Any.split p)?;; trigger (PPut (Any.pair p r));;; Ret ())
+                | PPut l => (p <- trigger PGet;; '(_, r) <- (Any.split p)?;; trigger (PPut (Any.pair l r));;; Ret ())
                 | PGet => (p <- trigger PGet;; '(l, _) <- (Any.split p)?;; Ret l)
                 end
   .
 
   Definition focus_right_h: Handler pE Es :=
     fun _ pE => match pE with
-                | PPut p => ('(l, _) <- (Any.split p)?;; trigger (PPut (Any.pair l p));;; Ret ())
+                | PPut r => (p <- trigger PGet;; '(l, _) <- (Any.split p)?;; trigger (PPut (Any.pair l r));;; Ret ())
                 | PGet => (p <- trigger PGet;; '(_, r) <- (Any.split p)?;; Ret r)
                 end
   .
