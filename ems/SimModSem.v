@@ -28,12 +28,13 @@ Local Open Scope nat_scope.
 Section SIM.
   Let st_local: Type := (Any.t).
 
+  Variable mt: alist string (Any.t -> itree Es Any.t).
+
   Variable world: Type.
 
   Let W: Type := (Any.t) * (Any.t).
   Variable wf: world -> W -> Prop.
   Variable le: relation world.
-
 
   Inductive _sim_itree (sim_itree: forall (R_src R_tgt: Type) (RR: st_local -> st_local -> R_src -> R_tgt -> Prop), bool -> bool -> world -> st_local * itree Es R_src -> st_local * itree Es R_tgt -> Prop)
           {R_src R_tgt} (RR: st_local -> st_local -> R_src -> R_tgt -> Prop)
@@ -61,6 +62,15 @@ Section SIM.
     :
       _sim_itree sim_itree RR i_src0 i_tgt0 w0 (st_src0, trigger (Syscall fn varg rvs) >>= k_src)
                  (st_tgt0, trigger (Syscall fn varg rvs) >>= k_tgt)
+
+  | sim_itree_call_tgt
+      i_src0 i_tgt0 w st_src0 st_tgt0
+      fn ft varg i_src k_tgt
+      (FINDT: In (fn, ft) mt)
+      (K: _sim_itree sim_itree RR i_src0 true w (st_src0, i_src) (st_tgt0, ft varg >>= k_tgt))
+    :
+      _sim_itree sim_itree RR i_src0 i_tgt0 w (st_src0, i_src)
+                 (st_tgt0, trigger (Call fn varg) >>= k_tgt)
 
   | sim_itree_tau_src
       i_src0 i_tgt0 w0 st_src0 st_tgt0
@@ -176,6 +186,14 @@ Section SIM.
                 sim_itree _ _ RR true true w0 (st_src0, k_src vret) (st_tgt0, k_tgt vret)),
             P i_src0 i_tgt0 w0 (st_src0, trigger (Syscall fn varg rvs) >>= k_src)
               (st_tgt0, trigger (Syscall fn varg rvs) >>= k_tgt))
+        (CALLT: forall
+                  i_src0 i_tgt0 w st_src0 st_tgt0
+                  fn ft varg i_src k_tgt
+                  (FINDT: In (fn, ft) mt)
+                  (K: _sim_itree sim_itree RR i_src0 true w (st_src0, i_src) (st_tgt0, ft varg >>= k_tgt))
+                  (IH: P i_src0 true w (st_src0, i_src) (st_tgt0, ft varg >>= k_tgt))
+          ,
+            P i_src0 i_tgt0 w (st_src0, i_src) (st_tgt0, trigger (Call fn varg) >>= k_tgt))
         (TAUSRC: forall
             i_src0 i_tgt0 w0 st_src0 st_tgt0
             i_src i_tgt
@@ -257,6 +275,7 @@ Section SIM.
     { eapply RET; eauto. }
     { eapply CALL; eauto. }
     { eapply SYSCALL; eauto. }
+    { eapply CALLT; eauto. }
     { eapply TAUSRC; eauto. }
     { eapply CHOOSESRC; eauto. des. esplits; eauto. }
     { eapply TAKESRC; eauto. }
@@ -308,6 +327,14 @@ Section SIM.
                 paco8 _sim_itree bot8 _ _ RR true true w0 (st_src0, k_src vret) (st_tgt0, k_tgt vret)),
             P i_src0 i_tgt0 w0 (st_src0, trigger (Syscall fn varg rvs) >>= k_src)
               (st_tgt0, trigger (Syscall fn varg rvs) >>= k_tgt))
+        (CALLT: forall
+                  i_src0 i_tgt0 w st_src0 st_tgt0
+                  fn ft varg i_src k_tgt
+                  (FINDT: In (fn, ft) mt)
+                  (K: paco8 _sim_itree bot8 _ _ RR i_src0 true w (st_src0, i_src) (st_tgt0, ft varg >>= k_tgt))
+                  (IH: P i_src0 true w (st_src0, i_src) (st_tgt0, ft varg >>= k_tgt))
+          ,
+            P i_src0 i_tgt0 w (st_src0, i_src) (st_tgt0, trigger (Call fn varg) >>= k_tgt))
         (TAUSRC: forall
             i_src0 i_tgt0 w0 st_src0 st_tgt0
             i_src i_tgt
@@ -389,6 +416,7 @@ Section SIM.
     { eapply RET; eauto. }
     { eapply CALL; eauto. i. exploit K; eauto. i. pclearbot. eauto. }
     { eapply SYSCALL; eauto. i. exploit K; eauto. i. pclearbot. eauto. }
+    { eapply CALLT; eauto. }
     { eapply TAUSRC; eauto. }
     { eapply CHOOSESRC; eauto. des. esplits; eauto. }
     { eapply TAKESRC; eauto. i. exploit K; eauto. i. des.
@@ -430,6 +458,14 @@ Section SIM.
     :
       sim_itree_indC sim_itree RR i_src0 i_tgt0 w0 (st_src0, trigger (Syscall fn varg rvs) >>= k_src)
                      (st_tgt0, trigger (Syscall fn varg rvs) >>= k_tgt)
+    | sim_itree_indC_call_tgt
+        i_src0 i_tgt0 w st_src0 st_tgt0
+        fn ft varg i_src k_tgt
+        (FINDT: In (fn, ft) mt)
+        (K: sim_itree _ _ RR i_src0 true w (st_src0, i_src) (st_tgt0, ft varg >>= k_tgt))
+      :
+      sim_itree_indC sim_itree RR i_src0 i_tgt0 w (st_src0, i_src)
+        (st_tgt0, trigger (Call fn varg) >>= k_tgt)
 
   | sim_itree_indC_tau_src
       i_src0 i_tgt0 w0 st_src0 st_tgt0
@@ -525,15 +561,16 @@ Section SIM.
       esplits; eauto. eapply rclo8_base. eauto. }
     { econs 3; eauto. i. eapply rclo8_base. eauto. }
     { econs 4; eauto. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
-    { econs 5; eauto. des. esplits; eauto. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
-    { econs 6; eauto. i. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
-    { econs 7; eauto. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
+    { econs 5; eauto. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
+    { econs 6; eauto. des. esplits; eauto. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
+    { econs 7; eauto. i. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
     { econs 8; eauto. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
     { econs 9; eauto. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
-    { econs 10; eauto. i. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
-    { econs 11; eauto. des. esplits; eauto. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
-    { econs 12; eauto. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
+    { econs 10; eauto. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
+    { econs 11; eauto. i. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
+    { econs 12; eauto. des. esplits; eauto. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
     { econs 13; eauto. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
+    { econs 14; eauto. eapply sim_itree_mon; eauto. i. eapply rclo8_base. eauto. }
   Qed.
 
   Variant sim_itreeC (r g: forall (R_src R_tgt: Type) (RR: st_local -> st_local -> R_src -> R_tgt -> Prop), bool -> bool -> world -> st_local * itree Es R_src -> st_local * itree Es R_tgt -> Prop)
@@ -562,6 +599,14 @@ Section SIM.
     :
       sim_itreeC r g RR i_src0 i_tgt0 w0 (st_src0, trigger (Syscall fn varg rvs) >>= k_src)
                  (st_tgt0, trigger (Syscall fn varg rvs) >>= k_tgt)
+  | sim_itreeC_call_tgt
+      i_src0 i_tgt0 w st_src0 st_tgt0
+      fn ft varg i_src k_tgt
+      (FINDT: In (fn, ft) mt)
+      (K: r _ _ RR i_src0 true w (st_src0, i_src) (st_tgt0, ft varg >>= k_tgt))
+    :
+      sim_itreeC r g RR i_src0 i_tgt0 w (st_src0, i_src)
+        (st_tgt0, trigger (Call fn varg) >>= k_tgt)
 
   | sim_itreeC_tau_src
       i_src0 i_tgt0 w0 st_src0 st_tgt0
@@ -650,14 +695,15 @@ Section SIM.
     { gstep. econs 3; eauto. i. gbase. eauto. }
     { guclo sim_itree_indC_spec. econs 4; eauto. gbase. eauto. }
     { guclo sim_itree_indC_spec. econs 5; eauto. des. esplits; eauto. gbase. eauto. }
-    { guclo sim_itree_indC_spec. econs 6; eauto. i. gbase. eauto. }
-    { guclo sim_itree_indC_spec. econs 7; eauto. gbase. eauto. }
+    { guclo sim_itree_indC_spec. econs 6; eauto. des. esplits; eauto. gbase. eauto. }
+    { guclo sim_itree_indC_spec. econs 7; eauto. i. gbase. eauto. }
     { guclo sim_itree_indC_spec. econs 8; eauto. gbase. eauto. }
     { guclo sim_itree_indC_spec. econs 9; eauto. gbase. eauto. }
-    { guclo sim_itree_indC_spec. econs 10; eauto. i. gbase. eauto. }
-    { guclo sim_itree_indC_spec. econs 11; eauto. des. esplits; eauto. gbase. eauto. }
-    { guclo sim_itree_indC_spec. econs 12; eauto. gbase. eauto. }
+    { guclo sim_itree_indC_spec. econs 10; eauto. gbase. eauto. }
+    { guclo sim_itree_indC_spec. econs 11; eauto. i. gbase. eauto. }
+    { guclo sim_itree_indC_spec. econs 12; eauto. des. esplits; eauto. gbase. eauto. }
     { guclo sim_itree_indC_spec. econs 13; eauto. gbase. eauto. }
+    { guclo sim_itree_indC_spec. econs 14; eauto. gbase. eauto. }
   Qed.
 
   Lemma sim_itreeC_spec r g
@@ -697,16 +743,17 @@ Section SIM.
     { econs 2; eauto. }
     { econs 3; eauto. }
     { econs 4; eauto. }
-    { econs 5; eauto. des. esplits; eauto. }
-    { econs 6; eauto. i. exploit K; eauto. i. des. eauto. }
-    { econs 7; eauto. }
+    { econs 5; eauto. }
+    { econs 6; eauto. des. esplits; eauto. }
+    { econs 7; eauto. i. exploit K; eauto. i. des. eauto. }
     { econs 8; eauto. }
     { econs 9; eauto. }
-    { econs 10; eauto. i. exploit K; eauto. i. des. eauto. }
-    { econs 11; eauto. des. esplits; eauto. }
-    { econs 12; eauto. }
+    { econs 10; eauto. }
+    { econs 11; eauto. i. exploit K; eauto. i. des. eauto. }
+    { econs 12; eauto. des. esplits; eauto. }
     { econs 13; eauto. }
-    { exploit SRC0; auto. exploit TGT0; auto. i. clarify. econs 14; eauto. }
+    { econs 14; eauto. }
+    { exploit SRC0; auto. exploit TGT0; auto. i. clarify. econs 15; eauto. }
   Qed.
 
   Definition sim_fsem: relation (Any.t -> itree Es Any.t) :=
@@ -751,16 +798,17 @@ Section SIM.
       esplits; eauto. eapply rclo8_base. eauto. }
     { econs 3; eauto. i. eapply rclo8_base. eauto. }
     { econs 4; eauto. }
-    { econs 5; eauto. des. esplits; eauto. }
-    { econs 6; eauto. i. exploit K; eauto. i. des. esplits; eauto. }
-    { econs 7; eauto. }
+    { econs 5; eauto. }
+    { econs 6; eauto. des. esplits; eauto. }
+    { econs 7; eauto. i. exploit K; eauto. i. des. esplits; eauto. }
     { econs 8; eauto. }
     { econs 9; eauto. }
-    { econs 10; eauto. i. exploit K; eauto. i. des. esplits; eauto. }
-    { econs 11; eauto. des. esplits; eauto. }
-    { econs 12; eauto. }
+    { econs 10; eauto. }
+    { econs 11; eauto. i. exploit K; eauto. i. des. esplits; eauto. }
+    { econs 12; eauto. des. esplits; eauto. }
     { econs 13; eauto. }
-    { exploit SRC0; auto. exploit TGT0; auto. i. clarify. econs 14; eauto.
+    { econs 14; eauto. }
+    { exploit SRC0; auto. exploit TGT0; auto. i. clarify. econs 15; eauto.
       eapply rclo8_base; auto. }
   Qed.
 
@@ -792,15 +840,16 @@ Section SIM.
     { gstep. econs 2; eauto. i. gbase. eapply CIH; eauto. }
     { gstep. econs 3; eauto. i. gbase. eapply CIH; eauto. }
     { guclo sim_itree_indC_spec. econs 4; eauto. }
-    { guclo sim_itree_indC_spec. econs 5; eauto. des. esplits; eauto. }
-    { guclo sim_itree_indC_spec. econs 6; eauto. i. hexploit K; eauto. i. des. esplits; eauto. }
-    { guclo sim_itree_indC_spec. econs 7; eauto. }
+    { guclo sim_itree_indC_spec. econs 5; eauto. }
+    { guclo sim_itree_indC_spec. econs 6; eauto. des. esplits; eauto. }
+    { guclo sim_itree_indC_spec. econs 7; eauto. i. hexploit K; eauto. i. des. esplits; eauto. }
     { guclo sim_itree_indC_spec. econs 8; eauto. }
     { guclo sim_itree_indC_spec. econs 9; eauto. }
-    { guclo sim_itree_indC_spec. econs 10; eauto. i. hexploit K; eauto. i. des. esplits; eauto. }
-    { guclo sim_itree_indC_spec. econs 11; eauto. des. esplits; eauto. }
-    { guclo sim_itree_indC_spec. econs 12; eauto. }
+    { guclo sim_itree_indC_spec. econs 10; eauto. }
+    { guclo sim_itree_indC_spec. econs 11; eauto. i. hexploit K; eauto. i. des. esplits; eauto. }
+    { guclo sim_itree_indC_spec. econs 12; eauto. des. esplits; eauto. }
     { guclo sim_itree_indC_spec. econs 13; eauto. }
+    { guclo sim_itree_indC_spec. econs 14; eauto. }
     { eapply sim_itree_flag_down. gfinal. right.
       eapply paco8_mon; eauto. ss.
     }
@@ -854,6 +903,7 @@ Section SIM.
       eapply rclo8_clo_base. econs; eauto.
     + rewrite ! bind_bind. econs; eauto. i.
       eapply rclo8_clo_base. econs; eauto.
+    + rewrite ! bind_bind. econs; eauto. rewrite <- bind_bind. eapply IHSIM; eauto.
     + rewrite ! bind_tau. econs; eauto.
     + rewrite ! bind_bind. econs; eauto. des. esplits; eauto.
     + rewrite ! bind_bind. econs; eauto. i. exploit K; eauto. i. des. esplits; eauto.
@@ -876,9 +926,30 @@ End SIM.
 Hint Resolve sim_itree_mon: paco.
 Hint Resolve cpn8_wcompat: paco.
 
+(* Variant fsubsetC (r: forall (R_src R_tgt: Type) (RR: st_local -> st_local -> R_src -> R_tgt -> Prop), *)
+(*       alist string (Any.t -> itree Es Any.t) -> bool -> bool -> world -> st_local * itree Es R_src -> *)
+(*       st_local * itree Es R_tgt -> Prop) {R_src R_tgt} (RR: st_local -> st_local -> R_src -> R_tgt -> Prop) *)
+(*   : alist string (Any.t -> itree Es Any.t) -> bool -> bool -> world -> *)
+(*     st_local * itree Es R_src -> st_local * itree Es R_tgt -> Prop := *)
+(* | fsubsetC_intro *)
+(*     f_src f_tgt w st_src st_tgt *)
+(*     mt0 mt1 *)
+(*     (SUBSET: incl mt0 mt1) *)
+(*     (SIM: r _ _ RR mt0 f_src f_tgt w st_src st_tgt) *)
+(*   : *)
+(*     fsubsetC r RR mt1 f_src f_tgt w st_src st_tgt *)
+(* . *)
+
+Lemma sim_itree_fsubset mt0 mt1 (INCL: incl mt0 mt1): sim_itree mt0 <8= sim_itree mt1.
+Proof.
+  i. ginit. revert_until INCL. gcofix CIH.
+  i. punfold PR. induction PR using _sim_itree_ind2; i; clarify.
+  - gstep. econs; eauto.
+Qed.
+
 Lemma self_sim_itree:
-  forall st itr,
-    sim_itree (fun _ '(src, tgt) => src = tgt) top2 false false tt (st, itr) (st, itr).
+  forall st itr mt,
+    sim_itree mt (fun _ '(src, tgt) => src = tgt) top2 false false tt (st, itr) (st, itr).
 Proof.
   ginit. gcofix CIH. i. ides itr.
   { gstep. eapply sim_itree_ret; ss. }
@@ -903,11 +974,11 @@ Proof.
     }
   }
   { rewrite <- ! bind_trigger. resub. dependent destruction e.
-    { guclo sim_itree_indC_spec. econs 10. i.
+    { guclo sim_itree_indC_spec. econs 11. i.
       guclo sim_itree_indC_spec. econs. eexists.
       eapply sim_itree_progress_flag. gbase. eauto.
     }
-    { guclo sim_itree_indC_spec. econs 6. i.
+    { guclo sim_itree_indC_spec. econs 7. i.
       guclo sim_itree_indC_spec. econs. eexists.
       eapply sim_itree_progress_flag. gbase. eauto.
     }
@@ -938,7 +1009,7 @@ Section SIMMODSEM.
     le_PreOrder: PreOrder le;
     sim_fnsems: forall fn f_src (FINDS: In (fn, f_src) ms_src.(ModSem.fnsems)),
                              exists f_tgt, <<FINDT: In (fn, f_tgt) ms_tgt.(ModSem.fnsems)>>
-                                                    /\ <<SIM: sim_fsem wf le f_src f_tgt>>;
+                                                    /\ <<SIM: sim_fsem ms_tgt.(ModSem.fnsems) wf le f_src f_tgt>>;
     sim_initial: exists w_init, wf w_init (ms_src.(ModSem.initial_st), ms_tgt.(ModSem.initial_st));
   }.
 
@@ -960,6 +1031,7 @@ Ltac ired_r := try (prw _red_gen 1 1 0).
 Ltac ired_both := ired_l; ired_r.
 Lemma compose_aux_left:
   forall
+    mt
   world0 (wf0: world0 -> Any.t * Any.t -> Prop) (le0: world0 -> world0 -> Prop) (le_PreOrder0: PreOrder le0)
   world1 (wf1: world1 -> Any.t * Any.t -> Prop) (le1: world1 -> world1 -> Prop) (le_PreOrder1: PreOrder le1)
   ,
@@ -972,9 +1044,10 @@ Lemma compose_aux_left:
       (sems semt: itree _ _) wl0 wr_begin wr0 sl0 sr0 tl0 tr0 fs ft
       (LE: le1 wr_begin wr0)
       (WF: wf1 wr0 (sr0, tr0))
-      (SIM: sim_itree wf0 le0 fs ft wl0 (sl0, sems) (tl0, semt))
+      (SIM: sim_itree mt wf0 le0 fs ft wl0 (sl0, sems) (tl0, semt))
     ,
-      sim_itree wf_both le_both fs ft (wl0, wr_begin) (Any.pair sl0 sr0, focus_left sems) (Any.pair tl0 tr0, focus_left semt)
+      sim_itree (List.map (map_snd (fun ktr => (@focus_left _) ∘ ktr)) mt)
+        wf_both le_both fs ft (wl0, wr_begin) (Any.pair sl0 sr0, focus_left sems) (Any.pair tl0 tr0, focus_left semt)
 .
 Proof.
   ii. ginit. revert_until le_both_PreOrder. gcofix CIH.
@@ -1002,38 +1075,45 @@ Proof.
     specialize (K vret); pclearbot. et.
 
   - guclo sim_itree_indC_spec. econs 4; eauto.
-  - guclo sim_itree_indC_spec. des. econs 5; eauto. esplits; eauto. ired_both.
+    { rewrite in_map_iff. esplits; et. ss. }
+    replace (` r0 : Any.t <- (focus_left (T:=Any.t) <*> ft) varg;; ` x : Any.t <- (tau;; Ret r0);; focus_left (k_tgt x)) with
+      (focus_left (` r0 : Any.t <- ft varg;; ` x : Any.t <- (tau;; Ret r0);; (k_tgt x))).
+    2:{ rewrite ! focus_left_bind. grind. rewrite focus_left_tau. grind. }
+    eapply IHSIM; et. f_equal. grind. admit "remove euttC".
+  - guclo sim_itree_indC_spec. econs 5; eauto.
+  - guclo sim_itree_indC_spec. des. econs 6; eauto. esplits; eauto. ired_both.
     guclo sim_itree_indC_spec. econs; eauto. ired_both. eauto.
-  - guclo sim_itree_indC_spec. econs 6; eauto. i.
+  - guclo sim_itree_indC_spec. econs 7; eauto. i.
     ired_both. guclo sim_itree_indC_spec. econs; eauto. ired_both.
     spc K. des. eapply IH; et.
   - guclo sim_itree_indC_spec. econs; eauto. ired_both.
-    guclo sim_itree_indC_spec. econs 7; eauto. ired_both.
+    guclo sim_itree_indC_spec. econs 8; eauto. ired_both.
     guclo sim_itree_indC_spec. econs; eauto. ired_both.
     eauto.
-  - guclo sim_itree_indC_spec. econs 8; eauto. ired_both.
+  - guclo sim_itree_indC_spec. econs 9; eauto. ired_both.
     guclo sim_itree_indC_spec. econs; eauto. ired_both.
     eauto.
 
-  - guclo sim_itree_indC_spec. econs 9; eauto.
-  - guclo sim_itree_indC_spec. econs 10; eauto. i.
+  - guclo sim_itree_indC_spec. econs 10; eauto.
+  - guclo sim_itree_indC_spec. econs 11; eauto. i.
     ired_both. guclo sim_itree_indC_spec. econs; eauto. ired_both.
     spc K. des. eapply IH; et.
-  - guclo sim_itree_indC_spec. des. econs 11; eauto. esplits; eauto. ired_both.
+  - guclo sim_itree_indC_spec. des. econs 12; eauto. esplits; eauto. ired_both.
     guclo sim_itree_indC_spec. econs; eauto. ired_both. eauto.
   - guclo sim_itree_indC_spec. econs; eauto. ired_both.
-    guclo sim_itree_indC_spec. econs 12; eauto. ired_both.
+    guclo sim_itree_indC_spec. econs 13; eauto. ired_both.
     guclo sim_itree_indC_spec. econs; eauto. ired_both.
     eauto.
-  - guclo sim_itree_indC_spec. econs 13; eauto. ired_both.
+  - guclo sim_itree_indC_spec. econs 14; eauto. ired_both.
     guclo sim_itree_indC_spec. econs; eauto. ired_both.
     eauto.
 
-  - pclearbot. gstep. econs 14; eauto. gbase. eapply CIH; et.
+  - pclearbot. gstep. econs 15; eauto. gbase. eapply CIH; et.
 Qed.
 
 Lemma compose_aux_right:
   forall
+    mt
   world0 (wf0: world0 -> Any.t * Any.t -> Prop) (le0: world0 -> world0 -> Prop) (le_PreOrder0: PreOrder le0)
   world1 (wf1: world1 -> Any.t * Any.t -> Prop) (le1: world1 -> world1 -> Prop) (le_PreOrder1: PreOrder le1)
   ,
@@ -1046,9 +1126,10 @@ Lemma compose_aux_right:
       (sems semt: itree _ _) wl0 wl_begin wr0 sl0 sr0 tl0 tr0 fs ft
       (LE: le0 wl_begin wl0)
       (WF: wf0 wl0 (sl0, tl0))
-      (SIM: sim_itree wf1 le1 fs ft wr0 (sr0, sems) (tr0, semt))
+      (SIM: sim_itree mt wf1 le1 fs ft wr0 (sr0, sems) (tr0, semt))
     ,
-      sim_itree wf_both le_both fs ft (wl_begin, wr0) (Any.pair sl0 sr0, focus_right sems) (Any.pair tl0 tr0, focus_right semt)
+      sim_itree (List.map (map_snd (fun ktr => (@focus_right _) ∘ ktr)) mt)
+        wf_both le_both fs ft (wl_begin, wr0) (Any.pair sl0 sr0, focus_right sems) (Any.pair tl0 tr0, focus_right semt)
 .
 Proof.
   ii. ginit. revert_until le_both_PreOrder. gcofix CIH.
@@ -1076,34 +1157,40 @@ Proof.
     specialize (K vret); pclearbot. et.
 
   - guclo sim_itree_indC_spec. econs 4; eauto.
-  - guclo sim_itree_indC_spec. des. econs 5; eauto. esplits; eauto. ired_both.
+    { rewrite in_map_iff. esplits; et. ss. }
+    replace (` r0 : Any.t <- (focus_right (T:=Any.t) <*> ft) varg;; ` x : Any.t <- (tau;; Ret r0);; focus_right (k_tgt x)) with
+      (focus_right (` r0 : Any.t <- ft varg;; ` x : Any.t <- (tau;; Ret r0);; (k_tgt x))).
+    2:{ rewrite ! focus_right_bind. grind. rewrite focus_right_tau. grind. }
+    eapply IHSIM; et. f_equal. grind. admit "remove euttC".
+  - guclo sim_itree_indC_spec. econs 5; eauto.
+  - guclo sim_itree_indC_spec. des. econs 6; eauto. esplits; eauto. ired_both.
     guclo sim_itree_indC_spec. econs; eauto. ired_both. eauto.
-  - guclo sim_itree_indC_spec. econs 6; eauto. i.
+  - guclo sim_itree_indC_spec. econs 7; eauto. i.
     ired_both. guclo sim_itree_indC_spec. econs; eauto. ired_both.
     spc K. des. eapply IH; et.
   - guclo sim_itree_indC_spec. econs; eauto. ired_both.
-    guclo sim_itree_indC_spec. econs 7; eauto. ired_both.
+    guclo sim_itree_indC_spec. econs 8; eauto. ired_both.
     guclo sim_itree_indC_spec. econs; eauto. ired_both.
     eauto.
-  - guclo sim_itree_indC_spec. econs 8; eauto. ired_both.
+  - guclo sim_itree_indC_spec. econs 9; eauto. ired_both.
     guclo sim_itree_indC_spec. econs; eauto. ired_both.
     eauto.
 
-  - guclo sim_itree_indC_spec. econs 9; eauto.
-  - guclo sim_itree_indC_spec. econs 10; eauto. i.
+  - guclo sim_itree_indC_spec. econs 10; eauto.
+  - guclo sim_itree_indC_spec. econs 11; eauto. i.
     ired_both. guclo sim_itree_indC_spec. econs; eauto. ired_both.
     spc K. des. eapply IH; et.
-  - guclo sim_itree_indC_spec. des. econs 11; eauto. esplits; eauto. ired_both.
+  - guclo sim_itree_indC_spec. des. econs 12; eauto. esplits; eauto. ired_both.
     guclo sim_itree_indC_spec. econs; eauto. ired_both. eauto.
   - guclo sim_itree_indC_spec. econs; eauto. ired_both.
-    guclo sim_itree_indC_spec. econs 12; eauto. ired_both.
+    guclo sim_itree_indC_spec. econs 13; eauto. ired_both.
     guclo sim_itree_indC_spec. econs; eauto. ired_both.
     eauto.
-  - guclo sim_itree_indC_spec. econs 13; eauto. ired_both.
+  - guclo sim_itree_indC_spec. econs 14; eauto. ired_both.
     guclo sim_itree_indC_spec. econs; eauto. ired_both.
     eauto.
 
-  - pclearbot. gstep. econs 14; eauto. gbase. eapply CIH; et.
+  - pclearbot. gstep. econs 15; eauto. gbase. eapply CIH; et.
 Qed.
 
 
