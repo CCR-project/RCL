@@ -37,31 +37,30 @@ Section MODSEM.
   }
   .
 
-  Global Program Instance equiv: Equiv t :=
-    fun ms0 ms1 => <<ST: ms0.(initial_st) = ms1.(initial_st)>> /\ <<SEM: Permutation ms0.(fnsems) ms1.(fnsems)>>
-  .
-
-  Global Program Instance equiv_Equivalence: Equivalence ((≡)).
-  Next Obligation.
-    ii. rr. esplits; et.
-  Qed.
-  Next Obligation.
-    ii. rr. rr in H. des. esplits; et. sym; et.
-  Qed.
-  Next Obligation.
-    ii. rr. rr in H. rr in H0. des. esplits; ss; etrans; et.
-  Qed.
-
   Record wf (ms: t): Prop := mk_wf {
-    wf_fnsems: NoDup (List.map fst ms.(fnsems));
+    (* wf_fnsems: NoDup (List.map fst ms.(fnsems)); *)
   }
   .
 
-  Global Program Instance wf_Proper: Proper ((≡) ==> impl) wf.
-  Next Obligation.
-    ii; ss.
-    rr in H. inv H0. econs; et. des; subst. eapply Permutation_NoDup; revgoals; et. eapply Permutation_map; et.
-  Qed.
+  (* Global Program Instance equiv: Equiv t := *)
+  (*   fun ms0 ms1 => <<ST: ms0.(initial_st) = ms1.(initial_st)>> /\ <<SEM: Permutation ms0.(fnsems) ms1.(fnsems)>> *)
+  (* . *)
+
+  (* Global Program Instance equiv_Equivalence: Equivalence ((≡)). *)
+  (* Next Obligation. *)
+  (*   ii. rr. esplits; et. *)
+  (* Qed. *)
+  (* Next Obligation. *)
+  (*   ii. rr. rr in H. des. esplits; et. sym; et. *)
+  (* Qed. *)
+  (* Next Obligation. *)
+  (*   ii. rr. rr in H. rr in H0. des. esplits; ss; etrans; et. *)
+  (* Qed. *)
+
+  (* Global Program Instance wf_Proper: Proper ((≡) ==> impl) wf. *)
+  (* Next Obligation. *)
+  (*   ii; ss. *)
+  (* Qed. *)
 
 
 
@@ -79,35 +78,35 @@ Section MODSEM.
 
   Global Program Instance add_OPlus: OPlus t := add.
 
-  Global Program Instance add_Proper: Proper ((≡) ==> (≡) ==> (≡)) ((⊕)).
-  Next Obligation.
-    ii. rr in H. rr in H0. des. rr. esplits; et.
-    - ss. f_equal; et.
-    - ss. rewrite Permutation_app; et.
-      + rewrite Permutation_map; et.
-      + rewrite Permutation_map; et.
-  Qed.
+  (* Global Program Instance add_Proper: Proper ((≡) ==> (≡) ==> (≡)) ((⊕)). *)
+  (* Next Obligation. *)
+  (*   ii. rr in H. rr in H0. des. rr. esplits; et. *)
+  (*   - ss. f_equal; et. *)
+  (*   - ss. rewrite Permutation_app; et. *)
+  (*     + rewrite Permutation_map; et. *)
+  (*     + rewrite Permutation_map; et. *)
+  (* Qed. *)
 
 
   Section INTERP.
 
   Variable ms: t.
 
-  Definition prog: callE ~> itree Es :=
-    fun _ '(Call fn args) =>
-      sem <- (alist_find fn ms.(fnsems))?;;
-      rv <- (sem args);;
-      Ret rv
-  .
-
   (* Definition prog: callE ~> itree Es := *)
   (*   fun _ '(Call fn args) => *)
-  (*     n <- trigger (Take _);; *)
-  (*     assume(exists sem, nth_error ms.(fnsems) n = Some (fn, sem));;; *)
-  (*     '(_, sem) <- (nth_error ms.(fnsems) n)?;; *)
+  (*     sem <- (alist_find fn ms.(fnsems))?;; *)
   (*     rv <- (sem args);; *)
   (*     Ret rv *)
   (* . *)
+
+  Definition prog: callE ~> itree Es :=
+    fun _ '(Call fn args) =>
+      n <- trigger (Take _);;
+      assume(exists sem, nth_error ms.(fnsems) n = Some (fn, sem));;;
+      '(_, sem) <- (nth_error ms.(fnsems) n)?;;
+      rv <- (sem args);;
+      Ret rv
+  .
 
 
 

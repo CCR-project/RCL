@@ -936,10 +936,9 @@ Section SIMMODSEM.
     wf: world -> W -> Prop;
     le: world -> world -> Prop;
     le_PreOrder: PreOrder le;
-    sim_fnsems: Forall2 (sim_fnsem wf le) ms_src.(ModSem.fnsems) ms_tgt.(ModSem.fnsems);
-    (* sim_fnsems: forall fn f_src (FINDS: alist_find fn ms_src.(ModSem.fnsems) = Some f_src), *)
-    (*                          exists f_tgt, <<FINDT: alist_find fn ms_tgt.(ModSem.fnsems) = Some f_tgt>> *)
-    (*                                                 /\ <<SIM: sim_fsem wf le f_src f_tgt>>; *)
+    sim_fnsems: forall fn f_src (FINDS: In (fn, f_src) ms_src.(ModSem.fnsems)),
+                             exists f_tgt, <<FINDT: In (fn, f_tgt) ms_tgt.(ModSem.fnsems)>>
+                                                    /\ <<SIM: sim_fsem wf le f_src f_tgt>>;
     sim_initial: exists w_init, wf w_init (ms_src.(ModSem.initial_st), ms_tgt.(ModSem.initial_st));
   }.
 
@@ -951,13 +950,8 @@ Proof.
   econs; et.
   - instantiate (1:=fun (_ _: unit) => True). ss.
   - instantiate (1:=(fun (_: unit) '(src, tgt) => src = tgt)). (* fun p => fst p = snd p *)
-    generalize (ModSem.fnsems ms).
-    induction a; ii; ss.
-    econs; eauto. econs; ss. ii; clarify.
-    destruct w. exploit self_sim_itree; et.
+    ii; ss. esplits; et. ii; clarify. des_u. exploit self_sim_itree; et.
   - ss.
-Unshelve.
-all: try (exact 0).
 Qed.
 
 Require Import Red IRed.
@@ -1134,14 +1128,14 @@ Proof.
   }
   econs; et.
   2: { instantiate (1:=wf_both). esplits ;ss. r. instantiate (1:=(w_init, w_init0)). ss. esplits; ss. }
-  eapply Forall2_app.
-  - eapply Forall2_apply_Forall2; et.
-    ii. destruct a, b; ss. rr in H. rr. unfold RelCompFun in *. ss. des. subst. esplits; ss.
-    do 2 r in H0. do 2 r.
+  i. ss. rewrite in_app_iff in FINDS. des.
+  - rewrite in_map_iff in *. des. destruct x; ss. clarify.
+    exploit sim_fnsems; et. intro T; des. esplits; et.
+    { rewrite in_app_iff. left. rewrite in_map_iff. esplits; et. ss. }
     ii. subst. destruct w; ss. des; subst. eapply compose_aux_left; ss; et. refl.
-  - eapply Forall2_apply_Forall2; et.
-    ii. destruct a, b; ss. rr in H. rr. unfold RelCompFun in *. ss. des. subst. esplits; ss.
-    do 2 r in H0. do 2 r.
+  - rewrite in_map_iff in *. des. destruct x; ss. clarify.
+    exploit sim_fnsems0; et. intro T; des. esplits; et.
+    { rewrite in_app_iff. right. rewrite in_map_iff. esplits; et. ss. }
     ii. subst. destruct w; ss. des; subst. eapply compose_aux_right; ss; et. refl.
 Qed.
 
@@ -1160,27 +1154,15 @@ Module TAC.
 End TAC.
 Import TAC.
 
-Lemma Forall2_alist_find
-        X kxs0 kxs1
-        sim
-        (SIM: Forall2 ((@eq string) * sim)%signature kxs0 kxs1)
-        (k: string) (x0: X)
-        (FIND: alist_find k kxs0 = Some x0)
-  :
-  <<FIND: exists (x1: X), alist_find k kxs1 = Some x1 /\ sim x0 x1>>
-.
-Proof.
-  induction SIM; ii; ss.
-  des_ifs; ss; unfold rel_dec in *; ss; des_sumbool; subst; rr in H; des; unfold RelCompFun in *; ss; subst; et; ss.
-Qed.
-
 Lemma adequacy_aux
   (world: Type)
   (wf: world -> Any.t * Any.t -> Prop)
   (le: world -> world -> Prop)
   `{PreOrder _ le}
   ms_src ms_tgt
-  (SIM: Forall2 (sim_fnsem wf le) (ModSem.fnsems ms_src) (ModSem.fnsems ms_tgt))
+  (SIM: forall fn f_src (FINDS: In (fn, f_src) ms_src.(ModSem.fnsems)),
+                             exists f_tgt, <<FINDT: In (fn, f_tgt) ms_tgt.(ModSem.fnsems)>>
+                                                    /\ <<SIM: sim_fsem wf le f_src f_tgt>>)
   w0 st_src st_tgt
   itr_src itr_tgt
   f_src f_tgt
@@ -1205,18 +1187,19 @@ Proof.
     revert st_src itr_src st_tgt itr_tgt Heqp Heqp0 Heqw.
     punfold SIMF. induction SIMF using _sim_itree_ind2; ss; i; clarify.
     - rr in RET. des. step. r. esplits; et.
-    - destruct (alist_find fn (ModSem.fnsems ms_src)) eqn:SRC; cycle 1.
-      { steps. rewrite SRC. unfold unwrapU, triggerUB. step. ss. }
-      { hexploit (Forall2_alist_find SIM _ SRC); et. intro TGT. des.
-        steps. rewrite SRC. rewrite TGT. unfold unwrapU. ired_both.
-        apply simg_progress_flag.
-        guclo bindC_spec. econs.
-        { gbase. eapply CIH. { instantiate (1:=w1). eauto. } }
-        { i. ss. des_ifs. r in SIM0. des. subst.
-          hexploit K; et. i. des. pclearbot.
-          steps. gbase. eapply CIH; ss.
-          eapply sim_itree_bot_flag_up. eauto.
-        }
+    - steps. rename x into n. unfold assume. steps. des. rename x into T.
+      exploit SIM; et.
+      { eapply nth_error_In; et. }
+      intro U; des.
+      eapply In_nth_error in FINDT. des. rename n0 into m.
+      force. exists m. steps. force. esplits; et. steps. rewrite T, FINDT. ss. steps.
+      apply simg_progress_flag.
+      guclo bindC_spec. econs.
+      { gbase. eapply CIH. { instantiate (1:=w1). eauto. } }
+      { i. ss. des_ifs. r in SIM1. des. subst.
+        hexploit K; et. i. des. pclearbot.
+        steps. gbase. eapply CIH; ss.
+        eapply sim_itree_bot_flag_up. eauto.
       }
     - step. i. subst. apply simg_progress_flag.
       hexploit (K x_tgt). i. des. pclearbot.
@@ -1234,6 +1217,8 @@ Proof.
     - eapply simg_progress_flag. gbase. eapply CIH; et.
       pclearbot. eauto.
   }
+Unshelve.
+  esplits; et.
 Qed.
 
 Theorem adequacy
@@ -1254,15 +1239,14 @@ Proof.
   unfold ModSem.initial_itr, assume.
   steps.
   force. esplits; et. steps.
-  unfold ITree.map. steps.
-  destruct (alist_find "main" (ModSem.fnsems ms_src)) eqn:T; cycle 1.
-  { cbn. unfold triggerUB. steps. ss. }
-  hexploit (Forall2_alist_find sim_fnsems _ T); et. intro U. des.
-  rename i into fs. rename x1 into ft.
-  ss. steps. rewrite U. ss. steps.
+  unfold ITree.map. steps. unfold assume. steps. des.
+  exploit sim_fnsems; et.
+  { eapply nth_error_In; et. }
+  intro U; des. eapply In_nth_error in FINDT. des. force. esplits; et. steps.
+  force. unshelve esplits; et. steps. rewrite x1, FINDT. ss. steps.
   guclo bindC_spec. econs.
   { eapply simg_progress_flag. gfinal. right. eapply adequacy_aux; et. }
-  { i. des_ifs. r in SIM. des; clarify. steps. }
+  { i. des_ifs. r in SIM0. des; clarify. steps. }
 Qed.
 
 End ModSemPair.
@@ -1336,7 +1320,6 @@ Proof.
   { unfold sk_src, sk_tgt. ss. inv SIM. spc sim_sk0. rewrite sim_sk0. refl. }
 
   rr in H. unfold Mod.enclose in *. fold sk_src in H. des. inv WF.
-  rename wf_fnsems into FNWF.
   {
     folder.
     inv SIM. ss.
@@ -1359,12 +1342,6 @@ Proof.
         rewrite Mod.get_modsem_Proper; et.
         rewrite (Mod.get_modsem_Proper _ _ _ SKEQ); et.
         econs.
-        match goal with
-        | H: NoDup ?l0 |- NoDup ?l1 => replace l1 with l0
-        end; auto. ss.
-        rewrite ! List.map_app. f_equal. rewrite ! List.map_map.
-        eapply Forall2_eq. inv T. eapply Forall2_apply_Forall2; et.
-        i. destruct a, b. inv H. ss.
       }
     }
   }

@@ -45,11 +45,15 @@ Section MOD.
     2: { instantiate (2:=unit).
          instantiate (1:=fun _ '(st_src, st_tgt) => exists st0 st1, st_tgt = Any.pair st0 st1 /\ st_src = Any.pair st1 st0).
          ss. esplits; et. ss. }
-    ss.
-    eapply Forall2_app.
-    -
-    -
-    ii.
+    i. ss. rewrite in_app_iff in FINDS. des.
+    - rewrite in_map_iff in *. des; ss. destruct x; ss. clarify.
+      esplits; et.
+      { rewrite in_app_iff. right. rewrite in_map_iff. esplits; et. ss. }
+      admit "ez".
+    - rewrite in_map_iff in *. des; ss. destruct x; ss. clarify.
+      esplits; et.
+      { rewrite in_app_iff. left. rewrite in_map_iff. esplits; et. ss. }
+      admit "ez".
   Qed.
 
 End MOD.
