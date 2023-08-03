@@ -429,8 +429,6 @@ Global Existing Instance Sk.gdefs.
 Arguments Sk.unit: simpl never.
 Arguments Sk.add: simpl never.
 Arguments Sk.wf: simpl never.
-Coercion Sk.load_skenv: Sk.t >-> SkEnv.t.
-Global Opaque Sk.load_skenv.
 
 
 (*** TODO: Move to ModSem.v ***)
