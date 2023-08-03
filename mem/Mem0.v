@@ -85,9 +85,12 @@ Section PROOF.
     |}
   .
 
-  Definition Mem: Mod.t := {|
+  Program Definition Mem: Mod.t := {|
     Mod.get_modsem := MemSem;
     Mod.sk := Sk.unit;
   |}
   .
+  Next Obligation.
+    ii. r in H.
+  Qed.
 End PROOF.

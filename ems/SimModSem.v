@@ -23,38 +23,6 @@ Local Open Scope nat_scope.
 
 
 
-Section REFINE.
-  Context `{Sk.ld}.
-
-  Definition refines {CONF: EMSConfig} (md_tgt md_src: Mod.t): Prop :=
-    forall (ctx: Mod.t), Beh.of_program (Mod.compile (Mod.add ctx md_tgt)) <1=
-                           Beh.of_program (Mod.compile (Mod.add ctx md_src))
-  .
-
-  Definition refines_strong (md_tgt md_src: Mod.t): Prop :=
-    forall {CONF: EMSConfig}, refines md_tgt md_src.
-
-  Section CONF.
-    Context {CONF: EMSConfig}.
-
-    Global Program Instance refines_PreOrder: PreOrder refines.
-    Next Obligation.
-      ii. ss.
-    Qed.
-    Next Obligation.
-      ii. eapply H0 in PR. eapply H1 in PR. eapply PR.
-    Qed.
-
-    Global Program Instance refines_strong_PreOrder: PreOrder refines_strong.
-    Next Obligation. ii. ss. Qed.
-    Next Obligation. ii. eapply H1. eapply H0. ss. Qed.
-  End CONF.
-
-End REFINE.
-
-
-
-
 
 
 Section SIM.
@@ -1148,7 +1116,7 @@ Theorem compose
   (SIM0: sim md_src0 md_tgt0)
   (SIM1: sim md_src1 md_tgt1)
   :
-  <<SIM: sim (ModSem.add md_src0 md_src1) (ModSem.add md_tgt0 md_tgt1)>>
+  <<SIM: sim (md_src0 ⊕ md_src1) (md_tgt0 ⊕ md_tgt1)>>
 .
 Proof.
   inv SIM0. des.
@@ -1305,104 +1273,112 @@ End ModSemPair.
 
 Module ModPair.
 Section SIMMOD.
-   Variable (md_src md_tgt: Mod.t).
-   Inductive sim: Prop := mk {
-     sim_modsem:
-       forall sk
-              (SKINCL: Sk.incl md_tgt.(Mod.sk) sk)
-              (SKWF: Sk.wf sk),
-         <<SIM: ModSemPair.sim (md_src.(Mod.get_modsem) sk) (md_tgt.(Mod.get_modsem) sk)>>;
-     sim_sk: <<SIM: md_src.(Mod.sk) = md_tgt.(Mod.sk)>>;
-   }.
+  Context `{LD: Sk.ld}.
+  Variable (md_src md_tgt: Mod.t).
+  Inductive sim: Prop := mk {
+    sim_modsem:
+      forall sk
+             (SKINCL: Sk.extends md_tgt.(Mod.sk) sk)
+             (SKWF: Sk.wf sk),
+        <<SIM: ModSemPair.sim (md_src.(Mod.get_modsem) sk) (md_tgt.(Mod.get_modsem) sk)>>;
+    sim_sk: forall (SKWF: Sk.wf md_src.(Mod.sk)), md_src.(Mod.sk) ≡ md_tgt.(Mod.sk);
+  }.
 
 End SIMMOD.
 
-Lemma sk_add_incl
-  sk0 sk1 sk2
-  (INCL: Sk.incl (Sk.add sk0 sk1) sk2)
-  :
-  <<INCL: Sk.incl sk0 sk2 /\ Sk.incl sk1 sk2>>
-.
-Proof.
-  esplits; ii; ss; eapply INCL; et; unfold Sk.add in *; ss; rewrite in_app_iff; et.
-Qed.
+Section FACTS.
+
+Context `{LD: Sk.ld}.
 
 Theorem compose
   md_src0 md_tgt0 md_src1 md_tgt1
   (SIM0: ModPair.sim md_src0 md_tgt0)
   (SIM1: ModPair.sim md_src1 md_tgt1)
   :
-  <<SIM: ModPair.sim (Mod.add md_src0 md_src1) (Mod.add md_tgt0 md_tgt1)>>
+  <<SIM: ModPair.sim (md_src0 ⊕ md_src1) (md_tgt0 ⊕ md_tgt1)>>
 .
 Proof.
   inv SIM0.
   inv SIM1.
   des.
   econs; ss.
-  2:{ rewrite sim_sk0. rewrite sim_sk1. refl. }
+  2:{ i. rewrite sim_sk0.
+      2: { eapply Sk.wf_mon; et. r. esplits; et. refl. }
+      rewrite sim_sk1.
+      2: { eapply Sk.wf_mon; et. r. esplits; et. rewrite Sk.add_comm. refl. }
+      refl.
+  }
   ii; ss.
-  eapply sk_add_incl in SKINCL; et. des.
   eapply ModSemPair.compose; et.
-  - eapply sim_modsem0; ss.
-  - eapply sim_modsem; ss.
+  - eapply sim_modsem0; ss. etrans; et. r. esplits; et. refl.
+  - eapply sim_modsem; ss. etrans; et. r. esplits; et. rewrite Sk.add_comm. refl.
 Qed.
 
-Theorem adequacy_strong
+Theorem adequacy
   md_src md_tgt
   (SIM: ModPair.sim md_src md_tgt)
   :
-  refines_strong md_tgt md_src
+  md_tgt ⊑ md_src
 .
 Proof.
   ii. unfold Mod.compile, Mod.enclose in *.
-  destruct (classic (Mod.wf (Mod.add ctx md_src))).
+  destruct (classic (Mod.wf (ctx ⊕ md_src))).
   2:{ eapply ModSem.compile_not_wf. ss. }
-  pose (sk_tgt := (Mod.sk (Mod.add ctx md_tgt))).
-  pose (sk_src := (Mod.sk (Mod.add ctx md_src))).
-  assert (SKEQ: sk_tgt = sk_src).
-  { unfold sk_src, sk_tgt. ss. f_equal.
-    inv SIM. auto. }
+  pose (sk_tgt := (Mod.sk (ctx ⊕ md_tgt))).
+  pose (sk_src := (Mod.sk (ctx ⊕ md_src))).
+  destruct (classic (Sk.wf (Mod.sk md_src))); rename H0 into SKWF.
+  2: { eapply ModSem.initial_itr_not_wf. intro T. eapply SKWF. inv T; ss. eapply Sk.wf_mon; et. r. esplits; et.
+       rewrite Sk.add_comm; et. refl. }
+  assert (SKEQ: sk_tgt ≡ sk_src).
+  { unfold sk_src, sk_tgt. ss. inv SIM. spc sim_sk0. rewrite sim_sk0. refl. }
 
   rr in H. unfold Mod.enclose in *. fold sk_src in H. des. inv WF.
-  rename SK into SKWF.
   rename wf_fnsems into FNWF.
   {
     folder.
     inv SIM. ss.
     exploit sim_modsem0.
-    { instantiate (1:=Sk.sort sk_src).
-      subst sk_src. rewrite <- Sk.sort_incl. eapply sk_add_incl; et. rewrite <- SKEQ. subst sk_tgt. refl. }
-    { eapply Sk.sort_wf. ss. }
+    { instantiate (1:=sk_src).
+      subst sk_src. r. esplits; et. rewrite Sk.add_comm. rewrite sim_sk0; ss. refl. }
+    { eauto. }
     intro T.
     eapply ModSemPair.adequacy; revgoals; et.
-    2: { rewrite SKEQ. eapply ModSemPair.compose; et. eapply ModSemPair.self_sim. }
-    { rr. unfold Mod.enclose. fold sk_src sk_tgt.
-      rewrite SKEQ in *. split; auto. econs.
+    2: {
+      eapply ModSemPair.compose; rewrite <- Mod.get_modsem_Proper; et.
+      - eapply ModSemPair.self_sim.
+      - eapply sim_modsem0; et.
+        { r. subst sk_tgt. esplits. rewrite Sk.add_comm; refl. }
+        rewrite SKEQ; ss.
+    }
+    { unfold Mod.wf, Mod.enclose. ii. ss. des; ss. folder. esplits; et.
+      2: { rewrite SKEQ; ss. }
       {
+        rewrite Mod.get_modsem_Proper; et.
+        rewrite (Mod.get_modsem_Proper _ _ _ SKEQ); et.
+        econs.
         match goal with
         | H: NoDup ?l0 |- NoDup ?l1 => replace l1 with l0
         end; auto. ss.
-        folder. rewrite SKEQ in *.
         rewrite ! List.map_app. f_equal. rewrite ! List.map_map.
         eapply Forall2_eq. inv T. eapply Forall2_apply_Forall2; et.
-        i. destruct a, b. inv H. ss. rr in H0. unfold RelCompFun in *; ss. des; ss.
+        i. destruct a, b. inv H. ss.
       }
-      { ss. folder. rewrite SKEQ; ss. }
     }
   }
 Qed.
 
-Corollary adequacy
+Corollary adequacy'
   `{EMSConfig}
   md_src md_tgt
   (SIM: ModPair.sim md_src md_tgt)
   :
-  refines md_tgt md_src
+  md_tgt ⊑ md_src
 .
 Proof.
-  eapply adequacy_strong; ss.
+  eapply adequacy; ss.
 Qed.
 
+End FACTS.
 End ModPair.
 
 

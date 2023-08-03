@@ -37,10 +37,31 @@ Section MODSEM.
   }
   .
 
+  Global Program Instance equiv: Equiv t :=
+    fun ms0 ms1 => <<ST: ms0.(initial_st) = ms1.(initial_st)>> /\ <<SEM: Permutation ms0.(fnsems) ms1.(fnsems)>>
+  .
+
+  Global Program Instance equiv_Equivalence: Equivalence ((≡)).
+  Next Obligation.
+    ii. rr. esplits; et.
+  Qed.
+  Next Obligation.
+    ii. rr. rr in H. des. esplits; et. sym; et.
+  Qed.
+  Next Obligation.
+    ii. rr. rr in H. rr in H0. des. esplits; ss; etrans; et.
+  Qed.
+
   Record wf (ms: t): Prop := mk_wf {
     wf_fnsems: NoDup (List.map fst ms.(fnsems));
   }
   .
+
+  Global Program Instance wf_Proper: Proper ((≡) ==> impl) wf.
+  Next Obligation.
+    ii; ss.
+    rr in H. inv H0. econs; et. des; subst. eapply Permutation_NoDup; revgoals; et. eapply Permutation_map; et.
+  Qed.
 
 
 
@@ -56,6 +77,16 @@ Section MODSEM.
   |}
   .
 
+  Global Program Instance add_OPlus: OPlus t := add.
+
+  Global Program Instance add_Proper: Proper ((≡) ==> (≡) ==> (≡)) ((⊕)).
+  Next Obligation.
+    ii. rr in H. rr in H0. des. rr. esplits; et.
+    - ss. f_equal; et.
+    - ss. rewrite Permutation_app; et.
+      + rewrite Permutation_map; et.
+      + rewrite Permutation_map; et.
+  Qed.
 
 
   Section INTERP.
@@ -349,7 +380,8 @@ Section MOD.
   Record t: Type := mk {
     get_modsem: Sk.t -> ModSem.t;
     sk: Sk.t;
-    enclose: ModSem.t := (get_modsem (Sk.canon sk));
+    enclose: ModSem.t := (get_modsem sk);
+    get_modsem_Proper:> Proper ((≡) ==> eq) get_modsem;
   }
   .
 
@@ -369,17 +401,25 @@ Section MOD.
   (* . *)
   (*** wf about modsem is enforced in the semantics ***)
 
-  Definition add (md0 md1: t): t := {|
-    get_modsem := fun sk => ModSem.add (md0.(get_modsem) sk) (md1.(get_modsem) sk);
-    sk := Sk.add md0.(sk) md1.(sk);
+  Program Definition add (md0 md1: t): t := {|
+    get_modsem := fun sk => (md0.(get_modsem) sk) ⊕ (md1.(get_modsem) sk);
+    sk := md0.(sk) ⊕ md1.(sk);
   |}
   .
+  Next Obligation.
+    ii. rewrite ! (@get_modsem_Proper _ _ _ H0); et.
+  Qed.
 
-  Definition empty: t := {|
+  Global Program Instance add_OPlus: OPlus t := add.
+
+  Program Definition empty: t := {|
     get_modsem := fun _ => ModSem.mk [] tt↑;
     sk := Sk.unit;
   |}
   .
+  Next Obligation.
+    ii. f_equiv.
+  Qed.
 
   End BEH.
 
@@ -757,3 +797,46 @@ Section AUX.
       (mk_box focus_right_ext)
   .
 End AUX.
+
+
+
+
+
+
+Section REFINE.
+  Context `{Sk.ld}.
+
+  Definition cref' {CONF: EMSConfig} (md_tgt md_src: Mod.t): Prop :=
+    forall (ctx: Mod.t), Beh.of_program (Mod.compile (ctx ⊕ md_tgt)) <1=
+                           Beh.of_program (Mod.compile (ctx ⊕ md_src))
+  .
+
+  Definition cref (md_tgt md_src: Mod.t): Prop :=
+    forall {CONF: EMSConfig}, cref' md_tgt md_src.
+
+  Section CONF.
+    Context {CONF: EMSConfig}.
+
+    Global Program Instance cref_PreOrder: PreOrder cref.
+    Next Obligation.
+      ii. ss.
+    Qed.
+    Next Obligation.
+      ii. eapply H0 in PR. eapply H1 in PR. eapply PR.
+    Qed.
+
+    Global Program Instance cref'_PreOrder: PreOrder cref'.
+    Next Obligation. ii. ss. Qed.
+    Next Obligation. ii. eapply H1. eapply H0. ss. Qed.
+  End CONF.
+
+  Definition bref {CONF: EMSConfig} (md_tgt md_src: Mod.t): Prop :=
+    Beh.of_program (Mod.compile md_tgt) <1= Beh.of_program (Mod.compile md_src)
+  .
+
+End REFINE.
+
+Notation "(⊑)" := cref (at level 50).
+Notation "a ⊑ b" := (cref a b) (at level 50).
+Notation "(⊑B)" := bref (at level 50).
+Notation "a ⊑B b" := (bref a b) (at level 50).

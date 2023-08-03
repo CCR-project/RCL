@@ -633,6 +633,16 @@ Module AListSort (V: Typ).
     { eapply sort_StronglySorted. }
     { eapply sort_StronglySorted. }
   Qed.
+
+  Lemma sort_nodup (l0: t)
+    :
+    NoDup (List.map fst l0) <-> NoDup (List.map fst (sort l0)).
+  Proof.
+    split; i; eapply Permutation_NoDup; try apply H.
+    - eapply Permutation_map. eapply sort_permutation.
+    - eapply Permutation_map. sym. eapply sort_permutation.
+  Qed.
+
 End AListSort.
 
 Notation "f ∘ g" := (fun x => (f (g x))). (*** It is already in Coqlib but Coq seems to have a bug; it gets overriden by the one in program_scope in the files that import this file ***)

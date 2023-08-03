@@ -10,6 +10,8 @@ Local Open Scope nat_scope.
 Notation gname := string (only parsing). (*** convention: not capitalized ***)
 
 
+
+
 Fixpoint _find_idx {A} (f: A -> bool) (l: list A) (acc: nat): option (nat * A) :=
   match l with
   | [] => None
@@ -63,27 +65,39 @@ End SkEnv.
 
 
 
-Require Import Orders.
+
+Require Import Orders Permutation.
 
 Module Sk.
   Class ld: Type := mk {
     t:> Type;
+    equiv:> Equiv t;
+    equiv_Equivalence:> Equivalence ((≡));
     unit: t;
-    add: t -> t -> t;
-    canon: t -> t;
+    add :> OPlus t;
     wf: t -> Prop;
-    add_comm: forall a b (WF: wf (add a b)),
-        canon (add a b) = canon (add b a);
-    add_assoc: forall a b c, add a (add b c) = add (add a b) c;
-    add_unit_l: forall a, add unit a = a;
-    add_unit_r: forall a, add a unit = a;
-    wf_comm: forall a b, wf (add a b) -> wf (add b a);
+    add_comm: forall a b, (a ⊕ b) ≡ (b ⊕ a);
+    add_assoc: forall a b c, a ⊕ (b ⊕ c) = (a ⊕ b) ⊕ c;
+    add_unit_l: forall a, unit ⊕ a = a;
+    add_unit_r: forall a, a ⊕ unit = a;
+    wf_comm: forall a b, wf (a ⊕ b) -> wf (b ⊕ a);
     unit_wf: wf unit;
-    wf_mon: forall a b, wf (canon (add a b)) -> wf (canon a);
-
-    extends := fun a b => exists ctx, canon (add a ctx) = b;
+    wf_equiv:> Proper ((≡) ==> impl) wf;
+    add_equiv:> Proper ((≡) ==> (≡) ==> (≡)) add;
+    extends := fun a b => exists ctx, (a ⊕ ctx) ≡ b;
+    wf_mon: forall a b, extends a b -> wf b -> wf a;
   }
   .
+
+  Global Program Instance add_OPlus `{ld}: OPlus t := add.
+
+  Global Program Instance extends_PreOrder `{ld}: PreOrder extends.
+  Next Obligation.
+    ii. rr. exists unit. rewrite add_unit_r. refl.
+  Qed.
+  Next Obligation.
+    ii. unfold extends in *. des. esplits; et. rewrite <- H1. rewrite <- H0. rewrite add_assoc. refl.
+  Qed.
 
 
   (* Imp Instance *)
@@ -95,13 +109,13 @@ Module Sk.
   Definition sort: alist gname gdef -> alist gname gdef := SkSort.sort.
 
   Program Definition gdefs: ld :=
-    @mk (alist gname gdef) nil (@List.app _) sort (fun sk => @List.NoDup _ (List.map fst sk)) _ _ _ _ _ _ _.
+    @mk (alist gname gdef) (@Permutation _) _ nil (@List.app _)
+      (fun sk => @List.NoDup _ (List.map fst sk)) _ _ _ _ _ _ _ _ _.
   Next Obligation.
-  Proof.
-    eapply SkSort.sort_add_comm. auto.
-    (* eapply Permutation.Permutation_NoDup; [|et]. *)
-    (* eapply Permutation.Permutation_map. *)
-    (* symmetry. eapply SkSort.sort_permutation. *)
+    eapply Permutation_app_comm.
+    (* econs; ii; ss. *)
+    (* r in H. r in H0. r. *)
+    (* rewrite H. ss. *)
   Qed.
   Next Obligation.
   Proof.
@@ -109,6 +123,7 @@ Module Sk.
   Qed.
   Next Obligation.
   Proof.
+    unfold oplus.
     rewrite List.app_nil_r. auto.
   Qed.
   Next Obligation.
@@ -122,17 +137,25 @@ Module Sk.
     econs.
   Qed.
   Next Obligation.
+    ii. r in H.
+    eapply SkSort.sort_nodup in H0; et.
+    eapply SkSort.sort_nodup; et. eapply Permutation_NoDup; try apply H0. eapply Permutation_map.
+    rewrite <- ! SkSort.sort_permutation. ss.
+  Qed.
+  Next Obligation.
   Proof.
-    cut (NoDup (map fst a)).
+    rename b into c.
+    rename H into b.
+    cut (List.NoDup (map fst a)).
     { i. eapply Permutation.Permutation_NoDup; [|et].
-      eapply Permutation.Permutation_map.
-      eapply SkSort.sort_permutation. }
-    cut (NoDup (map fst (a ++ b))).
-    { i. rewrite map_app in H0.
+      eapply Permutation.Permutation_map. refl.
+    }
+    cut (List.NoDup (map fst (a ++ b))).
+    { i. rewrite map_app in H.
       eapply nodup_app_l. et. }
     i. eapply Permutation.Permutation_NoDup; [|et].
     eapply Permutation.Permutation_map.
-    symmetry. eapply SkSort.sort_permutation.
+    symmetry. rewrite H1. refl.
   Qed.
 
   Local Existing Instance gdefs.
@@ -194,35 +217,35 @@ Module Sk.
       uo. des_ifs. destruct p. eapply IHsk; et.
   Qed.
 
-  Definition incl (sk0 sk1: Sk.t): Prop :=
-    forall gn gd (IN: List.In (gn, gd) sk0),
-      List.In (gn, gd) sk1.
+  (* Definition incl (sk0 sk1: Sk.t): Prop := *)
+  (*   forall gn gd (IN: List.In (gn, gd) sk0), *)
+  (*     List.In (gn, gd) sk1. *)
 
-  Program Instance incl_PreOrder: PreOrder incl.
-  Next Obligation.
-  Proof.
-    ii. ss.
-  Qed.
-  Next Obligation.
-  Proof.
-    ii. eapply H0. eapply H. ss.
-  Qed.
+  (* Program Instance incl_PreOrder: PreOrder incl. *)
+  (* Next Obligation. *)
+  (* Proof. *)
+  (*   ii. ss. *)
+  (* Qed. *)
+  (* Next Obligation. *)
+  (* Proof. *)
+  (*   ii. eapply H0. eapply H. ss. *)
+  (* Qed. *)
 
-  Lemma sort_incl sk
-    :
-      incl sk (sort sk).
-  Proof.
-    ii. eapply Permutation.Permutation_in; [|apply IN].
-    eapply SkSort.sort_permutation.
-  Qed.
+  (* Lemma sort_incl sk *)
+  (*   : *)
+  (*     incl sk (sort sk). *)
+  (* Proof. *)
+  (*   ii. eapply Permutation.Permutation_in; [|apply IN]. *)
+  (*   eapply SkSort.sort_permutation. *)
+  (* Qed. *)
 
-  Lemma sort_incl_rev sk
-    :
-      incl (sort sk) sk.
-  Proof.
-    ii. eapply Permutation.Permutation_in; [|apply IN].
-    symmetry. eapply SkSort.sort_permutation.
-  Qed.
+  (* Lemma sort_incl_rev sk *)
+  (*   : *)
+  (*     incl (sort sk) sk. *)
+  (* Proof. *)
+  (*   ii. eapply Permutation.Permutation_in; [|apply IN]. *)
+  (*   symmetry. eapply SkSort.sort_permutation. *)
+  (* Qed. *)
 
   Definition incl_env (sk0: Sk.t) (skenv: SkEnv.t): Prop :=
     forall gn gd (IN: List.In (gn, gd) sk0),

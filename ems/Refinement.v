@@ -8,12 +8,53 @@ Require Import STS Behavior.
 Require Import Any.
 Require Import Permutation.
 Require Import ModSem.
+Require Import SimModSem.
 Require Import SimGlobal.
 
 Set Implicit Arguments.
 
 
 
+
+Section MOD.
+
+  Context `{Sk.ld}.
+
+  (* Theorem add_cref_proper: forall ctx md0 md1, md0 ⊑ md1 -> (ctx ⊕ md0) ⊑ (ctx ⊕ md1). *)
+  (* Proof. *)
+  (*   ii. ss. *)
+  (* Qed. *)
+
+  (* Program Instance add_cref_Proper0: Proper ((⊑) ==> eq ==> (⊑)) ((⊕)). *)
+  (* Next Obligation. *)
+  (*   ii. subst. *)
+  (* Qed. *)
+
+  Theorem add_comm
+    md0 md1
+    :
+    (md0 ⊕ md1) ⊑ (md1 ⊕ md0)
+  .
+  Proof.
+    eapply ModPair.adequacy.
+    econs; eauto.
+    2: { ii; ss. rewrite Sk.add_comm. refl. }
+    ii; ss.
+    econs.
+    { instantiate (1:=top2). ss. }
+    2: { instantiate (2:=unit).
+         instantiate (1:=fun _ '(st_src, st_tgt) => exists st0 st1, st_tgt = Any.pair st0 st1 /\ st_src = Any.pair st1 st0).
+         ss. esplits; et. ss. }
+    ss.
+    eapply Forall2_app.
+    -
+    -
+    ii.
+  Qed.
+
+End MOD.
+
+Section ModSem.
 
   Context {CONF: EMSConfig}.
 
@@ -22,9 +63,9 @@ Set Implicit Arguments.
       P
       (SIM: stl0 = str0)
     :
-      <<COMM: Beh.of_state (compile (add ms0 ms1) P) stl0
+      <<COMM: Beh.of_state (ModSem.compile (ms0 ⊕ ms1) P) stl0
               <1=
-              Beh.of_state (compile (add ms1 ms0) P) str0>>
+              Beh.of_state (ModSem.compile (ms1 ⊕ ms0) P) str0>>
   .
   Proof.
     subst. revert str0. pcofix CIH. i. pfold.
@@ -44,22 +85,25 @@ Set Implicit Arguments.
   Lemma wf_comm
         ms0 ms1
     :
-      <<EQ: wf (add ms0 ms1) = wf (add ms1 ms0)>>
+      <<EQ: ModSem.wf (ms0 ⊕ ms1) = ModSem.wf (ms1 ⊕ ms0)>>
   .
   Proof.
-    assert (forall ms0 ms1, wf (add ms0 ms1) -> wf (add ms1 ms0)).
+    assert (forall ms0 ms1, ModSem.wf (ModSem.add ms0 ms1) -> ModSem.wf (ModSem.add ms1 ms0)).
     { i. inv H. econs; ss.
       { rewrite List.map_app in *.
-        eapply nodup_comm; et. }
+        eapply nodup_comm; et. rewrite ! List.map_map in *. unfold map_snd in *. rp; et.
+        - eapply List.map_ext; ss. i. des_ifs; ss.
+        - eapply List.map_ext; ss. i. des_ifs; ss.
+      }
     }
     r. eapply prop_ext. split; i; auto.
   Qed.
 
   Theorem add_comm
           ms0 ms1 (P0 P1: Prop) (IMPL: P1 -> P0)
-          (WF: wf (add ms1 ms0))
+          (WF: ModSem.wf (ms1 ⊕ ms0))
     :
-      <<COMM: Beh.of_program (compile (add ms0 ms1) (Some P0)) <1= Beh.of_program (compile (add ms1 ms0) (Some P1))>>
+      <<COMM: Beh.of_program (ModSem.compile (ms0 ⊕ ms1) (Some P0)) <1= Beh.of_program (ModSem.compile (ms1 ⊕ ms0) (Some P1))>>
   .
   Proof.
     destruct (classic (P1)); cycle 1.

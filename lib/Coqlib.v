@@ -1586,3 +1586,18 @@ Lemma Forall2_eq
 Proof. induction EQ; ss. des; subst. refl. Qed.
 
 Global Open Scope nat_scope.
+
+
+
+(*** From stdpp ***)
+Class Equiv A := equiv: A -> A -> Prop.
+Global Instance equiv_rewrite_relation `{Equiv A} :
+  RewriteRelation (@equiv A _) | 150 := {}.
+Notation "(≡)" := equiv (at level 70).
+Infix "≡" := equiv (at level 70, no associativity).
+Infix "≡@{ A }" := (@equiv A _)
+  (at level 70, only parsing, no associativity).
+
+Class OPlus (T: Type) := oplus: T -> T -> T.
+Notation "(⊕)" := oplus (at level 50).
+Notation "a ⊕ b" := (oplus a b) (at level 50).
