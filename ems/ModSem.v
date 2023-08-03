@@ -380,7 +380,8 @@ Section MOD.
     get_modsem: Sk.t -> ModSem.t;
     sk: Sk.t;
     enclose: ModSem.t := (get_modsem sk);
-    get_modsem_Proper:> Proper ((≡) ==> eq) get_modsem;
+    (* get_modsem_Proper:> Proper ((≡) ==> eq) get_modsem; *)
+    get_modsem_Proper:> forall sk0 sk1 (EQV: sk0 ≡ sk1) (WF: Sk.wf sk0), get_modsem sk0 = get_modsem sk1;
   }
   .
 
@@ -406,7 +407,7 @@ Section MOD.
   |}
   .
   Next Obligation.
-    ii. rewrite ! (@get_modsem_Proper _ _ _ H0); et.
+    ii. rewrite ! (@get_modsem_Proper _ _ _ EQV); et.
   Qed.
 
   Global Program Instance add_OPlus: OPlus t := add.
@@ -416,9 +417,6 @@ Section MOD.
     sk := Sk.unit;
   |}
   .
-  Next Obligation.
-    ii. f_equiv.
-  Qed.
 
   End BEH.
 

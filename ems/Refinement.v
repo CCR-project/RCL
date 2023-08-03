@@ -56,6 +56,49 @@ Section MOD.
       admit "ez".
   Qed.
 
+  Theorem add_assoc
+    md0 md1 md2
+    :
+    (md0 ⊕ (md1 ⊕ md2)) ⊑ ((md0 ⊕ md1) ⊕ md2)
+  .
+  Proof.
+    eapply ModPair.adequacy.
+    econs; eauto.
+    2: { ii; ss. rewrite Sk.add_assoc. refl. }
+    ii; ss.
+    econs.
+    { instantiate (1:=top2). ss. }
+    2: { instantiate (2:=unit).
+         instantiate (1:=fun _ '(st_src, st_tgt) => exists st0 st1 st2,
+                             st_tgt = (Any.pair st0 (Any.pair st1 st2)) /\ st_src = (Any.pair (Any.pair st0 st1) st2)).
+         ss. esplits; et. ss. }
+    i. ss. rewrite in_app_iff in FINDS. des.
+    2: {
+      rewrite in_map_iff in *. des; ss. destruct x; ss. clarify.
+      esplits; et.
+      { rewrite in_app_iff. right. rewrite in_map_iff. eexists (_, _); ss. esplits; et. rewrite in_app_iff. right; ss.
+        rewrite in_map_iff. esplits; et. ss.
+      }
+      admit "ez".
+    }
+    rewrite in_map_iff in *. des. destruct x; ss; clarify. rewrite in_app_iff in *. des.
+    {
+      rewrite in_map_iff in *. des; ss. destruct x; ss. clarify.
+      esplits; et.
+      { rewrite in_app_iff. left. rewrite in_map_iff. esplits; et. ss.
+      }
+      admit "ez".
+    }
+    {
+      rewrite in_map_iff in *. des; ss. destruct x; ss. clarify.
+      esplits; et.
+      { rewrite in_app_iff. right. rewrite in_map_iff. eexists (_, _); ss. esplits; et. rewrite in_app_iff. left; ss.
+        rewrite in_map_iff. esplits; et. ss.
+      }
+      admit "ez".
+    }
+  Qed.
+
 End MOD.
 
 Section ModSem.

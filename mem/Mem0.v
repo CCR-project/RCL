@@ -29,7 +29,7 @@ Section PROOF.
               let m0': Mem.t := Mem.mem_pad m0 delta in
               let (blk, m1) := Mem.alloc m0' sz in
               trigger (PPut m1↑);;;
-              Ret (Vptr blk 0))
+              Ret (Vptr (inl blk) 0))
         else triggerUB
     .
 
@@ -38,6 +38,7 @@ Section PROOF.
         mp0 <- trigger (PGet);;
         m0 <- mp0↓?;;
         '(b, ofs) <- (pargs [Tptr] varg)?;;
+        b <- unleftU b;;
         m1 <- (Mem.free m0 b ofs)?;;
         trigger (PPut m1↑);;;
         Ret (Vint 0)
@@ -77,11 +78,10 @@ Section PROOF.
 
 
 
-  Variable csl: gname -> bool.
   Definition MemSem (sk: Sk.t): ModSem.t :=
     {|
       ModSem.fnsems := [("alloc", cfunU allocF) ; ("free", cfunU freeF) ; ("load", cfunU loadF) ; ("store", cfunU storeF) ; ("cmp", cfunU cmpF)];
-      ModSem.initial_st := (Mem.load_mem csl sk)↑;
+      ModSem.initial_st := (Mem.load_mem sk)↑;
     |}
   .
 
@@ -91,6 +91,11 @@ Section PROOF.
   |}
   .
   Next Obligation.
-    ii. r in H.
+    ii. r in EQV. unfold MemSem. ss. f_equiv.
+    f_equiv. unfold Mem.load_mem. f_equiv. extensionalities b ofs.
+    uo. des_ifs_safe; ss. destruct b; ss. clarify.
+    destruct (alist_find s sk0) eqn:T.
+    - erewrite alist_permutation_find in T; et. des_ifs.
+    - erewrite alist_permutation_find in T; et. des_ifs.
   Qed.
 End PROOF.

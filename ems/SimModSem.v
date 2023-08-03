@@ -1427,7 +1427,7 @@ Proof.
     intro T.
     eapply ModSemPair.adequacy; revgoals; et.
     2: {
-      eapply ModSemPair.compose; rewrite <- Mod.get_modsem_Proper; et.
+      eapply ModSemPair.compose; erewrite <- Mod.get_modsem_Proper; et; try by (eapply Sk.wf_equiv; [sym; et|]; ss).
       - eapply ModSemPair.self_sim.
       - eapply sim_modsem0; et.
         { r. subst sk_tgt. esplits. rewrite Sk.add_comm; refl. }
@@ -1436,8 +1436,8 @@ Proof.
     { unfold Mod.wf, Mod.enclose. ii. ss. des; ss. folder. esplits; et.
       2: { rewrite SKEQ; ss. }
       {
-        rewrite Mod.get_modsem_Proper; et.
-        rewrite (Mod.get_modsem_Proper _ _ _ SKEQ); et.
+        erewrite Mod.get_modsem_Proper; et; try by (eapply Sk.wf_equiv; [sym; et|]; ss).
+        rewrite (Mod.get_modsem_Proper _ _ _ SKEQ); et; try by (eapply Sk.wf_equiv; [sym; et|]; ss).
         econs.
       }
     }

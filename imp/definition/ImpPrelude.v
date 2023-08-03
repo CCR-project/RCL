@@ -16,9 +16,14 @@ Local Open Scope nat_scope.
 Notation mblock := nat (only parsing).
 Notation ptrofs := Z (only parsing).
 
+Global Program Instance sum_Dec `{Dec A} `{Dec B}: Dec (A + B).
+Next Obligation.
+  decide equality.
+Defined.
+
 Inductive val: Type :=
 | Vint (n: Z): val
-| Vptr (blk: mblock) (ofs: ptrofs): val
+| Vptr (blk: mblock + gname) (ofs: ptrofs): val
 | Vundef
 .
 
@@ -92,7 +97,7 @@ Definition vsub (x y: val): option val :=
   | Vptr blk ofs, Vint n =>
     do scaled_n <- scale_int n; Some (Vptr blk (Z.sub ofs scaled_n))
   | Vptr blk1 ofs1, Vptr blk2 ofs2 =>
-    if (Nat.eqb blk1 blk2) then Some (Vint (scale_ofs (ofs1 - ofs2))) else None
+    if (dec blk1 blk2) then Some (Vint (scale_ofs (ofs1 - ofs2))) else None
   | _, _ => None
   end
 .
@@ -104,6 +109,8 @@ Definition vmul (x y: val): option val :=
   end
 .
 
+Definition unl {A B} (ab: A + B): option A := match ab with | inl a => Some a | _ => None end.
+Definition unr {A B} (ab: A + B): option B := match ab with | inr b => Some b | _ => None end.
 
 
 
@@ -114,7 +121,7 @@ Module Mem.
 
   (* Definition t: Type := mblock -> option (Z -> val). *)
   Record t: Type := mk {
-    cnts: mblock -> Z -> option val;
+    cnts: mblock + gname -> Z -> option val;
     nb: mblock;
     (*** Q: wf conditions like nextmblock_noaccess ? ***)
     (*** A: Unlike in CompCert, the memory object will not float in various places in the program.
@@ -123,11 +130,11 @@ Module Mem.
   }
   .
 
-  Definition wf (m0: t): Prop := forall blk ofs (LT: (blk < m0.(nb))%nat), m0.(cnts) blk ofs = None.
+  Definition wf (m0: t): Prop := forall blk ofs (LT: (blk < m0.(nb))%nat), m0.(cnts) (inl blk) ofs = None.
 
   Definition alloc (m0: Mem.t) (sz: Z): (mblock * Mem.t) :=
     ((m0.(nb)),
-     Mem.mk (update (m0.(cnts)) (m0.(nb))
+     Mem.mk (update (m0.(cnts)) (inl m0.(nb))
                     (fun ofs => if (0 <=? ofs)%Z && (ofs <? sz)%Z then Some (Vundef) else None))
             (S m0.(nb))
     )
@@ -154,15 +161,15 @@ Module Mem.
   (* . *)
 
   Definition free (m0: Mem.t) (b: mblock) (ofs: Z): option (Mem.t) :=
-    match m0.(cnts) b ofs with
-    | Some _ => Some (Mem.mk (update m0.(cnts) b (update (m0.(cnts) b) ofs None)) m0.(nb))
+    match m0.(cnts) (inl b) ofs with
+    | Some _ => Some (Mem.mk (update m0.(cnts) (inl b) (update (m0.(cnts) (inl b)) ofs None)) m0.(nb))
     | _ => None
     end
   .
 
-  Definition load (m0: Mem.t) (b: mblock) (ofs: Z): option val := m0.(cnts) b ofs.
+  Definition load (m0: Mem.t) (b: mblock + gname) (ofs: Z): option val := m0.(cnts) b ofs.
 
-  Definition store (m0: Mem.t) (b: mblock) (ofs: Z) (v: val): option Mem.t :=
+  Definition store (m0: Mem.t) (b: mblock + gname) (ofs: Z) (v: val): option Mem.t :=
     match m0.(cnts) b ofs with
     | Some _ => Some (Mem.mk (fun _b _ofs => if (dec b _b) && (dec ofs _ofs)
                                              then Some v
@@ -171,30 +178,29 @@ Module Mem.
     end
   .
 
-  Definition valid_ptr (m0: Mem.t) (b: mblock) (ofs: ptrofs): bool := is_some (m0.(cnts) b ofs).
+  Definition valid_ptr (m0: Mem.t) (b: mblock + gname) (ofs: ptrofs): bool := is_some (m0.(cnts) b ofs).
 
 (*** NOTE: Probably we can support comparison between nullptr and 0 ***)
 (*** NOTE: Unlike CompCert, we don't support comparison with weak_valid_ptr (for simplicity) ***)
-
-  Definition load_mem (csl: gname -> bool) (sk: Sk.t): Mem.t :=
-    Mem.mk
-      (fun blk ofs =>
-         do '(g, gd) <- (List.nth_error sk blk);
-         match gd with
-         | Sk.Gfun =>
-           None
-         | Sk.Gvar gv =>
-           if csl g then None else
-           if (dec ofs 0%Z) then Some (Vint gv) else None
-         end)
-      (*** TODO: This simplified model doesn't allow function pointer comparsion.
+(*** TODO: This simplified model doesn't allow function pointer comparsion.
            To be more faithful, we need to migrate the notion of "permission" from CompCert.
            CompCert expresses it with "nonempty" permission.
-       ***)
-      (*** TODO: When doing so, I would like to extend val with "Vfid (id: gname)" case.
+ ***)
+(*** TODO: When doing so, I would like to extend val with "Vfid (id: gname)" case.
            That way, I might be able to support more higher-order features (overriding, newly allocating function)
-       ***)
-      (List.length sk)
+ ***)
+
+  Definition load_mem (sk: Sk.t): Mem.t :=
+    Mem.mk
+      (fun blk ofs =>
+         do g <- unr blk;
+         do gd <- alist_find g sk;
+         match gd with
+         | Sk.Gfun => None
+         | Sk.Gvar gv => if (dec ofs 0%Z) then Some (Vint gv) else None
+         end
+      )
+      0
   .
 
   Definition mem_pad (m0: Mem.t) (delta: nat): Mem.t :=
@@ -223,7 +229,7 @@ Definition vcmp (m0: Mem.t) (x y: val): option bool :=
   (* | _, Vundef => None *)
   end.
 
-Definition unptr (v: val): option (mblock * ptrofs) :=
+Definition unptr (v: val): option ((mblock + gname) * ptrofs) :=
   match v with
   | Vptr b ofs => Some (b, ofs)
   | _ => None
@@ -241,7 +247,7 @@ Definition unbool (v: val): option bool :=
   | _ => None
   end.
 
-Definition unblk (v: val): option mblock :=
+Definition unblk (v: val): option (mblock + gname) :=
   match v with
   | Vptr b ofs =>
     if (Z.eq_dec ofs 0) then Some b else None
@@ -260,8 +266,8 @@ Definition val_type_sem (t: val_type): Set :=
   match t with
   | Tint => Z
   | Tbool => bool
-  | Tptr => (mblock * ptrofs)
-  | Tblk => mblock
+  | Tptr => ((mblock + gname) * ptrofs)
+  | Tblk => mblock + gname
   | Tuptyped => val
   end.
 
