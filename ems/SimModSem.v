@@ -926,25 +926,28 @@ End SIM.
 Hint Resolve sim_itree_mon: paco.
 Hint Resolve cpn8_wcompat: paco.
 
-(* Variant fsubsetC (r: forall (R_src R_tgt: Type) (RR: st_local -> st_local -> R_src -> R_tgt -> Prop), *)
-(*       alist string (Any.t -> itree Es Any.t) -> bool -> bool -> world -> st_local * itree Es R_src -> *)
-(*       st_local * itree Es R_tgt -> Prop) {R_src R_tgt} (RR: st_local -> st_local -> R_src -> R_tgt -> Prop) *)
-(*   : alist string (Any.t -> itree Es Any.t) -> bool -> bool -> world -> *)
-(*     st_local * itree Es R_src -> st_local * itree Es R_tgt -> Prop := *)
-(* | fsubsetC_intro *)
-(*     f_src f_tgt w st_src st_tgt *)
-(*     mt0 mt1 *)
-(*     (SUBSET: incl mt0 mt1) *)
-(*     (SIM: r _ _ RR mt0 f_src f_tgt w st_src st_tgt) *)
-(*   : *)
-(*     fsubsetC r RR mt1 f_src f_tgt w st_src st_tgt *)
-(* . *)
-
 Lemma sim_itree_fsubset mt0 mt1 (INCL: incl mt0 mt1): sim_itree mt0 <8= sim_itree mt1.
 Proof.
   i. ginit. revert_until INCL. gcofix CIH.
-  i. punfold PR. induction PR using _sim_itree_ind2; i; clarify.
+  i. punfold PR.
+  remember (upaco8 (_sim_itree mt0 x1 x2) bot8). revert HeqP.
+  remember (lift_rel x1 x2 x13 eq). revert HeqP0.
+  induction PR using _sim_itree_ind2; i; clarify.
   - gstep. econs; eauto.
+  - gstep. econs; eauto. i. exploit K; et. intro T; pclearbot. eauto with paco.
+  - gstep. econs; eauto. i. exploit K; et. intro T; pclearbot. eauto with paco.
+  - guclo sim_itree_indC_spec. econs; eauto.
+  - guclo sim_itree_indC_spec. econs; eauto.
+  - des. guclo sim_itree_indC_spec. econs; eauto.
+  - guclo sim_itree_indC_spec. econs; eauto. i. exploit K; et. intro T; des. eauto with paco.
+  - guclo sim_itree_indC_spec. econs; eauto.
+  - guclo sim_itree_indC_spec. econs; eauto.
+  - guclo sim_itree_indC_spec. econs; eauto.
+  - guclo sim_itree_indC_spec. econs; eauto. i. exploit K; et. intro T; des. eauto with paco.
+  - des. guclo sim_itree_indC_spec. econs; eauto.
+  - guclo sim_itree_indC_spec. econs; eauto.
+  - guclo sim_itree_indC_spec. econs; eauto.
+  - pclearbot. gstep. econs; eauto. eauto with paco.
 Qed.
 
 Lemma self_sim_itree:
@@ -1219,11 +1222,15 @@ Proof.
   - rewrite in_map_iff in *. des. destruct x; ss. clarify.
     exploit sim_fnsems; et. intro T; des. esplits; et.
     { rewrite in_app_iff. left. rewrite in_map_iff. esplits; et. ss. }
-    ii. subst. destruct w; ss. des; subst. eapply compose_aux_left; ss; et. refl.
+    ii. subst. destruct w; ss. des; subst. eapply sim_itree_fsubset; et.
+    2: { eapply compose_aux_left; ss; et. refl. }
+    eapply incl_appl; ss.
   - rewrite in_map_iff in *. des. destruct x; ss. clarify.
     exploit sim_fnsems0; et. intro T; des. esplits; et.
     { rewrite in_app_iff. right. rewrite in_map_iff. esplits; et. ss. }
-    ii. subst. destruct w; ss. des; subst. eapply compose_aux_right; ss; et. refl.
+    ii. subst. destruct w; ss. des; subst. eapply sim_itree_fsubset; et.
+    2: { eapply compose_aux_right; ss; et. refl. }
+    eapply incl_appr; ss.
 Qed.
 
 Require Import SimGlobal.
@@ -1249,11 +1256,11 @@ Lemma adequacy_aux
   ms_src ms_tgt
   (SIM: forall fn f_src (FINDS: In (fn, f_src) ms_src.(ModSem.fnsems)),
                              exists f_tgt, <<FINDT: In (fn, f_tgt) ms_tgt.(ModSem.fnsems)>>
-                                                    /\ <<SIM: sim_fsem wf le f_src f_tgt>>)
+                                                    /\ <<SIM: sim_fsem ms_tgt.(ModSem.fnsems) wf le f_src f_tgt>>)
   w0 st_src st_tgt
   itr_src itr_tgt
   f_src f_tgt
-  (SIMF: sim_itree wf le f_src f_tgt w0 (st_src, itr_src) (st_tgt, itr_tgt))
+  (SIMF: sim_itree ms_tgt.(ModSem.fnsems) wf le f_src f_tgt w0 (st_src, itr_src) (st_tgt, itr_tgt))
   :
   paco7 _simg bot7 (p_state * Any.t)%type (p_state * Any.t)%type
     (fun '(st_src, ret_src) '(st_tgt, ret_tgt) =>
@@ -1291,6 +1298,9 @@ Proof.
     - step. i. subst. apply simg_progress_flag.
       hexploit (K x_tgt). i. des. pclearbot.
       steps. gbase. eapply CIH; et.
+    - ired_both. steps. eapply In_nth_error in FINDT. des.
+      force. exists n. steps. unfold assume. force. esplits; et. steps. rewrite FINDT; ss. steps.
+      exploit IHSIMF; et. intro T. rp; et. ired_both. grind. ired_both. ss.
     - ired_both. steps.
     - des. force. exists x. steps. eapply IH; eauto.
     - steps. i. hexploit K. i. des. steps. eapply IH; eauto.
