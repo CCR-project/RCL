@@ -937,6 +937,9 @@ Section SIMMODSEM.
     le: world -> world -> Prop;
     le_PreOrder: PreOrder le;
     sim_fnsems: Forall2 (sim_fnsem wf le) ms_src.(ModSem.fnsems) ms_tgt.(ModSem.fnsems);
+    (* sim_fnsems: forall fn f_src (FINDS: alist_find fn ms_src.(ModSem.fnsems) = Some f_src), *)
+    (*                          exists f_tgt, <<FINDT: alist_find fn ms_tgt.(ModSem.fnsems) = Some f_tgt>> *)
+    (*                                                 /\ <<SIM: sim_fsem wf le f_src f_tgt>>; *)
     sim_initial: exists w_init, wf w_init (ms_src.(ModSem.initial_st), ms_tgt.(ModSem.initial_st));
   }.
 
