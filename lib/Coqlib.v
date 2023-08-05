@@ -1671,7 +1671,7 @@ Class BarFactsWeak `{Equiv T, Bar T, OPlus T, Ref T} := {
 }.
 
 (* Class OPlusFacts `{Equiv T, OPlus T, Ref T} `{EQVF: EquivFacts T} `{@RefFacts _ _ EQVF _ _} := { *)
-Class OPlusFacts `{Equiv T, OPlus T, Ref T} := {
+Class OPlusFacts `{Equiv T, OPlus T} := {
     oplus_comm: forall (a b: T), a ⊕ b ≡ b ⊕ a;
     oplus_assoc: forall a b c, a ⊕ (b ⊕ c) ≡ (a ⊕ b) ⊕ c;
     oplus_Proper: Proper ((≡) ==> (≡) ==> (≡)) ((⊕));
