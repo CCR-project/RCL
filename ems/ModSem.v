@@ -13,7 +13,120 @@ Set Implicit Arguments.
 
 
 
+
+Require Import Red IRed.
+Section AUX.
+
+  Global Program Instance interp_Es_rdb: red_database (mk_box (@Events.interp_Es)) :=
+    mk_rdb
+      1
+      (mk_box Events.interp_Es_bind)
+      (mk_box Events.interp_Es_tau)
+      (mk_box Events.interp_Es_ret)
+      (mk_box Events.interp_Es_pE)
+      (mk_box Events.interp_Es_pE)
+      (mk_box Events.interp_Es_callE)
+      (mk_box Events.interp_Es_eventE)
+      (mk_box Events.interp_Es_triggerUB)
+      (mk_box Events.interp_Es_triggerNB)
+      (mk_box interp_Es_unwrapU)
+      (mk_box interp_Es_unwrapN)
+      (mk_box interp_Es_assume)
+      (mk_box interp_Es_guarantee)
+      (mk_box interp_Es_ext)
+  .
+
+  Global Program Instance focus_left_rdb: red_database (mk_box (@focus_left)) :=
+    mk_rdb
+      0
+      (mk_box focus_left_bind)
+      (mk_box focus_left_tau)
+      (mk_box focus_left_ret)
+      (mk_box focus_left_pE)
+      (mk_box focus_left_pE)
+      (mk_box focus_left_callE)
+      (mk_box focus_left_eventE)
+      (mk_box focus_left_triggerUB)
+      (mk_box focus_left_triggerNB)
+      (mk_box focus_left_unwrapU)
+      (mk_box focus_left_unwrapN)
+      (mk_box focus_left_assume)
+      (mk_box focus_left_guarantee)
+      (mk_box focus_left_ext)
+  .
+
+  Global Program Instance focus_right_rdb: red_database (mk_box (@focus_right)) :=
+    mk_rdb
+      0
+      (mk_box focus_right_bind)
+      (mk_box focus_right_tau)
+      (mk_box focus_right_ret)
+      (mk_box focus_right_pE)
+      (mk_box focus_right_pE)
+      (mk_box focus_right_callE)
+      (mk_box focus_right_eventE)
+      (mk_box focus_right_triggerUB)
+      (mk_box focus_right_triggerNB)
+      (mk_box focus_right_unwrapU)
+      (mk_box focus_right_unwrapN)
+      (mk_box focus_right_assume)
+      (mk_box focus_right_guarantee)
+      (mk_box focus_right_ext)
+  .
+
+  Global Program Instance core_rdb: red_database (mk_box (@core)) :=
+    mk_rdb
+      0
+      (mk_box core_bind)
+      (mk_box core_tau)
+      (mk_box core_ret)
+      (mk_box core_pE)
+      (mk_box core_pE)
+      (mk_box core_callE)
+      (mk_box core_eventE)
+      (mk_box core_triggerUB)
+      (mk_box core_triggerNB)
+      (mk_box core_unwrapU)
+      (mk_box core_unwrapN)
+      (mk_box core_assume)
+      (mk_box core_guarantee)
+      (mk_box core_ext)
+  .
+
+End AUX.
+
+Theorem core_idemp {R}: forall (itr: itree _ R), | | itr | | ≈ | itr | .
+Proof.
+  i.
+  unfold bar, itree_Bar, core.
+  rewrite interp_interp.
+  eapply eutt_interp; try refl.
+  ii.
+  destruct a; ss.
+  { cbn. unfold trivial_Handler. rewrite interp_trigger. grind. resub. setoid_rewrite tau_eutt. grind. refl. }
+  destruct s; ss.
+  { cbn. unfold trivial_Handler. destruct p; ss.
+    - rewrite interp_trigger. grind. setoid_rewrite tau_eutt. grind. refl.
+    - unfold triggerUB. grind. rewrite ! interp_trigger. grind. resub. f_equiv; ss. refl.
+  }
+  { cbn. unfold trivial_Handler. rewrite interp_trigger. grind. resub. setoid_rewrite tau_eutt. grind. refl. }
+Qed.
+
+
+
+
+
+
+
+
+
+
+
+
+
 Class EMSConfig := { finalize: Any.t -> option Any.t; initial_arg: Any.t }.
+
+
 
 Module ModSem.
 Section MODSEM.
@@ -36,6 +149,33 @@ Section MODSEM.
     initial_st: Any.t;
   }
   .
+
+  Global Instance equiv: Equiv t :=
+    fun ms0 ms1 => Forall2 (fun '(fn0, ktr0) '(fn1, ktr1) => fn0 = fn1 /\ (forall x, ktr0 x ≈ ktr1 x)) ms0.(fnsems) ms1.(fnsems)
+                   /\ ms0.(initial_st) = ms1.(initial_st).
+
+  Global Program Instance equiv_Equivalence: Equivalence equiv.
+  Next Obligation.
+    ii. r. esplits; ss. eapply Forall2_impl. 2: { eapply Forall2_eq; ss. } i; ss. des_ifs. esplits; ss. refl.
+  Qed.
+  Next Obligation.
+    ii. r in H. r. des. split; ss. eapply Forall2_sym; et. eapply Forall2_impl; [|et].
+    ii; ss. des_ifs. des; subst; ss. rr. esplits; ss. sym; ss.
+  Qed.
+  Next Obligation.
+    ii. rr in H. rr in H0. des; subst.
+    rr. esplits; et.
+    2: { etrans; et. }
+    eapply Forall2_impl.
+    2:{ eapply Forall2_trans; et. }
+    ss. ii. des. des_ifs. des; subst. esplits; ss. etrans; et.
+  Qed.
+
+  Definition core (ms: t): t :=
+    mk (List.map (map_snd bar) ms.(fnsems)) ms.(initial_st)
+  .
+
+  Global Program Instance bar: Bar t := core.
 
   Record wf (ms: t): Prop := mk_wf {
     (* wf_fnsems: NoDup (List.map fst ms.(fnsems)); *)
@@ -116,7 +256,7 @@ Section MODSEM.
   Definition initial_itr (P: option Prop): itree (eventE) Any.t :=
     match P with
     | None => Ret tt
-    | Some P' => assume (<<WF: P'>>)
+    | Some P' => guarantee (<<WF: P'>>)
     end;;;
     snd <$> interp_Es prog (prog (Call "main" initial_arg)) (initial_p_state).
 
@@ -293,26 +433,6 @@ Section MODSEM.
   Definition compile P: semantics :=
     compile_itree (initial_itr P).
 
-  Lemma initial_itr_not_wf P
-        (WF: ~ P)
-        tr
-    :
-      Beh.of_program (compile_itree (initial_itr (Some P))) tr.
-  Proof.
-    eapply Beh.ub_top. pfold. econsr; ss; et. rr. ii; ss.
-    unfold initial_itr, assume in *. rewrite bind_bind in STEP.
-    eapply step_trigger_take_iff in STEP. des. subst. ss.
-  Qed.
-
-  Lemma compile_not_wf P
-        (WF: ~ P)
-        tr
-    :
-      Beh.of_program (compile (Some P)) tr.
-  Proof.
-    eapply initial_itr_not_wf; et.
-  Qed.
-
   (* Program Definition interp_no_forge: semantics := {| *)
   (*   STS.state := state; *)
   (*   STS.step := step; *)
@@ -324,7 +444,82 @@ Section MODSEM.
   (* Next Obligation. inv STEP; ss. Qed. *)
   (* Next Obligation. inv STEP; ss. Qed. *)
 
+  Lemma initial_itr_not_wf P
+        (WF: ~ P)
+        tr
+        (BEH: Beh.of_program (compile_itree (initial_itr (Some P))) tr)
+    :
+      tr = Tr.nb.
+  Proof.
+    punfold BEH. inv BEH; ss.
+    - punfold SPIN. inv SPIN; ss. des; ss. unfold initial_itr in STEP0. unfold guarantee in *. inv STEP0; ss; csc.
+      { irw in H0; csc. }
+      { irw in H0; csc. }
+      { irw in H0; csc. }
+      { rewrite <- bind_trigger in H0. irw in H0. simpl_depind. }
+    - inv STEP. des. subst; ss. unfold initial_itr, guarantee in STEP. inv STEP; ss; csc.
+      { irw in H0; csc. }
+      { irw in H0; csc. }
+      { irw in H0; csc. }
+  Qed.
+
+  Lemma compile_not_wf P
+        (WF: ~ P)
+        tr
+        (BEH: Beh.of_program (compile (Some P)) tr)
+    :
+      tr = Tr.nb.
+  Proof.
+    eapply initial_itr_not_wf; et.
+  Qed.
+
   End INTERP.
+
+  Definition cref (ms_tgt ms_src: t): Prop :=
+    forall `{EMSConfig} P (ctx: t), Beh.of_program (compile (ctx ⊕ ms_tgt) P) <1= Beh.of_program (compile (ctx ⊕ ms_src) P)
+  .
+
+  Global Program Instance cref_Ref: Ref t := cref.
+
+  Global Program Instance equiv_facts: EquivFacts.
+  Global Program Instance bar_facts: BarFacts.
+  Next Obligation.
+    i.
+    unfold Coqlib.bar, bar, core.
+    ss. rr. esplits; ss.
+    rewrite ! List.map_map.
+    eapply Forall2_apply_Forall2.
+    { refl. }
+    ii; ss. subst. des_ifs. destruct b; ss. clarify.
+    esplits; ss. ii. eapply core_idemp.
+  Qed.
+  Next Obligation.
+    rr. esplits; ss.
+    rewrite ! List.map_map. rewrite ! map_app.
+    eapply Forall2_app.
+    - rewrite ! List.map_map.
+      eapply Forall2_apply_Forall2; [refl|]. ii; ss. subst. des_ifs. destruct b0; ss. clarify. esplits; ss.
+      ii. unfold focus_left, Coqlib.bar, ktree_Bar, Coqlib.bar, itree_Bar, Events.core.
+      rewrite ! interp_interp. eapply eutt_interp; try refl. ii.
+      unfold trivial_Handler.
+      destruct a0; cbn.
+      { rewrite ! interp_trigger. grind. resub. refl. }
+      destruct s0; cbn.
+      { destruct p; ss.
+        - rewrite ! interp_trigger. grind. rewrite ! interp_trigger. grind.
+          unfold triggerUB. grind.
+          resub. refl. }
+      ss.
+    ii.
+    ss.
+  Qed.
+
+  Global Program Instance refines_Proper: @Proper (t -> t -> Prop) ((≡) ==> (≡) ==> impl) (⊑).
+  Next Obligation.
+    ii.
+    admit "should hold".
+  Qed.
+
 End MODSEM.
 End ModSem.
 
@@ -382,11 +577,27 @@ Section MOD.
     enclose: ModSem.t := (get_modsem sk);
     (* get_modsem_Proper:> Proper ((≡) ==> eq) get_modsem; *)
     get_modsem_Proper:> forall sk0 sk1 (EQV: sk0 ≡ sk1) (WF: Sk.wf sk0), get_modsem sk0 = get_modsem sk1;
+    get_modsem_extends:> forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1), get_modsem sk1 ⊑ get_modsem sk0;
+    get_modsem_extends_core:> forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1), | get_modsem sk1 | ⊑ | get_modsem sk0 |;
   }
   .
 
   (* Definition wf (md: t): Prop := (<<SK: Sk.wf (md.(sk))>>). *)
   Definition wf (md: t): Prop := (<<WF: ModSem.wf md.(enclose)>> /\ <<SK: Sk.wf (md.(sk))>>).
+
+  Program Definition core (md: t): t := mk (fun sk => |(md.(get_modsem) sk)| ) md.(sk) _ _ _.
+  Next Obligation.
+    erewrite get_modsem_Proper; et.
+  Qed.
+  Next Obligation.
+    eapply get_modsem_extends_core; et.
+  Qed.
+  Next Obligation.
+    rewrite ! ModSem.core_idemp.
+    eapply get_modsem_extends_core; et.
+  Qed.
+
+  Global Program Instance bar: Bar t := core.
 
   Section BEH.
 
@@ -409,6 +620,12 @@ Section MOD.
   Next Obligation.
     ii. rewrite ! (@get_modsem_Proper _ _ _ EQV); et.
   Qed.
+  Next Obligation.
+    admit "should hold".
+  Qed.
+  Next Obligation.
+    admit "should hold".
+  Qed.
 
   Global Program Instance add_OPlus: OPlus t := add.
 
@@ -417,396 +634,23 @@ Section MOD.
     sk := Sk.unit;
   |}
   .
+  Next Obligation.
+    ss.
+  Qed.
+  Next Obligation.
+    ss.
+  Qed.
 
   End BEH.
 
-End MOD.
-End Mod.
+  Section REFINE.
 
-
-
-Global Existing Instance Sk.gdefs.
-Arguments Sk.unit: simpl never.
-Arguments Sk.add: simpl never.
-Arguments Sk.wf: simpl never.
-
-
-(*** TODO: Move to ModSem.v ***)
-Lemma interp_Es_unwrapU
-      prog R st0 (r: option R)
-  :
-    Events.interp_Es prog (unwrapU r) st0 = r <- unwrapU r;; Ret (st0, r)
-.
-Proof.
-  unfold unwrapU. des_ifs.
-  - rewrite Events.interp_Es_ret. grind.
-  - rewrite Events.interp_Es_triggerUB. unfold triggerUB. grind.
-Qed.
-
-Lemma interp_Es_unwrapN
-      prog R st0 (r: option R)
-  :
-    Events.interp_Es prog (unwrapN r) st0 = r <- unwrapN r;; Ret (st0, r)
-.
-Proof.
-  unfold unwrapN. des_ifs.
-  - rewrite Events.interp_Es_ret. grind.
-  - rewrite Events.interp_Es_triggerNB. unfold triggerNB. grind.
-Qed.
-
-Lemma interp_Es_assume
-      prog st0 (P: Prop)
-  :
-    Events.interp_Es prog (assume P) st0 = assume P;;; tau;; tau;; Ret (st0, tt)
-.
-Proof.
-  unfold assume.
-  repeat (try rewrite Events.interp_Es_bind; try rewrite bind_bind). grind.
-  rewrite Events.interp_Es_eventE.
-  repeat (try rewrite Events.interp_Es_bind; try rewrite bind_bind). grind.
-  rewrite Events.interp_Es_ret.
-  refl.
-Qed.
-
-Lemma interp_Es_guarantee
-      prog st0 (P: Prop)
-  :
-    Events.interp_Es prog (guarantee P) st0 = guarantee P;;; tau;; tau;; Ret (st0, tt)
-.
-Proof.
-  unfold guarantee.
-  repeat (try rewrite Events.interp_Es_bind; try rewrite bind_bind). grind.
-  rewrite Events.interp_Es_eventE.
-  repeat (try rewrite Events.interp_Es_bind; try rewrite bind_bind). grind.
-  rewrite Events.interp_Es_ret.
-  refl.
-Qed.
-
-
-
-
-
-Require Import Red IRed.
-Section AUX.
-  Lemma interp_Es_ext
-        prog R (itr0 itr1: itree _ R) st0
-    :
-      itr0 = itr1 -> Events.interp_Es prog itr0 st0 = Events.interp_Es prog itr1 st0
-  .
-  Proof. i; subst; refl. Qed.
-
-  Global Program Instance interp_Es_rdb: red_database (mk_box (@Events.interp_Es)) :=
-    mk_rdb
-      1
-      (mk_box Events.interp_Es_bind)
-      (mk_box Events.interp_Es_tau)
-      (mk_box Events.interp_Es_ret)
-      (mk_box Events.interp_Es_pE)
-      (mk_box Events.interp_Es_pE)
-      (mk_box Events.interp_Es_callE)
-      (mk_box Events.interp_Es_eventE)
-      (mk_box Events.interp_Es_triggerUB)
-      (mk_box Events.interp_Es_triggerNB)
-      (mk_box interp_Es_unwrapU)
-      (mk_box interp_Es_unwrapN)
-      (mk_box interp_Es_assume)
-      (mk_box interp_Es_guarantee)
-      (mk_box interp_Es_ext)
+  Definition cref' {CONF: EMSConfig} (md_tgt md_src: t): Prop :=
+    forall (ctx: t), Beh.of_program (compile (ctx ⊕ md_tgt)) <1=
+                       Beh.of_program (compile (ctx ⊕ md_src))
   .
 
-  Lemma focus_left_bind
-        A B
-        (itr: itree Es A) (ktr: A -> itree Es B)
-    :
-      focus_left (itr >>= ktr) = a <- (focus_left itr);; (focus_left (ktr a))
-  .
-  Proof. unfold focus_left. grind. Qed.
-
-  Lemma focus_left_tau
-        A
-        (itr: itree Es A)
-    :
-      focus_left (tau;; itr) = tau;; (focus_left itr)
-  .
-  Proof. unfold focus_left. grind. Qed.
-
-  Lemma focus_left_ret
-        A
-        (a: A)
-    :
-      focus_left (Ret a) = Ret a
-  .
-  Proof. unfold focus_left. grind. Qed.
-
-  Lemma focus_left_callE
-        fn args
-    :
-      focus_left (trigger (Call fn args)) =
-      r <- (trigger (Events.Call fn args));;
-      tau;; Ret r
-  .
-  Proof. unfold focus_left. rewrite unfold_interp. ss. grind. Qed.
-
-  Lemma focus_left_pE
-        T (e: pE T)
-    :
-      focus_left (trigger e) = r <- (focus_left_h e);; tau;; Ret r
-  .
-  Proof. dependent destruction e; ss; unfold focus_left; rewrite unfold_interp; ss; grind. Qed.
-
-  Lemma focus_left_eventE
-        T (e: eventE T)
-    :
-      focus_left (trigger e) = r <- trigger e;; tau;; Ret r
-  .
-  Proof. dependent destruction e; ss; unfold focus_left; rewrite unfold_interp; ss; grind. Qed.
-
-  Lemma focus_left_triggerUB
-        T
-    :
-      focus_left (triggerUB: itree _ T) = triggerUB
-  .
-  Proof. unfold triggerUB. unfold focus_left; rewrite unfold_interp; ss; grind. Qed.
-
-  Lemma focus_left_triggerNB
-        T
-    :
-      focus_left (triggerNB: itree _ T) = triggerNB
-  .
-  Proof. unfold triggerNB. unfold focus_left; rewrite unfold_interp; ss; grind. Qed.
-
-
-  Lemma focus_left_unwrapU
-        R (r: option R)
-    :
-      focus_left (unwrapU r) = unwrapU r
-  .
-  Proof.
-    unfold unwrapU. des_ifs.
-    - rewrite focus_left_ret. grind.
-    - rewrite focus_left_triggerUB. unfold triggerUB. grind.
-  Qed.
-
-  Lemma focus_left_unwrapN
-        R (r: option R)
-    :
-      focus_left (unwrapN r) = unwrapN r
-  .
-  Proof.
-    unfold unwrapN. des_ifs.
-    - rewrite focus_left_ret. grind.
-    - rewrite focus_left_triggerNB. unfold triggerNB. grind.
-  Qed.
-
-  Lemma focus_left_assume
-        (P: Prop)
-    :
-      focus_left (assume P) = assume P;;; tau;; Ret (tt)
-  .
-  Proof.
-    unfold assume.
-    repeat (try rewrite focus_left_bind; try rewrite bind_bind). grind.
-    rewrite focus_left_eventE.
-    repeat (try rewrite focus_left_bind; try rewrite bind_bind). grind.
-    rewrite focus_left_ret.
-    refl.
-  Qed.
-
-  Lemma focus_left_guarantee
-        (P: Prop)
-    :
-      focus_left (guarantee P) = guarantee P;;; tau;; Ret (tt)
-  .
-  Proof.
-    unfold guarantee.
-    repeat (try rewrite focus_left_bind; try rewrite bind_bind). grind.
-    rewrite focus_left_eventE.
-    repeat (try rewrite focus_left_bind; try rewrite bind_bind). grind.
-    rewrite focus_left_ret.
-    refl.
-  Qed.
-
-  Lemma focus_left_ext
-        R (itr0 itr1: itree _ R)
-        (EQ: itr0 = itr1)
-    :
-      focus_left itr0 = focus_left itr1
-  .
-  Proof. subst; refl. Qed.
-
-  Global Program Instance focus_left_rdb: red_database (mk_box (@focus_left)) :=
-    mk_rdb
-      0
-      (mk_box focus_left_bind)
-      (mk_box focus_left_tau)
-      (mk_box focus_left_ret)
-      (mk_box focus_left_pE)
-      (mk_box focus_left_pE)
-      (mk_box focus_left_callE)
-      (mk_box focus_left_eventE)
-      (mk_box focus_left_triggerUB)
-      (mk_box focus_left_triggerNB)
-      (mk_box focus_left_unwrapU)
-      (mk_box focus_left_unwrapN)
-      (mk_box focus_left_assume)
-      (mk_box focus_left_guarantee)
-      (mk_box focus_left_ext)
-  .
-
-  Lemma focus_right_bind
-        A B
-        (itr: itree Es A) (ktr: A -> itree Es B)
-    :
-      focus_right (itr >>= ktr) = a <- (focus_right itr);; (focus_right (ktr a))
-  .
-  Proof. unfold focus_right. grind. Qed.
-
-  Lemma focus_right_tau
-        A
-        (itr: itree Es A)
-    :
-      focus_right (tau;; itr) = tau;; (focus_right itr)
-  .
-  Proof. unfold focus_right. grind. Qed.
-
-  Lemma focus_right_ret
-        A
-        (a: A)
-    :
-      focus_right (Ret a) = Ret a
-  .
-  Proof. unfold focus_right. grind. Qed.
-
-  Lemma focus_right_callE
-        fn args
-    :
-      focus_right (trigger (Call fn args)) =
-      r <- (trigger (Events.Call fn args));;
-      tau;; Ret r
-  .
-  Proof. unfold focus_right. rewrite unfold_interp. ss. grind. Qed.
-
-  Lemma focus_right_pE
-        T (e: pE T)
-    :
-      focus_right (trigger e) = r <- (focus_right_h e);; tau;; Ret r
-  .
-  Proof. dependent destruction e; ss; unfold focus_right; rewrite unfold_interp; ss; grind. Qed.
-
-  Lemma focus_right_eventE
-        T (e: eventE T)
-    :
-      focus_right (trigger e) = r <- trigger e;; tau;; Ret r
-  .
-  Proof. dependent destruction e; ss; unfold focus_right; rewrite unfold_interp; ss; grind. Qed.
-
-  Lemma focus_right_triggerUB
-        T
-    :
-      focus_right (triggerUB: itree _ T) = triggerUB
-  .
-  Proof. unfold triggerUB. unfold focus_right; rewrite unfold_interp; ss; grind. Qed.
-
-  Lemma focus_right_triggerNB
-        T
-    :
-      focus_right (triggerNB: itree _ T) = triggerNB
-  .
-  Proof. unfold triggerNB. unfold focus_right; rewrite unfold_interp; ss; grind. Qed.
-
-
-  Lemma focus_right_unwrapU
-        R (r: option R)
-    :
-      focus_right (unwrapU r) = unwrapU r
-  .
-  Proof.
-    unfold unwrapU. des_ifs.
-    - rewrite focus_right_ret. grind.
-    - rewrite focus_right_triggerUB. unfold triggerUB. grind.
-  Qed.
-
-  Lemma focus_right_unwrapN
-        R (r: option R)
-    :
-      focus_right (unwrapN r) = unwrapN r
-  .
-  Proof.
-    unfold unwrapN. des_ifs.
-    - rewrite focus_right_ret. grind.
-    - rewrite focus_right_triggerNB. unfold triggerNB. grind.
-  Qed.
-
-  Lemma focus_right_assume
-        (P: Prop)
-    :
-      focus_right (assume P) = assume P;;; tau;; Ret (tt)
-  .
-  Proof.
-    unfold assume.
-    repeat (try rewrite focus_right_bind; try rewrite bind_bind). grind.
-    rewrite focus_right_eventE.
-    repeat (try rewrite focus_right_bind; try rewrite bind_bind). grind.
-    rewrite focus_right_ret.
-    refl.
-  Qed.
-
-  Lemma focus_right_guarantee
-        (P: Prop)
-    :
-      focus_right (guarantee P) = guarantee P;;; tau;; Ret (tt)
-  .
-  Proof.
-    unfold guarantee.
-    repeat (try rewrite focus_right_bind; try rewrite bind_bind). grind.
-    rewrite focus_right_eventE.
-    repeat (try rewrite focus_right_bind; try rewrite bind_bind). grind.
-    rewrite focus_right_ret.
-    refl.
-  Qed.
-
-  Lemma focus_right_ext
-        R (itr0 itr1: itree _ R)
-        (EQ: itr0 = itr1)
-    :
-      focus_right itr0 = focus_right itr1
-  .
-  Proof. subst; refl. Qed.
-
-  Global Program Instance focus_right_rdb: red_database (mk_box (@focus_right)) :=
-    mk_rdb
-      0
-      (mk_box focus_right_bind)
-      (mk_box focus_right_tau)
-      (mk_box focus_right_ret)
-      (mk_box focus_right_pE)
-      (mk_box focus_right_pE)
-      (mk_box focus_right_callE)
-      (mk_box focus_right_eventE)
-      (mk_box focus_right_triggerUB)
-      (mk_box focus_right_triggerNB)
-      (mk_box focus_right_unwrapU)
-      (mk_box focus_right_unwrapN)
-      (mk_box focus_right_assume)
-      (mk_box focus_right_guarantee)
-      (mk_box focus_right_ext)
-  .
-End AUX.
-
-
-
-
-
-
-Section REFINE.
-  Context `{Sk.ld}.
-
-  Definition cref' {CONF: EMSConfig} (md_tgt md_src: Mod.t): Prop :=
-    forall (ctx: Mod.t), Beh.of_program (Mod.compile (ctx ⊕ md_tgt)) <1=
-                           Beh.of_program (Mod.compile (ctx ⊕ md_src))
-  .
-
-  Definition cref (md_tgt md_src: Mod.t): Prop :=
+  Definition cref (md_tgt md_src: t): Prop :=
     forall {CONF: EMSConfig}, cref' md_tgt md_src.
 
   Section CONF.
@@ -825,13 +669,28 @@ Section REFINE.
     Next Obligation. ii. eapply H1. eapply H0. ss. Qed.
   End CONF.
 
-  Definition bref {CONF: EMSConfig} (md_tgt md_src: Mod.t): Prop :=
-    Beh.of_program (Mod.compile md_tgt) <1= Beh.of_program (Mod.compile md_src)
+  Definition bref {CONF: EMSConfig} (md_tgt md_src: t): Prop :=
+    Beh.of_program (compile md_tgt) <1= Beh.of_program (compile md_src)
   .
 
-End REFINE.
+  End REFINE.
 
-Notation "(⊑)" := cref (at level 50).
-Notation "a ⊑ b" := (cref a b) (at level 50).
-Notation "(⊑B)" := bref (at level 50).
-Notation "a ⊑B b" := (bref a b) (at level 50).
+End MOD.
+End Mod.
+
+Notation "(⊑B)" := Mod.bref (at level 50).
+Notation "a ⊑B b" := (Mod.bref a b) (at level 50).
+
+
+
+Global Existing Instance Sk.gdefs.
+Arguments Sk.unit: simpl never.
+Arguments Sk.add: simpl never.
+Arguments Sk.wf: simpl never.
+
+
+
+
+
+
+

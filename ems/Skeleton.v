@@ -78,6 +78,27 @@ Module Sk.
     ii. unfold extends in *. des. esplits; et. rewrite <- H1. rewrite <- H0. rewrite add_assoc. refl.
   Qed.
 
+  Lemma extends_add: forall `{ld} a b c, extends a b -> extends (c ⊕ a) (c ⊕ b).
+  Proof.
+    ii. r in H0. des. r. esplits; et. rewrite <- add_assoc. rewrite H0. refl.
+  Qed.
+
+  Global Program Instance extends_Proper `{ld}: Proper ((≡) ==> (≡) ==> impl) extends.
+  Next Obligation.
+    ii. r in H2. des. r. esplits; et. rewrite <- H0. rewrite H2. ss.
+  Qed.
+
+  Global Program Instance extends_wf `{ld}: Proper ((extends) --> impl) wf.
+  Next Obligation.
+    ii. rr in H0. des. rewrite <- H0 in *. eapply wf_mon; et. r. esplits; et. refl.
+  Qed.
+
+  Global Program Instance add_extends_Proper `{ld}: Proper ((extends) ==> (extends) ==> (extends)) ((⊕)).
+  Next Obligation.
+    ii. etrans; et.
+    { rewrite extends_add; et. refl. }
+    { rewrite (add_comm x). rewrite (add_comm y). eapply extends_add; et. }
+  Qed.
 
   (* Imp Instance *)
   Inductive gdef: Type := Gfun | Gvar (gv: Z).

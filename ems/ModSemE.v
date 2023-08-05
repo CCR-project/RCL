@@ -163,6 +163,13 @@ Section EVENTS.
     '(st1, v) <- interp_pE (interp_mrec prog itr0) st0;;
     Ret (st1, v)
   .
+  
+  Definition core_h: Handler pE Es :=
+    fun _ pE => match pE with
+                | PPut p => trigger (PPut p)
+                | PGet => triggerUB
+                end
+  .
 
   Definition focus_left_h: Handler pE Es :=
     fun _ pE => match pE with
@@ -177,6 +184,14 @@ Section EVENTS.
                 | PGet => (p <- trigger PGet;; '(_, r) <- (Any.split p)?;; Ret r)
                 end
   .
+
+  Definition core: itree Es ~> itree Es :=
+    fun _ itr =>
+      interp (case_ trivial_Handler (case_ core_h trivial_Handler)) itr
+  .
+
+  Global Program Instance itree_Bar {R}: Bar (itree Es R) := @core R.
+  Global Program Instance ktree_Bar {R S}: Bar (ktree Es R S) := fun ktr x => |ktr x|.
 
   Definition focus_left: itree Es ~> itree Es :=
     fun _ itr =>
@@ -277,7 +292,436 @@ Section EVENTS.
   Proof.
     unfold interp_Es, interp_pE, pure_state, triggerNB. grind.
   Qed.
+  
+  Lemma interp_Es_unwrapU
+    prog R st0 (r: option R)
+    :
+    interp_Es prog (unwrapU r) st0 = r <- unwrapU r;; Ret (st0, r)
+  .
+  Proof.
+    unfold unwrapU. des_ifs.
+    - rewrite interp_Es_ret. grind.
+    - rewrite interp_Es_triggerUB. unfold triggerUB. grind.
+  Qed.
+
+  Lemma interp_Es_unwrapN
+    prog R st0 (r: option R)
+    :
+    interp_Es prog (unwrapN r) st0 = r <- unwrapN r;; Ret (st0, r)
+  .
+  Proof.
+    unfold unwrapN. des_ifs.
+    - rewrite interp_Es_ret. grind.
+    - rewrite interp_Es_triggerNB. unfold triggerNB. grind.
+  Qed.
+
+  Lemma interp_Es_assume
+    prog st0 (P: Prop)
+    :
+    interp_Es prog (assume P) st0 = assume P;;; tau;; tau;; Ret (st0, tt)
+  .
+  Proof.
+    unfold assume.
+    repeat (try rewrite interp_Es_bind; try rewrite bind_bind). grind.
+    rewrite interp_Es_eventE.
+    repeat (try rewrite interp_Es_bind; try rewrite bind_bind). grind.
+    rewrite interp_Es_ret.
+    refl.
+  Qed.
+
+  Lemma interp_Es_guarantee
+    prog st0 (P: Prop)
+    :
+    interp_Es prog (guarantee P) st0 = guarantee P;;; tau;; tau;; Ret (st0, tt)
+  .
+  Proof.
+    unfold guarantee.
+    repeat (try rewrite interp_Es_bind; try rewrite bind_bind). grind.
+    rewrite interp_Es_eventE.
+    repeat (try rewrite interp_Es_bind; try rewrite bind_bind). grind.
+    rewrite interp_Es_ret.
+    refl.
+  Qed.
+
+  Lemma interp_Es_ext
+        prog R (itr0 itr1: itree _ R) st0
+    :
+      itr0 = itr1 -> interp_Es prog itr0 st0 = interp_Es prog itr1 st0
+  .
+  Proof. i; subst; refl. Qed.
   Opaque interp_Es.
+
+
+
+
+  Lemma focus_left_bind
+        A B
+        (itr: itree Es A) (ktr: A -> itree Es B)
+    :
+      focus_left (itr >>= ktr) = a <- (focus_left itr);; (focus_left (ktr a))
+  .
+  Proof. unfold focus_left. grind. Qed.
+
+  Lemma focus_left_tau
+        A
+        (itr: itree Es A)
+    :
+      focus_left (tau;; itr) = tau;; (focus_left itr)
+  .
+  Proof. unfold focus_left. grind. Qed.
+
+  Lemma focus_left_ret
+        A
+        (a: A)
+    :
+      focus_left (Ret a) = Ret a
+  .
+  Proof. unfold focus_left. grind. Qed.
+
+  Lemma focus_left_callE
+        fn args
+    :
+      focus_left (trigger (Call fn args)) =
+      r <- (trigger (Call fn args));;
+      tau;; Ret r
+  .
+  Proof. unfold focus_left. rewrite unfold_interp. ss. grind. Qed.
+
+  Lemma focus_left_pE
+        T (e: pE T)
+    :
+      focus_left (trigger e) = r <- (focus_left_h e);; tau;; Ret r
+  .
+  Proof. dependent destruction e; ss; unfold focus_left; rewrite unfold_interp; ss; grind. Qed.
+
+  Lemma focus_left_eventE
+        T (e: eventE T)
+    :
+      focus_left (trigger e) = r <- trigger e;; tau;; Ret r
+  .
+  Proof. dependent destruction e; ss; unfold focus_left; rewrite unfold_interp; ss; grind. Qed.
+
+  Lemma focus_left_triggerUB
+        T
+    :
+      focus_left (triggerUB: itree _ T) = triggerUB
+  .
+  Proof. unfold triggerUB. unfold focus_left; rewrite unfold_interp; ss; grind. Qed.
+
+  Lemma focus_left_triggerNB
+        T
+    :
+      focus_left (triggerNB: itree _ T) = triggerNB
+  .
+  Proof. unfold triggerNB. unfold focus_left; rewrite unfold_interp; ss; grind. Qed.
+
+
+  Lemma focus_left_unwrapU
+        R (r: option R)
+    :
+      focus_left (unwrapU r) = unwrapU r
+  .
+  Proof.
+    unfold unwrapU. des_ifs.
+    - rewrite focus_left_ret. grind.
+    - rewrite focus_left_triggerUB. unfold triggerUB. grind.
+  Qed.
+
+  Lemma focus_left_unwrapN
+        R (r: option R)
+    :
+      focus_left (unwrapN r) = unwrapN r
+  .
+  Proof.
+    unfold unwrapN. des_ifs.
+    - rewrite focus_left_ret. grind.
+    - rewrite focus_left_triggerNB. unfold triggerNB. grind.
+  Qed.
+
+  Lemma focus_left_assume
+        (P: Prop)
+    :
+      focus_left (assume P) = assume P;;; tau;; Ret (tt)
+  .
+  Proof.
+    unfold assume.
+    repeat (try rewrite focus_left_bind; try rewrite bind_bind). grind.
+    rewrite focus_left_eventE.
+    repeat (try rewrite focus_left_bind; try rewrite bind_bind). grind.
+    rewrite focus_left_ret.
+    refl.
+  Qed.
+
+  Lemma focus_left_guarantee
+        (P: Prop)
+    :
+      focus_left (guarantee P) = guarantee P;;; tau;; Ret (tt)
+  .
+  Proof.
+    unfold guarantee.
+    repeat (try rewrite focus_left_bind; try rewrite bind_bind). grind.
+    rewrite focus_left_eventE.
+    repeat (try rewrite focus_left_bind; try rewrite bind_bind). grind.
+    rewrite focus_left_ret.
+    refl.
+  Qed.
+
+  Lemma focus_left_ext
+        R (itr0 itr1: itree _ R)
+        (EQ: itr0 = itr1)
+    :
+      focus_left itr0 = focus_left itr1
+  .
+  Proof. subst; refl. Qed.
+
+
+
+
+  Lemma focus_right_bind
+        A B
+        (itr: itree Es A) (ktr: A -> itree Es B)
+    :
+      focus_right (itr >>= ktr) = a <- (focus_right itr);; (focus_right (ktr a))
+  .
+  Proof. unfold focus_right. grind. Qed.
+
+  Lemma focus_right_tau
+        A
+        (itr: itree Es A)
+    :
+      focus_right (tau;; itr) = tau;; (focus_right itr)
+  .
+  Proof. unfold focus_right. grind. Qed.
+
+  Lemma focus_right_ret
+        A
+        (a: A)
+    :
+      focus_right (Ret a) = Ret a
+  .
+  Proof. unfold focus_right. grind. Qed.
+
+  Lemma focus_right_callE
+        fn args
+    :
+      focus_right (trigger (Call fn args)) =
+      r <- (trigger (Call fn args));;
+      tau;; Ret r
+  .
+  Proof. unfold focus_right. rewrite unfold_interp. ss. grind. Qed.
+
+  Lemma focus_right_pE
+        T (e: pE T)
+    :
+      focus_right (trigger e) = r <- (focus_right_h e);; tau;; Ret r
+  .
+  Proof. dependent destruction e; ss; unfold focus_right; rewrite unfold_interp; ss; grind. Qed.
+
+  Lemma focus_right_eventE
+        T (e: eventE T)
+    :
+      focus_right (trigger e) = r <- trigger e;; tau;; Ret r
+  .
+  Proof. dependent destruction e; ss; unfold focus_right; rewrite unfold_interp; ss; grind. Qed.
+
+  Lemma focus_right_triggerUB
+        T
+    :
+      focus_right (triggerUB: itree _ T) = triggerUB
+  .
+  Proof. unfold triggerUB. unfold focus_right; rewrite unfold_interp; ss; grind. Qed.
+
+  Lemma focus_right_triggerNB
+        T
+    :
+      focus_right (triggerNB: itree _ T) = triggerNB
+  .
+  Proof. unfold triggerNB. unfold focus_right; rewrite unfold_interp; ss; grind. Qed.
+
+
+  Lemma focus_right_unwrapU
+        R (r: option R)
+    :
+      focus_right (unwrapU r) = unwrapU r
+  .
+  Proof.
+    unfold unwrapU. des_ifs.
+    - rewrite focus_right_ret. grind.
+    - rewrite focus_right_triggerUB. unfold triggerUB. grind.
+  Qed.
+
+  Lemma focus_right_unwrapN
+        R (r: option R)
+    :
+      focus_right (unwrapN r) = unwrapN r
+  .
+  Proof.
+    unfold unwrapN. des_ifs.
+    - rewrite focus_right_ret. grind.
+    - rewrite focus_right_triggerNB. unfold triggerNB. grind.
+  Qed.
+
+  Lemma focus_right_assume
+        (P: Prop)
+    :
+      focus_right (assume P) = assume P;;; tau;; Ret (tt)
+  .
+  Proof.
+    unfold assume.
+    repeat (try rewrite focus_right_bind; try rewrite bind_bind). grind.
+    rewrite focus_right_eventE.
+    repeat (try rewrite focus_right_bind; try rewrite bind_bind). grind.
+    rewrite focus_right_ret.
+    refl.
+  Qed.
+
+  Lemma focus_right_guarantee
+        (P: Prop)
+    :
+      focus_right (guarantee P) = guarantee P;;; tau;; Ret (tt)
+  .
+  Proof.
+    unfold guarantee.
+    repeat (try rewrite focus_right_bind; try rewrite bind_bind). grind.
+    rewrite focus_right_eventE.
+    repeat (try rewrite focus_right_bind; try rewrite bind_bind). grind.
+    rewrite focus_right_ret.
+    refl.
+  Qed.
+
+  Lemma focus_right_ext
+        R (itr0 itr1: itree _ R)
+        (EQ: itr0 = itr1)
+    :
+      focus_right itr0 = focus_right itr1
+  .
+  Proof. subst; refl. Qed.
+
+
+
+
+  Lemma core_bind
+        A B
+        (itr: itree Es A) (ktr: A -> itree Es B)
+    :
+      core (itr >>= ktr) = a <- (core itr);; (core (ktr a))
+  .
+  Proof. unfold core. grind. Qed.
+
+  Lemma core_tau
+        A
+        (itr: itree Es A)
+    :
+      core (tau;; itr) = tau;; (core itr)
+  .
+  Proof. unfold core. grind. Qed.
+
+  Lemma core_ret
+        A
+        (a: A)
+    :
+      core (Ret a) = Ret a
+  .
+  Proof. unfold core. grind. Qed.
+
+  Lemma core_callE
+        fn args
+    :
+      core (trigger (Call fn args)) =
+      r <- (trigger (Call fn args));;
+      tau;; Ret r
+  .
+  Proof. unfold core. rewrite unfold_interp. ss. grind. Qed.
+
+  Lemma core_pE
+        T (e: pE T)
+    :
+      core (trigger e) = r <- (core_h e);; tau;; Ret r
+  .
+  Proof. dependent destruction e; ss; unfold core; rewrite unfold_interp; ss; grind. Qed.
+
+  Lemma core_eventE
+        T (e: eventE T)
+    :
+      core (trigger e) = r <- trigger e;; tau;; Ret r
+  .
+  Proof. dependent destruction e; ss; unfold core; rewrite unfold_interp; ss; grind. Qed.
+
+  Lemma core_triggerUB
+        T
+    :
+      core (triggerUB: itree _ T) = triggerUB
+  .
+  Proof. unfold triggerUB. unfold core; rewrite unfold_interp; ss; grind. Qed.
+
+  Lemma core_triggerNB
+        T
+    :
+      core (triggerNB: itree _ T) = triggerNB
+  .
+  Proof. unfold triggerNB. unfold core; rewrite unfold_interp; ss; grind. Qed.
+
+
+  Lemma core_unwrapU
+        R (r: option R)
+    :
+      core (unwrapU r) = unwrapU r
+  .
+  Proof.
+    unfold unwrapU. des_ifs.
+    - rewrite core_ret. grind.
+    - rewrite core_triggerUB. unfold triggerUB. grind.
+  Qed.
+
+  Lemma core_unwrapN
+        R (r: option R)
+    :
+      core (unwrapN r) = unwrapN r
+  .
+  Proof.
+    unfold unwrapN. des_ifs.
+    - rewrite core_ret. grind.
+    - rewrite core_triggerNB. unfold triggerNB. grind.
+  Qed.
+
+  Lemma core_assume
+        (P: Prop)
+    :
+      core (assume P) = assume P;;; tau;; Ret (tt)
+  .
+  Proof.
+    unfold assume.
+    repeat (try rewrite core_bind; try rewrite bind_bind). grind.
+    rewrite core_eventE.
+    repeat (try rewrite core_bind; try rewrite bind_bind). grind.
+    rewrite core_ret.
+    refl.
+  Qed.
+
+  Lemma core_guarantee
+        (P: Prop)
+    :
+      core (guarantee P) = guarantee P;;; tau;; Ret (tt)
+  .
+  Proof.
+    unfold guarantee.
+    repeat (try rewrite core_bind; try rewrite bind_bind). grind.
+    rewrite core_eventE.
+    repeat (try rewrite core_bind; try rewrite bind_bind). grind.
+    rewrite core_ret.
+    refl.
+  Qed.
+
+  Lemma core_ext
+        R (itr0 itr1: itree _ R)
+        (EQ: itr0 = itr1)
+    :
+      core itr0 = core itr1
+  .
+  Proof. subst; refl. Qed.
+
+
 End EVENTS.
 End Events.
 Opaque Events.interp_Es.
+

@@ -16,6 +16,29 @@ Set Implicit Arguments.
 
 
 
+Section CORE.
+
+  Context `{Sk.ld}.
+
+  Theorem affine
+    md0
+    :
+    md0 ⊑ Mod.empty
+  .
+  Proof.
+    eapply ModPair.adequacy.
+    econs; eauto.
+    2: { ii; ss. admit "". }
+    ii; ss.
+    econs.
+    { instantiate (1:=top2). ss. }
+    2: { instantiate (2:=unit).
+         instantiate (1:=fun _ '(st_src, st_tgt) => True). ss. }
+    ii; ss.
+  Qed.
+
+End CORE.
+
 Section MOD.
 
   Context `{Sk.ld}.

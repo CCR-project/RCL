@@ -1579,18 +1579,53 @@ Qed.
 Lemma Forall2_eq
       A
       (xs0 xs1: list A)
-      (EQ: Forall2 eq xs0 xs1)
   :
-    <<EQ: xs0 = xs1>>
+    (Forall2 eq xs0 xs1) <-> <<EQ: xs0 = xs1>>
 .
-Proof. induction EQ; ss. des; subst. refl. Qed.
+Proof.
+  split; intro T.
+  - induction T; ss. des; subst. refl.
+  - des; subst. induction xs1; i; ss. econs; ss.
+Qed.
+
+Global Program Instance Forall2_refl {T}: Reflexive (@Forall2 T T eq).
+Next Obligation.
+  eapply Forall2_eq; ss.
+Qed.
+
+Lemma Forall2_sym
+      X Y
+      (xs: list X) (ys: list Y)
+      eq
+  :
+    (Forall2 eq xs ys) <-> <<EQ: Forall2 (flip eq) ys xs>>
+.
+Proof.
+  split; intro T; induction T; ii; ss; des; econs; ss.
+Qed.
+
+Lemma Forall2_trans
+      X Y Z
+      (xs: list X) (ys: list Y) (zs: list Z)
+      eq0 eq1
+      (EQ0: Forall2 eq0 xs ys)
+      (EQ1: Forall2 eq1 ys zs)
+  :
+  <<EQ: Forall2 (fun x z => exists y, eq0 x y /\ eq1 y z) xs zs>>
+.
+Proof.
+  generalize dependent zs.
+  induction EQ0; ii; ss; inv EQ1; ss.
+  econs; et. eapply IHEQ0; ss.
+Qed.
+
 
 Global Open Scope nat_scope.
 
 
 
 (*** From stdpp ***)
-Class Equiv A := equiv: A -> A -> Prop.
+Class Equiv (A: Type) := equiv: A -> A -> Prop.
 Global Instance equiv_rewrite_relation `{Equiv A} :
   RewriteRelation (@equiv A _) | 150 := {}.
 Notation "(≡)" := equiv (at level 70).
@@ -1600,4 +1635,53 @@ Infix "≡@{ A }" := (@equiv A _)
 
 Class OPlus (T: Type) := oplus: T -> T -> T.
 Notation "(⊕)" := oplus (at level 50).
-Notation "a ⊕ b" := (oplus a b) (at level 50).
+Notation "a ⊕ b" := (oplus a b) (at level 50, left associativity).
+
+Class Bar (T: Type) := bar: T -> T.
+Notation "|-|" := bar (at level 50).
+Notation "| a |" := (bar a) (at level 50).
+
+Class Ref (T: Type) := ref : T -> T -> Prop.
+Notation "⊑" := ref (at level 60).
+Notation "a ⊑ b" := (ref a b) (at level 60, right associativity).
+Notation "⊒⊑" := (fun a b => ref a b /\ ref b a) (at level 60).
+Notation "a ⊒⊑ b" := (ref a b /\ ref b a) (at level 60).
+
+Class Eps (T: Type) := eps : T.
+Notation "'ε'" := eps.
+
+Class EquivFacts `{Equiv} := equiv_facts: Equivalence ((≡)).
+
+Class RefFacts `{EquivFacts T} `{Ref T} `{OPlus T} := {
+    ref_Preorder: PreOrder ((⊑));
+    ref_oplus: Proper ((⊑) ==> (⊑) ==> (⊑)) ((⊕));
+    ref_Proper: Proper ((≡) ==> (≡) ==> impl) ((⊑));
+}.
+
+Class BarFacts `{Equiv T, Bar T, OPlus T} := {
+    bar_idemp: forall a, | |a| | ≡ |a|;
+    bar_oplus: forall a b, |a ⊕ b| ≡ |a| ⊕ |b|;
+    bar_Proper: Proper ((≡) ==> (≡)) (|-|);
+}.
+
+Class BarFactsWeak `{Equiv T, Bar T, OPlus T, Ref T} := {
+    bar_idemp_weak: forall a, | |a| | ⊒⊑ |a|;
+    bar_oplus_weak: forall a b, |a ⊕ b| ⊒⊑ |a| ⊕ |b|;
+    bar_Proper_weak: Proper ((≡) ==> (≡)) (|-|);
+}.
+
+(* Class OPlusFacts `{Equiv T, OPlus T, Ref T} `{EQVF: EquivFacts T} `{@RefFacts _ _ EQVF _ _} := { *)
+Class OPlusFacts `{Equiv T, OPlus T, Ref T} := {
+    oplus_comm: forall (a b: T), a ⊕ b ≡ b ⊕ a;
+    oplus_assoc: forall a b c, a ⊕ (b ⊕ c) ≡ (a ⊕ b) ⊕ c;
+}.
+
+Class OPlusFactsWeak `{Equiv T, OPlus T, Ref T} := {
+    oplus_comm_weak: forall (a b: T), a ⊕ b ⊑ b ⊕ a;
+    oplus_assoc_weak: forall a b c, a ⊕ (b ⊕ c) ⊑ (a ⊕ b) ⊕ c;
+}.
+
+Class EmptyFacts `{Equiv T, Eps T, OPlus T} := {
+    empty_r: forall a, a ⊕ ε ≡ a;
+    empty_l: forall a, ε ⊕ a ≡ a;
+}.
