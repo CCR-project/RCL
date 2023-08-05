@@ -1674,14 +1674,16 @@ Class BarFactsWeak `{Equiv T, Bar T, OPlus T, Ref T} := {
 Class OPlusFacts `{Equiv T, OPlus T, Ref T} := {
     oplus_comm: forall (a b: T), a ⊕ b ≡ b ⊕ a;
     oplus_assoc: forall a b c, a ⊕ (b ⊕ c) ≡ (a ⊕ b) ⊕ c;
+    oplus_Proper: Proper ((≡) ==> (≡) ==> (≡)) ((⊕));
 }.
 
 Class OPlusFactsWeak `{Equiv T, OPlus T, Ref T} := {
     oplus_comm_weak: forall (a b: T), a ⊕ b ⊑ b ⊕ a;
     oplus_assoc_weak: forall a b c, a ⊕ (b ⊕ c) ⊑ (a ⊕ b) ⊕ c;
+    oplus_Proper_weak: Proper ((≡) ==> (≡) ==> (≡)) ((⊕));
 }.
 
-Class EmptyFacts `{Equiv T, Eps T, OPlus T} := {
-    empty_r: forall a, a ⊕ ε ≡ a;
-    empty_l: forall a, ε ⊕ a ≡ a;
+Class EpsFacts `{Equiv T, Eps T, OPlus T} := {
+    eps_r: forall a, a ⊕ ε ≡ a;
+    eps_l: forall a, ε ⊕ a ≡ a;
 }.

@@ -150,6 +150,8 @@ Section MODSEM.
   }
   .
 
+  Global Instance eps: Eps t := mk [] tt↑.
+
   Global Instance equiv: Equiv t :=
     fun ms0 ms1 => Forall2 (fun '(fn0, ktr0) '(fn1, ktr1) => fn0 = fn1 /\ (forall x, ktr0 x ≈ ktr1 x)) ms0.(fnsems) ms1.(fnsems)
                    /\ ms0.(initial_st) = ms1.(initial_st).
@@ -253,11 +255,8 @@ Section MODSEM.
   Definition initial_p_state: p_state := ms.(initial_st).
 
   Context `{CONF: EMSConfig}.
-  Definition initial_itr (P: option Prop): itree (eventE) Any.t :=
-    match P with
-    | None => Ret tt
-    | Some P' => guarantee (<<WF: P'>>)
-    end;;;
+  Definition initial_itr (P: Prop): itree (eventE) Any.t :=
+    guarantee (<<WF: P>>);;;
     snd <$> interp_Es prog (prog (Call "main" initial_arg)) (initial_p_state).
 
 
@@ -447,7 +446,7 @@ Section MODSEM.
   Lemma initial_itr_not_wf P
         (WF: ~ P)
         tr
-        (BEH: Beh.of_program (compile_itree (initial_itr (Some P))) tr)
+        (BEH: Beh.of_program (compile_itree (initial_itr P)) tr)
     :
       tr = Tr.nb.
   Proof.
@@ -466,7 +465,7 @@ Section MODSEM.
   Lemma compile_not_wf P
         (WF: ~ P)
         tr
-        (BEH: Beh.of_program (compile (Some P)) tr)
+        (BEH: Beh.of_program (compile P) tr)
     :
       tr = Tr.nb.
   Proof.
@@ -482,8 +481,9 @@ Section MODSEM.
   Global Program Instance cref_Ref: Ref t := cref.
 
   Global Program Instance equiv_facts: EquivFacts.
-  Global Program Instance bar_facts: BarFacts.
-  Next Obligation.
+
+  Lemma core_idemp: forall ms0, | | ms0 | | ≡ | ms0 |.
+  Proof.
     i.
     unfold Coqlib.bar, bar, core.
     ss. rr. esplits; ss.
@@ -493,204 +493,44 @@ Section MODSEM.
     ii; ss. subst. des_ifs. destruct b; ss. clarify.
     esplits; ss. ii. eapply core_idemp.
   Qed.
-  Next Obligation.
-    rr. esplits; ss.
-    rewrite ! List.map_map. rewrite ! map_app.
-    eapply Forall2_app.
-    - rewrite ! List.map_map.
-      eapply Forall2_apply_Forall2; [refl|]. ii; ss. subst. des_ifs. destruct b0; ss. clarify. esplits; ss.
-      ii. unfold focus_left, Coqlib.bar, ktree_Bar, Coqlib.bar, itree_Bar, Events.core.
-      rewrite ! interp_interp. eapply eutt_interp; try refl. ii.
-      unfold trivial_Handler.
-      destruct a0; cbn.
-      { rewrite ! interp_trigger. grind. resub. refl. }
-      destruct s0; cbn.
-      { destruct p; ss.
-        - rewrite ! interp_trigger. grind. rewrite ! interp_trigger. grind.
-          unfold triggerUB. grind.
-          resub. refl. }
-      ss.
-    ii.
-    ss.
-  Qed.
+  (* Global Program Instance bar_facts: BarFactsWeak. *)
+  (* Next Obligation. *)
+  (*   i. *)
+  (*   unfold Coqlib.bar, bar, core. *)
+  (*   ss. rr. esplits; ss. *)
+  (*   rewrite ! List.map_map. *)
+  (*   eapply Forall2_apply_Forall2. *)
+  (*   { refl. } *)
+  (*   ii; ss. subst. des_ifs. destruct b; ss. clarify. *)
+  (*   esplits; ss. ii. eapply core_idemp. *)
+  (* Qed. *)
+  (* Next Obligation. *)
+  (*   rr. esplits; ss. *)
+  (*   rewrite ! List.map_map. rewrite ! map_app. *)
+  (*   eapply Forall2_app. *)
+  (*   - rewrite ! List.map_map. *)
+  (*     eapply Forall2_apply_Forall2; [refl|]. ii; ss. subst. des_ifs. destruct b0; ss. clarify. esplits; ss. *)
+  (*     ii. unfold focus_left, Coqlib.bar, ktree_Bar, Coqlib.bar, itree_Bar, Events.core. *)
+  (*     rewrite ! interp_interp. eapply eutt_interp; try refl. ii. *)
+  (*     unfold trivial_Handler. *)
+  (*     destruct a0; cbn. *)
+  (*     { rewrite ! interp_trigger. grind. resub. refl. } *)
+  (*     destruct s0; cbn. *)
+  (*     { destruct p; ss. *)
+  (*       - rewrite ! interp_trigger. grind. rewrite ! interp_trigger. grind. *)
+  (*         unfold triggerUB. grind. *)
+  (*         resub. refl. } *)
+  (*     ss. *)
+  (*   ii. *)
+  (*   ss. *)
+  (* Qed. *)
 
-  Global Program Instance refines_Proper: @Proper (t -> t -> Prop) ((≡) ==> (≡) ==> impl) (⊑).
-  Next Obligation.
-    ii.
-    admit "should hold".
-  Qed.
+  (* Global Program Instance refines_Proper: @Proper (t -> t -> Prop) ((≡) ==> (≡) ==> impl) (⊑). *)
+  (* Next Obligation. *)
+  (*   ii. *)
+  (*   admit "should hold". *)
+  (* Qed. *)
 
 End MODSEM.
 End ModSem.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-(* Module Events. *)
-Section EVENTSCOMMON.
-
-(*** casting call, fun ***)
-(* Definition ccallN {X Y} (fn: gname) (varg: X): itree Es Y := vret <- trigger (Call fn varg↑);; vret <- vret↓ǃ;; Ret vret. *)
-(* Definition ccallU {X Y} (fn: gname) (varg: X): itree Es Y := vret <- trigger (Call fn varg↑);; vret <- vret↓?;; Ret vret. *)
-(* Definition cfunN {X Y} (body: X -> itree Es Y): Any.t -> itree Es Any.t := *)
-(*   fun varg => varg <- varg↓ǃ;; vret <- body varg;; Ret vret↑. *)
-(* Definition cfunU {X Y} (body: X -> itree Es Y): Any.t -> itree Es Any.t := *)
-(*   fun varg => varg <- varg↓?;; vret <- body varg;; Ret vret↑. *)
-
-  (* Definition ccall {X Y} (fn: gname) (varg: X): itree Es Y := vret <- trigger (Call fn varg↑);; vret <- vret↓ǃ;; Ret vret. *)
-  (* Definition cfun {X Y} (body: X -> itree Es Y): Any.t -> itree Es Any.t := *)
-  (*   fun varg => varg <- varg↓ǃ;; vret <- body varg;; Ret vret↑. *)
-  Context `{HasCallE: callE -< E}.
-  Context `{HasEventE: eventE -< E}.
-
-  Definition ccallN {X Y} (fn: gname) (varg: X): itree E Y := vret <- trigger (Call fn varg↑);; vret <- vret↓ǃ;; Ret vret.
-  Definition ccallU {X Y} (fn: gname) (varg: X): itree E Y := vret <- trigger (Call fn varg↑);; vret <- vret↓?;; Ret vret.
-
-  Definition cfunN {X Y} (body: X -> itree E Y): Any.t -> itree E Any.t :=
-    fun '(varg) => varg <- varg↓ǃ;; vret <- body varg;; Ret vret↑.
-  Definition cfunU {X Y} (body: X -> itree E Y): Any.t -> itree E Any.t :=
-    fun '(varg) => varg <- varg↓?;; vret <- body varg;; Ret vret↑.
-
-End EVENTSCOMMON.
-
-
-
-Module Mod.
-Section MOD.
-  Context `{Sk.ld}.
-
-  Record t: Type := mk {
-    get_modsem: Sk.t -> ModSem.t;
-    sk: Sk.t;
-    enclose: ModSem.t := (get_modsem sk);
-    (* get_modsem_Proper:> Proper ((≡) ==> eq) get_modsem; *)
-    get_modsem_Proper:> forall sk0 sk1 (EQV: sk0 ≡ sk1) (WF: Sk.wf sk0), get_modsem sk0 = get_modsem sk1;
-    get_modsem_extends:> forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1), get_modsem sk1 ⊑ get_modsem sk0;
-    get_modsem_extends_core:> forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1), | get_modsem sk1 | ⊑ | get_modsem sk0 |;
-  }
-  .
-
-  (* Definition wf (md: t): Prop := (<<SK: Sk.wf (md.(sk))>>). *)
-  Definition wf (md: t): Prop := (<<WF: ModSem.wf md.(enclose)>> /\ <<SK: Sk.wf (md.(sk))>>).
-
-  Program Definition core (md: t): t := mk (fun sk => |(md.(get_modsem) sk)| ) md.(sk) _ _ _.
-  Next Obligation.
-    erewrite get_modsem_Proper; et.
-  Qed.
-  Next Obligation.
-    eapply get_modsem_extends_core; et.
-  Qed.
-  Next Obligation.
-    rewrite ! ModSem.core_idemp.
-    eapply get_modsem_extends_core; et.
-  Qed.
-
-  Global Program Instance bar: Bar t := core.
-
-  Section BEH.
-
-  Context {CONF: EMSConfig}.
-
-  Definition compile (md: t): semantics :=
-    ModSem.compile_itree (ModSem.initial_itr md.(enclose) (Some (wf md))).
-
-  (* Record wf (md: t): Prop := mk_wf { *)
-  (*   wf_sk: Sk.wf md.(sk); *)
-  (* } *)
-  (* . *)
-  (*** wf about modsem is enforced in the semantics ***)
-
-  Program Definition add (md0 md1: t): t := {|
-    get_modsem := fun sk => (md0.(get_modsem) sk) ⊕ (md1.(get_modsem) sk);
-    sk := md0.(sk) ⊕ md1.(sk);
-  |}
-  .
-  Next Obligation.
-    ii. rewrite ! (@get_modsem_Proper _ _ _ EQV); et.
-  Qed.
-  Next Obligation.
-    admit "should hold".
-  Qed.
-  Next Obligation.
-    admit "should hold".
-  Qed.
-
-  Global Program Instance add_OPlus: OPlus t := add.
-
-  Program Definition empty: t := {|
-    get_modsem := fun _ => ModSem.mk [] tt↑;
-    sk := Sk.unit;
-  |}
-  .
-  Next Obligation.
-    ss.
-  Qed.
-  Next Obligation.
-    ss.
-  Qed.
-
-  End BEH.
-
-  Section REFINE.
-
-  Definition cref' {CONF: EMSConfig} (md_tgt md_src: t): Prop :=
-    forall (ctx: t), Beh.of_program (compile (ctx ⊕ md_tgt)) <1=
-                       Beh.of_program (compile (ctx ⊕ md_src))
-  .
-
-  Definition cref (md_tgt md_src: t): Prop :=
-    forall {CONF: EMSConfig}, cref' md_tgt md_src.
-
-  Section CONF.
-    Context {CONF: EMSConfig}.
-
-    Global Program Instance cref_PreOrder: PreOrder cref.
-    Next Obligation.
-      ii. ss.
-    Qed.
-    Next Obligation.
-      ii. eapply H0 in PR. eapply H1 in PR. eapply PR.
-    Qed.
-
-    Global Program Instance cref'_PreOrder: PreOrder cref'.
-    Next Obligation. ii. ss. Qed.
-    Next Obligation. ii. eapply H1. eapply H0. ss. Qed.
-  End CONF.
-
-  Definition bref {CONF: EMSConfig} (md_tgt md_src: t): Prop :=
-    Beh.of_program (compile md_tgt) <1= Beh.of_program (compile md_src)
-  .
-
-  End REFINE.
-
-End MOD.
-End Mod.
-
-Notation "(⊑B)" := Mod.bref (at level 50).
-Notation "a ⊑B b" := (Mod.bref a b) (at level 50).
-
-
-
-Global Existing Instance Sk.gdefs.
-Arguments Sk.unit: simpl never.
-Arguments Sk.add: simpl never.
-Arguments Sk.wf: simpl never.
-
-
-
-
-
-
 

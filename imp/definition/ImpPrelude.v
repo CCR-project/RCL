@@ -13,6 +13,8 @@ Set Implicit Arguments.
 
 Local Open Scope nat_scope.
 
+Global Existing Instance Sk.gdefs.
+
 Notation mblock := nat (only parsing).
 Notation ptrofs := Z (only parsing).
 

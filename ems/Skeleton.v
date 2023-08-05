@@ -177,3 +177,7 @@ Module Sk.
   Qed.
 
 End Sk.
+
+Arguments Sk.unit: simpl never.
+Arguments Sk.add: simpl never.
+Arguments Sk.wf: simpl never.

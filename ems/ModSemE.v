@@ -725,3 +725,30 @@ End EVENTS.
 End Events.
 Opaque Events.interp_Es.
 
+
+(* Module Events. *)
+Section EVENTSCOMMON.
+
+(*** casting call, fun ***)
+(* Definition ccallN {X Y} (fn: gname) (varg: X): itree Es Y := vret <- trigger (Call fn varg↑);; vret <- vret↓ǃ;; Ret vret. *)
+(* Definition ccallU {X Y} (fn: gname) (varg: X): itree Es Y := vret <- trigger (Call fn varg↑);; vret <- vret↓?;; Ret vret. *)
+(* Definition cfunN {X Y} (body: X -> itree Es Y): Any.t -> itree Es Any.t := *)
+(*   fun varg => varg <- varg↓ǃ;; vret <- body varg;; Ret vret↑. *)
+(* Definition cfunU {X Y} (body: X -> itree Es Y): Any.t -> itree Es Any.t := *)
+(*   fun varg => varg <- varg↓?;; vret <- body varg;; Ret vret↑. *)
+
+  (* Definition ccall {X Y} (fn: gname) (varg: X): itree Es Y := vret <- trigger (Call fn varg↑);; vret <- vret↓ǃ;; Ret vret. *)
+  (* Definition cfun {X Y} (body: X -> itree Es Y): Any.t -> itree Es Any.t := *)
+  (*   fun varg => varg <- varg↓ǃ;; vret <- body varg;; Ret vret↑. *)
+  Context `{HasCallE: Events.callE -< E}.
+  Context `{HasEventE: eventE -< E}.
+
+  Definition ccallN {X Y} (fn: gname) (varg: X): itree E Y := vret <- trigger (Events.Call fn varg↑);; vret <- vret↓ǃ;; Ret vret.
+  Definition ccallU {X Y} (fn: gname) (varg: X): itree E Y := vret <- trigger (Events.Call fn varg↑);; vret <- vret↓?;; Ret vret.
+
+  Definition cfunN {X Y} (body: X -> itree E Y): Any.t -> itree E Any.t :=
+    fun '(varg) => varg <- varg↓ǃ;; vret <- body varg;; Ret vret↑.
+  Definition cfunU {X Y} (body: X -> itree E Y): Any.t -> itree E Any.t :=
+    fun '(varg) => varg <- varg↓?;; vret <- body varg;; Ret vret↑.
+
+End EVENTSCOMMON.
