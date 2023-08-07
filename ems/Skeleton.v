@@ -1,4 +1,4 @@
-Require Import Coqlib.
+Require Import Coqlib Algebra.
 Require Export ZArith.
 Require Import String.
 Require Export AList.

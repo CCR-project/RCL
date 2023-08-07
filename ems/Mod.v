@@ -23,6 +23,7 @@ Section MOD.
     (* get_modsem_Proper:> Proper ((≡) ==> eq) get_modsem; *)
     get_modsem_Proper:> forall sk0 sk1 (EQV: sk0 ≡ sk1) (WF: Sk.wf sk0), get_modsem sk0 = get_modsem sk1;
     get_modsem_extends:> forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1), get_modsem sk1 ⊑ get_modsem sk0;
+    (*** Check: do we need extends_core? Do we need Sk.extends? Isn't sk there always eps? ***)
     get_modsem_extends_core:> forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1), | get_modsem sk1 | ⊑ | get_modsem sk0 |;
   }
   .

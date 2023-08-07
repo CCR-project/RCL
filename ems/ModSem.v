@@ -8,6 +8,7 @@ Require Import Skeleton.
 Require Import STS Behavior.
 Require Import Any.
 Require Import Permutation.
+Require Import Algebra.
 
 Set Implicit Arguments.
 
@@ -149,8 +150,6 @@ Section MODSEM.
     initial_st: Any.t;
   }
   .
-
-  Global Instance eps: Eps t := mk [] tt↑.
 
   Global Instance equiv: Equiv t :=
     fun ms0 ms1 => Forall2 (fun '(fn0, ktr0) '(fn1, ktr1) => fn0 = fn1 /\ (forall x, ktr0 x ≈ ktr1 x)) ms0.(fnsems) ms1.(fnsems)

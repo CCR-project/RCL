@@ -86,13 +86,13 @@ Next Obligation.
   ii. eapply H0. eapply H; ss.
 Qed.
 
-Global Program Instance ModSem_EpsFacts: EpsFacts.
-Next Obligation.
-  ii; ss.
-Qed.
-Next Obligation.
-  ii. eapply H0. eapply H; ss.
-Qed.
+(* Global Program Instance ModSem_EpsFacts: EpsFacts. *)
+(* Next Obligation. *)
+(*   ii; ss. *)
+(* Qed. *)
+(* Next Obligation. *)
+(*   ii. eapply H0. eapply H; ss. *)
+(* Qed. *)
 
 Global Program Instance ModSem_RefFacts: RefFacts (T:=ModSem.t).
 Next Obligation.
