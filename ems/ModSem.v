@@ -112,19 +112,6 @@ Proof.
   { cbn. unfold trivial_Handler. rewrite interp_trigger. grind. resub. setoid_rewrite tau_eutt. grind. refl. }
 Qed.
 
-(* Global Instance OPlus_Any: OPlus Any.t := Any.pair. *)
-(* Global Instance eq_Equiv {T}: Equiv T | 100 := eq. *)
-
-(* Global Instance OPlus_option `{OPlus T}: OPlus (option T) := *)
-(*   fun x y => *)
-(*     match x, y with *)
-(*     | Some x, Some y => Some (x ⊕ y) *)
-(*     | Some x, _ => Some x *)
-(*     | _, Some y => Some y *)
-(*     | _, _ => None *)
-(*     end *)
-(* . *)
-
 
 
 
@@ -159,11 +146,11 @@ Section MODSEM.
   Record t: Type := mk {
     (* initial_ld: mname -> GRA; *)
     fnsems: alist gname (Any.t -> itree Es Any.t);
-    initial_st: option Any.t;
+    initial_st: Any.t;
   }
   .
 
-  Global Instance eps: Eps t := mk [] None.
+  Global Instance eps: Eps t := mk [] tt↑.
 
   Global Instance equiv: Equiv t :=
     fun ms0 ms1 => Forall2 (fun '(fn0, ktr0) '(fn1, ktr1) => fn0 = fn1 /\ (forall x, ktr0 x ≈ ktr1 x)) ms0.(fnsems) ms1.(fnsems)
@@ -227,12 +214,7 @@ Section MODSEM.
     (*          (if List.in_dec string_dec fn md0.(sk) then md0.(sem) else md1.(sem)) _ (Call fn args); *)
     fnsems := app (List.map (map_snd (fun ktr => (@focus_left _) ∘ ktr)) ms0.(fnsems))
                   (List.map (map_snd (fun ktr => (@focus_right _) ∘ ktr)) ms1.(fnsems));
-    initial_st := match ms0.(initial_st), ms1.(initial_st) with
-                  | Some x, Some y => Some (Any.pair x y)
-                  | Some x, _ => Some x
-                  | _, Some y => Some y
-                  | _, _ => None
-                  end;
+    initial_st := Any.pair ms0.(initial_st) ms1.(initial_st);
   |}
   .
 
@@ -270,7 +252,7 @@ Section MODSEM.
 
 
 
-  Definition initial_p_state: p_state := match ms.(initial_st) with Some x => x | _ => tt↑ end.
+  Definition initial_p_state: p_state := ms.(initial_st).
 
   Context `{CONF: EMSConfig}.
   Definition initial_itr (P: Prop): itree (eventE) Any.t :=

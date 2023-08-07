@@ -122,6 +122,3 @@ Section MOD.
 
 End MOD.
 End Mod.
-
-Notation "(⊑B)" := Mod.bref (at level 50).
-Notation "a ⊑B b" := (Mod.bref a b) (at level 50).

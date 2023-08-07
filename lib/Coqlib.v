@@ -1687,3 +1687,34 @@ Class EpsFacts `{Equiv T, Eps T, OPlus T} := {
     eps_r: forall a, a ⊕ ε ≡ a;
     eps_l: forall a, ε ⊕ a ≡ a;
 }.
+
+(* Variant pointed (T: Type) := *)
+(* | just (t: T) *)
+(* | mytt *)
+(* . *)
+(* Arguments mytt {_}. *)
+
+(* Global Instance OPlus_pointed `{OPlus T}: OPlus (pointed T) := *)
+(*   fun x y => *)
+(*     match x, y with *)
+(*     | just x, just y => just (x ⊕ y) *)
+(*     | just _, mytt => x *)
+(*     | mytt, just _ => y *)
+(*     | _, _ => mytt *)
+(*     end *)
+(* . *)
+
+(* Global Instance Eps_pointed {T}: Eps (pointed T) := mytt. *)
+
+(* Global Instance eq_Equiv {T}: Equiv T | 100 := eq. *)
+(* Global Program Instance Eps_pointed_facts `{OPlus T}: EpsFacts (T:=pointed T). *)
+(* Next Obligation. *)
+(*   destruct a; ss. *)
+(* Qed. *)
+(* Next Obligation. *)
+(*   destruct a; ss. *)
+(* Qed. *)
+
+(* Class RefB (T: Type) := refb: T -> T -> Prop. *)
+(* Notation "(⊑B)" := refb (at level 50). *)
+(* Notation "a ⊑B b" := (refb a b) (at level 50). *)
