@@ -1,4 +1,4 @@
-Require Import Coqlib.
+Require Import Coqlib Algebra.
 Require Import ITreelib.
 Require Import Skeleton.
 Require Import ModSem.
@@ -1002,10 +1002,10 @@ Qed.
 Module ModSemPair.
 Section SIMMODSEM.
 
-  Variable (ms_src ms_tgt: ModSem.t).
+  Variable (ms_src ms_tgt: ModSem._t).
 
   Let W: Type := (Any.t) * (Any.t).
-  Inductive sim: Prop := mk {
+  Inductive _sim: Prop := mk {
     world: Type;
     wf: world -> W -> Prop;
     le: world -> world -> Prop;
@@ -1018,9 +1018,18 @@ Section SIMMODSEM.
 
 End SIMMODSEM.
 
+Definition sim (ms_src ms_tgt: ModSem.t) :=
+  match ms_src, ms_tgt with
+  | mytt, mytt => True
+  | just ms_src, just ms_tgt => _sim ms_src ms_tgt
+  | _, _ => False
+  end
+.
+
 Lemma self_sim (ms: ModSem.t):
   sim ms ms.
 Proof.
+  destruct ms as [ms|]; ss.
   econs; et.
   - instantiate (1:=fun (_ _: unit) => True). ss.
   - instantiate (1:=(fun (_: unit) '(src, tgt) => src = tgt)). (* fun p => fst p = snd p *)
@@ -1206,6 +1215,12 @@ Theorem compose
   <<SIM: sim (md_src0 ⊕ md_src1) (md_tgt0 ⊕ md_tgt1)>>
 .
 Proof.
+  destruct md_src0 as [md_src0|]; ss.
+  2: { des_ifs. upt. des_ifs; ss. }
+  destruct md_tgt0 as [md_tgt0|]; ss.
+  destruct md_src1 as [md_src1|]; ss.
+  2: { des_ifs. upt. des_ifs; ss. }
+  destruct md_tgt1 as [md_tgt1|]; ss.
   inv SIM0. des.
   inv SIM1. des.
   set(le_both := (fun '(u0, w0) '(u1, w1) => le u0 u1 /\ le0 w0 w1): (world * world0) -> (world * world0) -> Prop).
@@ -1318,11 +1333,11 @@ Unshelve.
   esplits; et.
 Qed.
 
-Theorem adequacy_whole
+Theorem _adequacy_whole
   `{EMSConfig}
   (P Q: Prop)
   ms_src ms_tgt
-  (SIM: ModSemPair.sim ms_src ms_tgt)
+  (SIM: ModSemPair._sim ms_src ms_tgt)
   (WF: P -> Q)
   :
   (Beh.of_program (ModSem.compile ms_tgt P))
@@ -1346,6 +1361,24 @@ Proof.
   { i. des_ifs. r in SIM0. des; clarify. steps. }
 Qed.
 
+Theorem adequacy_whole
+  `{EMSConfig}
+  (P Q: Prop)
+  ms_src ms_tgt
+  (SIM: ModSemPair.sim ms_src ms_tgt)
+  (WF: P -> Q)
+  :
+  (Beh.of_program (ModSem.compile' ms_tgt P))
+  <1=
+    (Beh.of_program (ModSem.compile' ms_src Q)).
+Proof.
+  i.
+  destruct ms_src as [ms_src|]; ss.
+  2: { des_ifs; ss. }
+  destruct ms_tgt as [ms_tgt|]; ss.
+  eapply _adequacy_whole; et.
+Qed.
+
 Theorem adequacy
   ms_src ms_tgt
   (SIM: ModSemPair.sim ms_src ms_tgt)
@@ -1353,8 +1386,7 @@ Theorem adequacy
   ms_tgt ⊑ ms_src
 .
 Proof.
-  ii.
-  eapply adequacy_whole; et.
+  ii. eapply adequacy_whole; et.
   eapply compose; et. eapply self_sim.
 Qed.
 

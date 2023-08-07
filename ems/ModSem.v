@@ -144,14 +144,16 @@ Section MODSEM.
   (* } *)
   (* . *)
 
-  Record t: Type := mk {
+  Record _t: Type := mk {
     (* initial_ld: mname -> GRA; *)
     fnsems: alist gname (Any.t -> itree Es Any.t);
     initial_st: Any.t;
   }
   .
 
-  Global Instance equiv: Equiv t :=
+  Definition t := pointed _t.
+
+  Global Instance equiv: Equiv _t :=
     fun ms0 ms1 => Forall2 (fun '(fn0, ktr0) '(fn1, ktr1) => fn0 = fn1 /\ (forall x, ktr0 x ≈ ktr1 x)) ms0.(fnsems) ms1.(fnsems)
                    /\ ms0.(initial_st) = ms1.(initial_st).
 
@@ -172,13 +174,13 @@ Section MODSEM.
     ss. ii. des. des_ifs. des; subst. esplits; ss. etrans; et.
   Qed.
 
-  Definition core (ms: t): t :=
+  Definition core (ms: _t): _t :=
     mk (List.map (map_snd bar) ms.(fnsems)) ms.(initial_st)
   .
 
-  Global Program Instance bar: Bar t := core.
+  Global Program Instance bar: Bar _t := core.
 
-  Record wf (ms: t): Prop := mk_wf {
+  Record wf (ms: _t): Prop := mk_wf {
     (* wf_fnsems: NoDup (List.map fst ms.(fnsems)); *)
   }
   .
@@ -206,7 +208,7 @@ Section MODSEM.
 
 
   (*** using "Program Definition" makes the definition uncompilable; why?? ***)
-  Definition add (ms0 ms1: t): t := {|
+  Definition add (ms0 ms1: _t): _t := {|
     (* sk := Sk.add md0.(sk) md1.(sk); *)
     (* initial_ld := URA.add (t:=URA.pointwise _ _) md0.(initial_ld) md1.(initial_ld); *)
     (* sem := fun _ '(Call fn args) => *)
@@ -217,7 +219,7 @@ Section MODSEM.
   |}
   .
 
-  Global Program Instance add_OPlus: OPlus t := add.
+  Global Program Instance add_OPlus: OPlus _t := add.
 
   (* Global Program Instance add_Proper: Proper ((≡) ==> (≡) ==> (≡)) ((⊕)). *)
   (* Next Obligation. *)
@@ -231,7 +233,8 @@ Section MODSEM.
 
   Section INTERP.
 
-  Variable ms: t.
+  Context `{CONF: EMSConfig}.
+  Variable ms: _t.
 
   (* Definition prog: callE ~> itree Es := *)
   (*   fun _ '(Call fn args) => *)
@@ -253,7 +256,6 @@ Section MODSEM.
 
   Definition initial_p_state: p_state := ms.(initial_st).
 
-  Context `{CONF: EMSConfig}.
   Definition initial_itr (P: Prop): itree (eventE) Any.t :=
     guarantee (<<WF: P>>);;;
     snd <$> interp_Es prog (prog (Call "main" initial_arg)) (initial_p_state).
@@ -473,8 +475,19 @@ Section MODSEM.
 
   End INTERP.
 
+  Program Definition semantics_empty: semantics :=
+    {| STS.state := unit; STS.step := bot3; STS.initial_state := tt; STS.state_sort := fun _ => demonic |}.
+  Next Obligation. ss. Qed.
+
+  Definition compile' `{EMSConfig} (ms: t) (P: Prop): semantics :=
+    match ms with
+    | just ms => compile ms P
+    | _ => semantics_empty
+    end
+  .
+
   Definition cref (ms_tgt ms_src: t): Prop :=
-    forall `{EMSConfig} P (ctx: t), Beh.of_program (compile (ctx ⊕ ms_tgt) P) <1= Beh.of_program (compile (ctx ⊕ ms_src) P)
+    forall `{EMSConfig} P (ctx: t), Beh.of_program (compile' (ctx ⊕ ms_tgt) P) <1= Beh.of_program (compile' (ctx ⊕ ms_src) P)
   .
 
   Global Program Instance cref_Ref: Ref t := cref.
@@ -532,4 +545,6 @@ Section MODSEM.
 
 End MODSEM.
 End ModSem.
+
+Coercion ModSem_pointed (ms: ModSem.t): pointed ModSem.t := just ms.
 

@@ -138,16 +138,26 @@ Global Instance Bar_pointed `{Bar T}: Bar (pointed T) :=
 
 Ltac upt :=
   repeat match goal with
-    | [H: context[@Algebra.equiv (pointed _)] |- _] => unfold Algebra.equiv, Equiv_pointed in H
-    | [ |- context[@Algebra.equiv (pointed _)]] => unfold Algebra.equiv, Equiv_pointed
-    | [H: context[@Algebra.ref (pointed _)] |- _] => unfold Algebra.ref, Ref_pointed in H
-    | [ |- context[@Algebra.ref (pointed _)]] => unfold Algebra.ref, Ref_pointed
-    | [H: context[@Algebra.bar (pointed _)] |- _] => unfold Algebra.bar, Bar_pointed in H
-    | [ |- context[@Algebra.bar (pointed _)]] => unfold Algebra.bar, Bar_pointed
-    | [H: context[@Algebra.eps (pointed _)] |- _] => unfold Algebra.eps, Eps_pointed in H
-    | [ |- context[@Algebra.eps (pointed _)]] => unfold Algebra.eps, Eps_pointed
-    | [H: context[@Algebra.oplus (pointed _)] |- _] => unfold Algebra.oplus, OPlus_pointed in H
-    | [ |- context[@Algebra.oplus (pointed _)]] => unfold Algebra.oplus, OPlus_pointed
+    (* | [H: context[@Algebra.equiv (pointed _)] |- _] => unfold Algebra.equiv, Equiv_pointed in H *)
+    (* | [ |- context[@Algebra.equiv (pointed _)]] => unfold Algebra.equiv, Equiv_pointed *)
+    (* | [H: context[@Algebra.ref (pointed _)] |- _] => unfold Algebra.ref, Ref_pointed in H *)
+    (* | [ |- context[@Algebra.ref (pointed _)]] => unfold Algebra.ref, Ref_pointed *)
+    (* | [H: context[@Algebra.bar (pointed _)] |- _] => unfold Algebra.bar, Bar_pointed in H *)
+    (* | [ |- context[@Algebra.bar (pointed _)]] => unfold Algebra.bar, Bar_pointed *)
+    (* | [H: context[@Algebra.eps (pointed _)] |- _] => unfold Algebra.eps, Eps_pointed in H *)
+    (* | [ |- context[@Algebra.eps (pointed _)]] => unfold Algebra.eps, Eps_pointed *)
+    (* | [H: context[@Algebra.oplus (pointed _)] |- _] => unfold Algebra.oplus, OPlus_pointed in H *)
+    (* | [ |- context[@Algebra.oplus (pointed _)]] => unfold Algebra.oplus, OPlus_pointed *)
+    | [H: context[@Algebra.equiv _ (@Equiv_pointed _ _)] |- _] => unfold Algebra.equiv, Equiv_pointed in H
+    | [ |- context[@Algebra.equiv _ (@Equiv_pointed _ _)]] => unfold Algebra.equiv, Equiv_pointed
+    | [H: context[@Algebra.ref _ (@Ref_pointed _ _)] |- _] => unfold Algebra.ref, Ref_pointed in H
+    | [ |- context[@Algebra.ref _ (@Ref_pointed _ _)]] => unfold Algebra.ref, Ref_pointed
+    | [H: context[@Algebra.bar _ (@Bar_pointed _ _)] |- _] => unfold Algebra.bar, Bar_pointed in H
+    | [ |- context[@Algebra.bar _ (@Bar_pointed _ _)]] => unfold Algebra.bar, Bar_pointed
+    | [H: context[@Algebra.eps _ (@Eps_pointed _ _)] |- _] => unfold Algebra.eps, Eps_pointed in H
+    | [ |- context[@Algebra.eps _ (@Eps_pointed _ _)]] => unfold Algebra.eps, Eps_pointed
+    | [H: context[@Algebra.oplus _ (@OPlus_pointed _ _)] |- _] => unfold Algebra.oplus, OPlus_pointed in H
+    | [ |- context[@Algebra.oplus _ (@OPlus_pointed _ _)]] => unfold Algebra.oplus, OPlus_pointed
     end.
 
 Module MRA.

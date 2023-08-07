@@ -1,4 +1,4 @@
-Require Import Coqlib.
+Require Import Coqlib Algebra.
 Require Export sflib.
 Require Export ITreelib.
 Require Export ModSemE.
@@ -94,6 +94,29 @@ Qed.
 (*   ii. eapply H0. eapply H; ss. *)
 (* Qed. *)
 
+(*
+a ⊑ a'
+b ⊑ b'
+a + b ⊑ a' + b'
+
+∀ c. (c + a) ⊑B (c + a')
+∀ c. (c + b) ⊑B (c + b')
+∀ c. (c + a + b) ⊑B (c + a' + b')
+
+
+
+Q: should a ⊑ a' denote both
+(1) ∀ c. (c + a) ⊑B (c + a')
+and
+(2) a ⊑B a'
+?
+
+Even without proper ε, we can derive (2) from (1) using ε' with the following:
+ε' + a ⊒⊑B a.
+
+Let us try without proper ε, and see what happens
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTttt
+*)
 Global Program Instance ModSem_RefFacts: RefFacts (T:=ModSem.t).
 Next Obligation.
   do 3 r. i.
