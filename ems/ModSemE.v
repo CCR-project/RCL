@@ -1,4 +1,4 @@
-Require Import Coqlib.
+Require Import Coqlib Algebra.
 Require Export sflib.
 Require Export ITreelib.
 Require Export AList.

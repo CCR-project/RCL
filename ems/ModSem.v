@@ -484,7 +484,7 @@ Section MODSEM.
   Lemma core_idemp: forall ms0, | | ms0 | | ≡ | ms0 |.
   Proof.
     i.
-    unfold Coqlib.bar, bar, core.
+    unfold Algebra.bar, bar, core.
     ss. rr. esplits; ss.
     rewrite ! List.map_map.
     eapply Forall2_apply_Forall2.
