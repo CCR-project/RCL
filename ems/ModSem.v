@@ -486,11 +486,16 @@ Section MODSEM.
     end
   .
 
-  Definition cref (ms_tgt ms_src: t): Prop :=
-    forall `{EMSConfig} P (ctx: t), Beh.of_program (compile' (ctx ⊕ ms_tgt) P) <1= Beh.of_program (compile' (ctx ⊕ ms_src) P)
+  Global Program Instance refb: RefB t :=
+    fun ms_tgt ms_src =>
+      forall `{EMSConfig} P, Beh.of_program (compile' ms_tgt P) <1= Beh.of_program (compile' ms_src P)
   .
 
-  Global Program Instance cref_Ref: Ref t := cref.
+  Global Program Instance ref: Ref t :=
+    fun ms_tgt ms_src =>
+      forall (ctx: t), (ctx ⊕ ms_tgt) ⊑B (ctx ⊕ ms_src)
+  .
+
 
   Global Program Instance equiv_facts: EquivFacts.
 

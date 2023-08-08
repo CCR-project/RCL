@@ -4,7 +4,7 @@ Require Import Coqlib sflib.
 Class Equiv (A: Type) := equiv: A -> A -> Prop.
 Global Instance equiv_rewrite_relation `{Equiv A} :
   RewriteRelation (@equiv A _) | 150 := {}.
-Notation "(≡)" := equiv (at level 70).
+Notation "≡" := equiv (at level 70).
 Infix "≡" := equiv (at level 70, no associativity).
 Infix "≡@{ A }" := (@equiv A _)
   (at level 70, only parsing, no associativity).
@@ -26,6 +26,21 @@ Notation "a ⊑ b" := (ref a b) (at level 60, right associativity).
 Notation "⊒⊑" := ref_both (at level 60).
 Notation "a ⊒⊑ b" := (ref_both a b) (at level 60).
 
+Global Program Instance ref_both_ref `{Ref T}: subrelation ((⊒⊑)) ((⊑)).
+Next Obligation.
+  rr in H0. des; eauto.
+Qed.
+
+Global Program Instance ref_both_ref2 `{Ref T}: subrelation ((⊒⊑)) (flip (⊑)).
+Next Obligation.
+  rr in H0. des; eauto.
+Qed.
+
+Global Program Instance equiv_ref_both `{Equiv T, Ref T, !Symmetric (≡), !subrelation (≡) (⊑)}: subrelation (≡) (⊒⊑).
+Next Obligation.
+  rr. esplits; et.
+Qed.
+
 Class Eps (T: Type) := eps : T.
 Notation "'ε'" := eps.
 
@@ -34,8 +49,16 @@ Class EquivFacts `{Equiv T} := equiv_facts:> Equivalence ((≡)).
 Class RefFacts `{Equiv T, Ref T, OPlus T} := {
     ref_Preorder:> PreOrder ((⊑));
     ref_oplus:> Proper ((⊑) ==> (⊑) ==> (⊑)) ((⊕));
-    ref_Proper:> Proper ((≡) ==> (≡) ==> impl) ((⊑));
+    ref_equiv:> subrelation ((≡)) ((⊑));
 }.
+
+Global Program Instance ref_Proper `{Equiv T, Ref T, OPlus T, !RefFacts, !EquivFacts}: Proper ((≡) ==> (≡) ==> impl) ((⊑)).
+Next Obligation.
+  ii. etrans; et.
+  { eapply ref_equiv; et. sym; et. }
+  etrans; et.
+  { eapply ref_equiv; et. }
+Qed.
 
 Global Program Instance ref_both_Equivalence `{Equiv T, Ref T, OPlus T} `{!EquivFacts} `{!RefFacts}: Equivalence ((⊒⊑)).
 Next Obligation.
@@ -84,6 +107,12 @@ Class OPlusFactsWeak `{Equiv T, OPlus T, Ref T} := {
     oplus_assoc_weak: forall a b c, a ⊕ (b ⊕ c) ⊑ (a ⊕ b) ⊕ c;
     oplus_Proper_weak:> Proper ((≡) ==> (≡) ==> (≡)) ((⊕));
 }.
+
+Lemma oplus_assoc_weak2 `{Equiv T, OPlus T, Ref T, !OPlusFactsWeak, !PreOrder ((⊑))}: forall a b c, (a ⊕ b) ⊕ c ⊑ a ⊕ (b ⊕ c).
+Proof.
+  ii. rewrite oplus_comm_weak. rewrite oplus_assoc_weak. rewrite oplus_comm_weak. rewrite oplus_assoc_weak.
+  rewrite oplus_comm_weak. refl.
+Qed.
 
 Class EpsFacts `{Equiv T, Eps T, OPlus T, Bar T} := {
     eps_r: forall a, a ⊕ ε ≡ a;
@@ -225,7 +254,7 @@ Module MRA.
       + ii. upt. des_ifs; try refl.
       + ii. upt. des_ifs; try etrans; et.
     - ii. upt. des_ifs. eapply ref_oplus; et.
-    - ii. upt. des_ifs. rewrite <- H. rewrite <- H0. ss.
+    - ii. upt. des_ifs. rewrite <- H. refl.
   Qed.
   Next Obligation.
     econs; ss.
@@ -256,6 +285,21 @@ End MRA.
 (*   destruct a; ss. *)
 (* Qed. *)
 
-(* Class RefB (T: Type) := refb: T -> T -> Prop. *)
-(* Notation "(⊑B)" := refb (at level 50). *)
-(* Notation "a ⊑B b" := (refb a b) (at level 50). *)
+Class RefB (T: Type) := refb: T -> T -> Prop.
+Notation "⊑B" := refb (at level 50).
+Notation "a ⊑B b" := (refb a b) (at level 50).
+
+Class RefBFacts `{Equiv T, Ref T, RefB T} := {
+    refb_Preorder:> PreOrder ((⊑B));
+    ref_refb:> subrelation ((⊑)) ((⊑B));
+    refb_equiv:> subrelation ((≡)) ((⊑B));
+}.
+
+Global Program Instance refB_Proper
+  `{Equiv T, Ref T, RefB T, OPlus T, !RefBFacts, !EquivFacts}: Proper ((≡) ==> (≡) ==> impl) ((⊑B)).
+Next Obligation.
+  ii. etrans; et.
+  { eapply refb_equiv; et. sym; et. }
+  etrans; et.
+  { eapply refb_equiv; et. }
+Qed.

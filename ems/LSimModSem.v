@@ -1026,15 +1026,18 @@ Definition sim (ms_src ms_tgt: ModSem.t) :=
   end
 .
 
-Lemma self_sim (ms: ModSem.t):
-  sim ms ms.
-Proof.
-  destruct ms as [ms|]; ss.
+Global Program Instance _sim_Reflexive: Reflexive _sim.
+Next Obligation.
   econs; et.
   - instantiate (1:=fun (_ _: unit) => True). ss.
   - instantiate (1:=(fun (_: unit) '(src, tgt) => src = tgt)). (* fun p => fst p = snd p *)
     ii; ss. esplits; et. ii; clarify. des_u. exploit self_sim_itree; et.
   - ss.
+Qed.
+
+Global Program Instance sim_Reflexive: Reflexive sim.
+Next Obligation.
+  destruct x as [ms|]; ss. refl.
 Qed.
 
 Require Import Red IRed.
@@ -1362,21 +1365,17 @@ Proof.
 Qed.
 
 Theorem adequacy_whole
-  `{EMSConfig}
-  (P Q: Prop)
   ms_src ms_tgt
   (SIM: ModSemPair.sim ms_src ms_tgt)
-  (WF: P -> Q)
   :
-  (Beh.of_program (ModSem.compile' ms_tgt P))
-  <1=
-    (Beh.of_program (ModSem.compile' ms_src Q)).
+  ms_tgt ⊑B ms_src
+.
 Proof.
   i.
   destruct ms_src as [ms_src|]; ss.
   2: { des_ifs; ss. }
   destruct ms_tgt as [ms_tgt|]; ss.
-  eapply _adequacy_whole; et.
+  ii. eapply _adequacy_whole; et.
 Qed.
 
 Theorem adequacy
@@ -1387,7 +1386,7 @@ Theorem adequacy
 .
 Proof.
   ii. eapply adequacy_whole; et.
-  eapply compose; et. eapply self_sim.
+  eapply compose; et. refl.
 Qed.
 
 End ModSemPair.
