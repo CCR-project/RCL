@@ -127,6 +127,25 @@ Variant pointed (T: Type) :=
 Arguments mytt {_}.
 Arguments just {_}.
 
+(**
+Two possible choices: (1) define T and then lift it, or (2) define pointed T at the first place.
+(1)
+Pros: "just" does not appar to the user (it can very well be hidden in the logic or we can just use coercion, though)
+Cons: We want (⊑) to imply (⊑B), but with the usual definition of (⊑), it requires an additional step
+(there is no proper ε because of the focus-left/right thing).
+If we define (⊑) as usual, we don't have proper unit but we need unit-like thing ε' that satisfies "∀ a, a ⊒⊑ a ⊕ ε'"
+in order to prove subrelation against (⊑B).
+It is not that bad in the sense that "ε'" does not appear to the user.
+We may able to define (⊑) as a conjuction of usual (⊑) and (⊑B). But that does not look very elegant.
+(pratically though, it will work without any additional obligation I guess. "sim" implies both (⊑) and (⊑B).
+
+(2)
+Pros: We don't have to care about the above business of ε'.
+Cons: If we go this way, we should avoid using any form of lifting ("op T -> op (pointed T)")
+because it will be disastrously confusing. This means, the definition/proof of instances may be slightly tedious
+(4 LOC more for each).
+**)
+
 Global Instance Eps_pointed {T}: Eps (pointed T) := mytt.
 
 Global Instance OPlus_pointed `{OPlus T}: OPlus (pointed T) :=
