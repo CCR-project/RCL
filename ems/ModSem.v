@@ -106,10 +106,7 @@ Proof.
   destruct a; ss.
   { cbn. unfold trivial_Handler. rewrite interp_trigger. grind. resub. setoid_rewrite tau_eutt. grind. refl. }
   destruct s; ss.
-  { cbn. unfold trivial_Handler. destruct p; ss.
-    - rewrite interp_trigger. grind. setoid_rewrite tau_eutt. grind. refl.
-    - unfold triggerUB. grind. rewrite ! interp_trigger. grind. resub. f_equiv; ss. refl.
-  }
+  { cbn. unfold trivial_Handler. unfold core_h. unfold triggerUB. grind. rewrite ! interp_trigger. grind. f_equiv; ss. refl. }
   { cbn. unfold trivial_Handler. rewrite interp_trigger. grind. resub. setoid_rewrite tau_eutt. grind. refl. }
 Qed.
 
@@ -174,11 +171,7 @@ Section MODSEM.
     ss. ii. des. des_ifs. des; subst. esplits; ss. etrans; et.
   Qed.
 
-  Definition core (ms: _t): _t :=
-    mk (List.map (map_snd bar) ms.(fnsems)) ms.(initial_st)
-  .
-
-  Global Program Instance bar: Bar _t := core.
+  Global Program Instance bar: Bar _t := fun ms => mk (List.map (map_snd bar) ms.(fnsems)) ms.(initial_st).
 
   Record wf (ms: _t): Prop := mk_wf {
     (* wf_fnsems: NoDup (List.map fst ms.(fnsems)); *)
@@ -208,7 +201,7 @@ Section MODSEM.
 
 
   (*** using "Program Definition" makes the definition uncompilable; why?? ***)
-  Definition add (ms0 ms1: _t): _t := {|
+  Global Program Instance oplus: OPlus _t := fun (ms0 ms1: _t) => {|
     (* sk := Sk.add md0.(sk) md1.(sk); *)
     (* initial_ld := URA.add (t:=URA.pointwise _ _) md0.(initial_ld) md1.(initial_ld); *)
     (* sem := fun _ '(Call fn args) => *)
@@ -218,8 +211,6 @@ Section MODSEM.
     initial_st := Any.pair ms0.(initial_st) ms1.(initial_st);
   |}
   .
-
-  Global Program Instance add_OPlus: OPlus _t := add.
 
   (* Global Program Instance add_Proper: Proper ((≡) ==> (≡) ==> (≡)) ((⊕)). *)
   (* Next Obligation. *)
@@ -274,7 +265,8 @@ Section MODSEM.
       end
     | VisF (Choose X) k => demonic
     | VisF (Take X) k => angelic
-    | VisF (Syscall fn args rvs) k => vis
+    | VisF (SyscallOut fn args rvs) k => vis
+    | VisF (SyscallIn rv) k => vis
     end
   .
 
@@ -291,12 +283,14 @@ Section MODSEM.
       X k (x: X)
     :
       step (Vis (subevent _ (Take X)) k) None (k x)
-  | step_syscall
-      fn args rv (rvs: Any.t -> Prop) k
-      (SYSCALL: syscall_sem (event_sys fn args rv))
-      (RETURN: rvs rv)
+  | step_syscall_out
+      fn args (rvs: Any.t -> Prop) k
     :
-      step (Vis (subevent _ (Syscall fn args rvs)) k) (Some (event_sys fn args rv)) (k rv)
+      step (Vis (subevent _ (SyscallOut fn args rvs)) k) (Some (event_out fn args)) (k tt)
+  | step_syscall_in
+      rv k
+    :
+      step (Vis (subevent _ (SyscallIn rv)) k) (Some (event_in rv)) (k tt)
   .
 
   Lemma step_trigger_choose_iff X k itr e
@@ -310,6 +304,7 @@ Section MODSEM.
     { eapply f_equal with (f:=observe) in H0. ss.
       unfold trigger in H0. ss. cbn in H0.
       dependent destruction H0. ired. et.  }
+    { eapply f_equal with (f:=observe) in H0. ss. }
     { eapply f_equal with (f:=observe) in H0. ss. }
     { eapply f_equal with (f:=observe) in H0. ss. }
   Qed.
@@ -326,6 +321,7 @@ Section MODSEM.
     { eapply f_equal with (f:=observe) in H0. ss.
       unfold trigger in H0. ss. cbn in H0.
       dependent destruction H0. ired. et.  }
+    { eapply f_equal with (f:=observe) in H0. ss. }
     { eapply f_equal with (f:=observe) in H0. ss. }
   Qed.
 
@@ -345,20 +341,6 @@ Section MODSEM.
     inv STEP.
   Qed.
 
-  Lemma step_trigger_syscall_iff fn args rvs k e itr
-        (STEP: step (trigger (Syscall fn args rvs) >>= k) e itr)
-    :
-      exists rv, itr = k rv /\ e = Some (event_sys fn args rv)
-                 /\ <<RV: rvs rv>> /\ <<SYS: syscall_sem (event_sys fn args rv)>>.
-  Proof.
-    inv STEP.
-    { eapply f_equal with (f:=observe) in H0. ss. }
-    { eapply f_equal with (f:=observe) in H0. ss. }
-    { eapply f_equal with (f:=observe) in H0. ss. }
-    { eapply f_equal with (f:=observe) in H0. ss.
-      unfold trigger in H0. ss. cbn in H0.
-      dependent destruction H0. ired. et. }
-  Qed.
 
 
   Let itree_eta E R (itr0 itr1: itree E R)
@@ -399,22 +381,6 @@ Section MODSEM.
       extensionality x0. eapply itree_eta. ss. }
   Qed.
 
-  Lemma step_trigger_syscall fn args (rvs: Any.t -> Prop) k rv
-        (RV: rvs rv) (SYS: syscall_sem (event_sys fn args rv))
-    :
-      step (trigger (Syscall fn args rvs) >>= k) (Some (event_sys fn args rv)) (k rv).
-  Proof.
-    unfold trigger. ss.
-    match goal with
-    | [ |- step ?itr _ _] =>
-      replace itr with (Subevent.vis (Syscall fn args rvs) k)
-    end; ss.
-    { econs; et. }
-    { eapply itree_eta. ss. cbv. f_equal.
-      extensionality x0. eapply itree_eta. ss. }
-  Qed.
-
-
   Program Definition compile_itree: itree eventE Any.t -> semantics :=
     fun itr =>
       {|
@@ -424,7 +390,7 @@ Section MODSEM.
         STS.state_sort := state_sort;
       |}
   .
-  Next Obligation. inv STEP; inv STEP0; ss. csc. Qed.
+  Next Obligation. inv STEP; inv STEP0; ss; csc. Qed.
   Next Obligation. inv STEP; ss. Qed.
   Next Obligation. inv STEP; ss. Qed.
   Next Obligation. inv STEP; ss. Qed.
@@ -457,6 +423,7 @@ Section MODSEM.
       { irw in H0; csc. }
       { irw in H0; csc. }
       { rewrite <- bind_trigger in H0. irw in H0. simpl_depind. }
+      { rewrite <- bind_trigger in H0. irw in H0. simpl_depind. }
     - inv STEP. des. subst; ss. unfold initial_itr, guarantee in STEP. inv STEP; ss; csc.
       { irw in H0; csc. }
       { irw in H0; csc. }
@@ -476,7 +443,7 @@ Section MODSEM.
   End INTERP.
 
   Program Definition semantics_empty: semantics :=
-    {| STS.state := unit; STS.step := bot3; STS.initial_state := tt; STS.state_sort := fun _ => demonic |}.
+    {| STS.state := unit; STS.step := bot3; STS.initial_state := tt; STS.state_sort := fun _ => angelic |}.
   Next Obligation. ss. Qed.
 
   Definition compile' `{EMSConfig} (ms: t) (P: Prop): semantics :=
@@ -499,7 +466,7 @@ Section MODSEM.
 
   Global Program Instance equiv_facts: EquivFacts.
 
-  Lemma core_idemp: forall ms0, | | ms0 | | ≡ | ms0 |.
+  Lemma core_idemp: forall ms0, | |ms0| | ≡ |ms0|.
   Proof.
     i.
     unfold Algebra.bar, bar, core.
@@ -509,6 +476,52 @@ Section MODSEM.
     { refl. }
     ii; ss. subst. des_ifs. destruct b; ss. clarify.
     esplits; ss. ii. eapply core_idemp.
+  Qed.
+
+  Lemma core_oplus: forall ms0 ms1, |ms0 ⊕ ms1| ≡ |ms0| ⊕ |ms1|.
+  Proof.
+    i.
+    unfold Algebra.bar, bar, core, Algebra.oplus. ss.
+    ss. rr. esplits; ss.
+    rewrite ! List.map_map.
+    rewrite ! List.map_app.
+    eapply Forall2_app; ss.
+    - rewrite ! List.map_map.
+      eapply Forall2_apply_Forall2.
+      { refl. }
+      ii; ss. subst. des_ifs. destruct b; ss. clarify. esplits; ss.
+      i. unfold focus_left, Algebra.bar, ktree_Bar, Algebra.bar, itree_Bar, Events.core.
+      rewrite ! interp_interp. eapply eutt_interp; try refl. ii. ss.
+      unfold trivial_Handler.
+      destruct a.
+      { ired.  rewrite ! interp_trigger. grind. refl. }
+      destruct s0.
+      { ired.  unfold focus_left_h, core_h.
+        des_ifs.
+        - ired. rewrite ! interp_trigger. ired. unfold triggerUB. grind. rewrite ! interp_trigger. grind.
+          f_equiv; ss. refl.
+        - ired. rewrite ! interp_trigger. ired. unfold triggerUB. grind. rewrite ! interp_trigger. grind.
+          f_equiv; ss. refl.
+      }
+      ired. rewrite ! interp_trigger. grind. refl.
+    - rewrite ! List.map_map.
+      eapply Forall2_apply_Forall2.
+      { refl. }
+      ii; ss. subst. des_ifs. destruct b; ss. clarify. esplits; ss.
+      i. unfold focus_right, Algebra.bar, ktree_Bar, Algebra.bar, itree_Bar, Events.core.
+      rewrite ! interp_interp. eapply eutt_interp; try refl. ii. ss.
+      unfold trivial_Handler.
+      destruct a.
+      { ired.  rewrite ! interp_trigger. grind. refl. }
+      destruct s0.
+      { ired.  unfold focus_right_h, core_h.
+        des_ifs.
+        - ired. rewrite ! interp_trigger. ired. unfold triggerUB. grind. rewrite ! interp_trigger. grind.
+          f_equiv; ss. refl.
+        - ired. rewrite ! interp_trigger. ired. unfold triggerUB. grind. rewrite ! interp_trigger. grind.
+          f_equiv; ss. refl.
+      }
+      ired. rewrite ! interp_trigger. grind. refl.
   Qed.
   (* Global Program Instance bar_facts: BarFactsWeak. *)
   (* Next Obligation. *)

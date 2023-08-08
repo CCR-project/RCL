@@ -31,6 +31,11 @@ Next Obligation.
   - rewrite in_map_iff in *. des; ss. destruct x; ss. clarify.
     esplits; et.
     { rewrite in_app_iff. right. rewrite in_map_iff. esplits; et. ss. }
+  (* sim_fsem *)
+  (*   (List.map (map_snd (fun ktr : Any.t -> itree Es Any.t => focus_left (T:=Any.t) ∘ ktr)) (ModSem.fnsems a) ++ *)
+  (*    List.map (map_snd (fun ktr : Any.t -> itree Es Any.t => focus_right (T:=Any.t) ∘ ktr)) (ModSem.fnsems b)) *)
+  (*   (fun (_ : ()) '(st_src, st_tgt) => exists st0 st1 : Any.t, st_tgt = Any.pair st0 st1 /\ st_src = Any.pair st1 st0) top2 *)
+  (*   (focus_left (T:=Any.t) ∘ i) (focus_right (T:=Any.t) ∘ i) *)
     admit "ez".
   - rewrite in_map_iff in *. des; ss. destruct x; ss. clarify.
     esplits; et.
@@ -59,6 +64,10 @@ Next Obligation.
     { rewrite in_app_iff. right. rewrite in_map_iff. eexists (_, _); ss. esplits; et. rewrite in_app_iff. right; ss.
       rewrite in_map_iff. esplits; et. ss.
     }
+  (* sim_fsem *)
+  (*   (fun (_ : ()) '(st_src, st_tgt) => *)
+  (*    exists st0 st1 st2 : Any.t, st_tgt = Any.pair st0 (Any.pair st1 st2) /\ st_src = Any.pair (Any.pair st0 st1) st2) top2 *)
+  (*   (focus_right (T:=Any.t) ∘ i) (focus_right (T:=Any.t) ∘ (focus_right (T:=Any.t) ∘ i)) *)
     admit "ez".
   }
   rewrite in_map_iff in *. des. destruct x; ss; clarify. rewrite in_app_iff in *. des.
@@ -175,23 +184,73 @@ Next Obligation.
   rewrite oplus_assoc_weak2. refl.
 Qed.
 
-Global Program Instance ModSem_MRA: MRA.t := {
-  car := ModSem.t;
-}.
+Global Program Instance ModSem_EquivFacts: EquivFacts (T:=ModSem.t).
 Next Obligation.
   econs.
   - ii. upt. des_ifs; try refl.
   - ii. upt. des_ifs; try sym; et.
   - ii. upt. des_ifs; etrans; et.
 Qed.
+
+Global Program Instance pointed_equiv_Proper `{Equiv T}: Proper ((≡) ==> (≡)) just.
+Next Obligation. ii. upt. ss. Qed.
+
+Global Program Instance pointed_ref_Proper `{Ref T}: Proper ((⊑) ==> (⊑)) just.
+Next Obligation. do 3 r. i. ss. Qed.
+
+Global Program Instance pointed_ref_both_Proper `{Ref T}: Proper ((⊒⊑) ==> (⊒⊑)) just.
+Next Obligation. ii. upt. ss. Qed.
+
+Global Program Instance ModSem_MRA: MRA.t := {
+  car := ModSem.t;
+}.
 Next Obligation.
   econs.
-  - i. upt. des_ifs.
-    + eapply equiv_ref_both. erewrite ModSem.core_idemp.
-      r. esplits.
-      { erewrite ModSem.core_idemp. ii. upt. des_ifs; try refl.
-  - ii. upt. des_ifs; try sym; et.
-  - ii. upt. des_ifs; etrans; et.
+  - i. cut ( | |a| | ≡ |a| ).
+    { intro T. rewrite T. refl. }
+    upt. des_ifs; try refl. erewrite ModSem.core_idemp. refl.
+  - i. upt. des_ifs; try refl. erewrite ModSem.core_oplus. refl.
+  - ii. upt. des_ifs. rr in H.  rr. des. esplits; et.
+    eapply Forall2_apply_Forall2; et. ii. ss. des_ifs. ss. des. clarify.
+    esplits; ss. ii.
+    admit "ez".
+Qed.
+Next Obligation.
+  do 2 r. i. upt. des_ifs; ss; clear_tac.
+  - eapply ModSemPair.adequacy_whole. ss.
+    econs.
+    { instantiate (1:=top2). ss. }
+    2: { instantiate (2:=unit). instantiate (1:=fun _ '(st_src, st_tgt) => exists ste, st_tgt = Any.pair st_src ste).
+         ss. esplits; ss; et. }
+    i. ss. esplits; et.
+    { rewrite in_app_iff. left. rewrite in_map_iff. esplits; et. ss. }
+    ii. des_u. clarify. des. subst.
+    abstr (f_src y) itr. clear_tac. clear FINDS. clear_tac.
+    admit "ez".
+  (* sim_itree *)
+  (*   (List.map (map_snd (fun ktr : Any.t -> itree Es Any.t => focus_left (T:=Any.t) ∘ ktr)) (ModSem.fnsems t) ++ *)
+  (*    List.map (map_snd (fun ktr : Any.t -> itree Es Any.t => focus_right (T:=Any.t) ∘ ktr)) (ModSem.fnsems t0)) *)
+  (*   (fun (_ : ()) '(st_src, st_tgt) => exists ste0 : Any.t, st_tgt = Any.pair st_src ste0) top2 false false ()  *)
+  (*   (mrs_src, itr) (Any.pair mrs_src ste, focus_left itr) *)
+  - eapply ModSemPair.adequacy_unit.
+Qed.
+Next Obligation.
+  upt. des_ifs; ss; try refl.
+  eapply ModSemPair.adequacy. ss.
+  econs.
+  { instantiate (1:=top2). ss. }
+  2: { instantiate (2:=unit). instantiate (1:=fun _ '(st_src, st_tgt) => exists _st, st_src = Any.pair st_tgt _st).
+       ss. esplits; ss; et. }
+  i. ss. rewrite List.map_map in *. rewrite in_app_iff in *. des.
+  { rewrite in_map_iff in *. des. destruct x as [fn0 itr]; ss. clarify.
+    esplits; et.
+  (* sim_fsem (ModSem.fnsems t) (fun (_ : ()) '(st_src, st_tgt) => exists _st : Any.t, st_src = Any.pair st_tgt _st) top2 *)
+  (*   (focus_left (T:=Any.t) ∘ itr) itr *)
+    admit "ez". }
+  { rewrite in_map_iff in *. des. destruct x as [fn0 itr]; ss. clarify. esplits; et.
+  (* sim_fsem (ModSem.fnsems t) (fun (_ : ()) '(st_src, st_tgt) => exists _st : Any.t, st_src = Any.pair st_tgt _st) top2 *)
+  (*   (focus_right (T:=Any.t) ∘ (| itr |)) itr *)
+    admit "ez". }
 Qed.
 
 End FACTS.

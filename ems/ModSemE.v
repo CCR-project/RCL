@@ -14,7 +14,8 @@ Section EVENTSCOMMON.
   Variant eventE: Type -> Type :=
   | Choose (X: Type): eventE X
   | Take X: eventE X
-  | Syscall (fn: gname) (args: Any.t) (rvs: Any.t -> Prop): eventE Any.t
+  | SyscallOut (fn: gname) (args: Any.t) (rvs: Any.t -> Prop): eventE unit
+  | SyscallIn (rv: Any.t): eventE unit
   .
 
   (* Notation "'Choose' X" := (trigger (Choose X)) (at level 50, only parsing). *)
@@ -164,12 +165,12 @@ Section EVENTS.
     Ret (st1, v)
   .
   
-  Definition core_h: Handler pE Es :=
-    fun _ pE => match pE with
-                | PPut p => trigger (PPut p)
-                | PGet => triggerUB
-                end
-  .
+  Definition core_h: Handler pE Es := fun _ _ => triggerUB.
+  (*   fun _ pE => match pE with *)
+  (*               | PPut p => trigger (PPut p) *)
+  (*               | PGet => triggerUB *)
+  (*               end *)
+  (* . *)
 
   Definition focus_left_h: Handler pE Es :=
     fun _ pE => match pE with

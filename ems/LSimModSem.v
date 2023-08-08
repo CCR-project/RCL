@@ -1389,5 +1389,14 @@ Proof.
   eapply compose; et. refl.
 Qed.
 
+Theorem adequacy_unit
+  ms_tgt
+  :
+  ms_tgt ⊑B ε
+.
+Proof.
+  ii. ss. pfold. econsr; ss.
+Qed.
+
 End ModSemPair.
 

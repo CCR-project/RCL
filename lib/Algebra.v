@@ -134,10 +134,12 @@ Pros: "just" does not appar to the user (it can very well be hidden in the logic
 Cons: We want (⊑) to imply (⊑B), but with the usual definition of (⊑), it requires an additional step
 (there is no proper ε because of the focus-left/right thing).
 If we define (⊑) as usual, we don't have proper unit but we need unit-like thing ε' that satisfies "∀ a, a ⊒⊑ a ⊕ ε'"
-in order to prove subrelation against (⊑B).
+in order to prove subrelation against (⊑B). <---- Not really, you may use |a| as ε'.
 It is not that bad in the sense that "ε'" does not appear to the user.
 We may able to define (⊑) as a conjuction of usual (⊑) and (⊑B). But that does not look very elegant.
 (pratically though, it will work without any additional obligation I guess. "sim" implies both (⊑) and (⊑B).
+
+!!! If we go this way, we cannot even state affinity. !!!
 
 (2)
 Pros: We don't have to care about the above business of ε'.
@@ -186,16 +188,6 @@ Global Instance Bar_pointed `{Bar T}: Bar (pointed T) :=
 
 Ltac upt :=
   repeat match goal with
-    (* | [H: context[@Algebra.equiv (pointed _)] |- _] => unfold Algebra.equiv, Equiv_pointed in H *)
-    (* | [ |- context[@Algebra.equiv (pointed _)]] => unfold Algebra.equiv, Equiv_pointed *)
-    (* | [H: context[@Algebra.ref (pointed _)] |- _] => unfold Algebra.ref, Ref_pointed in H *)
-    (* | [ |- context[@Algebra.ref (pointed _)]] => unfold Algebra.ref, Ref_pointed *)
-    (* | [H: context[@Algebra.bar (pointed _)] |- _] => unfold Algebra.bar, Bar_pointed in H *)
-    (* | [ |- context[@Algebra.bar (pointed _)]] => unfold Algebra.bar, Bar_pointed *)
-    (* | [H: context[@Algebra.eps (pointed _)] |- _] => unfold Algebra.eps, Eps_pointed in H *)
-    (* | [ |- context[@Algebra.eps (pointed _)]] => unfold Algebra.eps, Eps_pointed *)
-    (* | [H: context[@Algebra.oplus (pointed _)] |- _] => unfold Algebra.oplus, OPlus_pointed in H *)
-    (* | [ |- context[@Algebra.oplus (pointed _)]] => unfold Algebra.oplus, OPlus_pointed *)
     | [H: context[@Algebra.equiv _ (@Equiv_pointed _ _)] |- _] => unfold Algebra.equiv, Equiv_pointed in H
     | [ |- context[@Algebra.equiv _ (@Equiv_pointed _ _)]] => unfold Algebra.equiv, Equiv_pointed
     | [H: context[@Algebra.ref _ (@Ref_pointed _ _)] |- _] => unfold Algebra.ref, Ref_pointed in H
@@ -210,37 +202,22 @@ Ltac upt :=
 
 Module MRA.
 
-  Module NU.
+  (* Module NU. *)
 
-  (* Record mixin (T: Type) `{Equiv T, OPlus T, Ref T, Bar T}: Type := { *)
-  (*   equiv_facts:> EquivFacts (T:=T); *)
-  (*   ref_facts:> RefFacts (T:=T); *)
-  (*   oplus_facts:> OPlusFactsWeak (T:=T); *)
-  (*   bar_facts:> BarFactsWeak (T:=T); *)
+  (* Class t: Type := { *)
+  (*   car:> Type; *)
+  (*   equiv:> Equiv car; *)
+  (*   oplus:> OPlus car; *)
+  (*   ref:> Ref car; *)
+  (*   bar:> Bar car; *)
+  (*   (* facts:> mixin car; *) *)
+  (*   equiv_facts:> EquivFacts (T:=car); *)
+  (*   ref_facts:> RefFacts (T:=car); *)
+  (*   oplus_facts:> OPlusFactsWeak (T:=car); *)
+  (*   bar_facts:> BarFactsWeak (T:=car); *)
   (* }. *)
 
-  Class t: Type := {
-    car:> Type;
-    equiv:> Equiv car;
-    oplus:> OPlus car;
-    ref:> Ref car;
-    bar:> Bar car;
-    (* facts:> mixin car; *)
-    equiv_facts:> EquivFacts (T:=car);
-    ref_facts:> RefFacts (T:=car);
-    oplus_facts:> OPlusFactsWeak (T:=car);
-    bar_facts:> BarFactsWeak (T:=car);
-  }.
-
-  End NU.
-
-  (* Record mixin (T: Type) `{Equiv T, OPlus T, Ref T, Bar T, Eps T}: Type := { *)
-  (*   equiv_facts:> EquivFacts (T:=T); *)
-  (*   ref_facts:> RefFacts (T:=T); *)
-  (*   oplus_facts:> OPlusFactsWeak (T:=T); *)
-  (*   bar_facts:> BarFactsWeak (T:=T); *)
-  (*   eps_facts:> EpsFacts (T:=T); *)
-  (* }. *)
+  (* End NU. *)
 
   Class t: Type := {
     car:> Type;
@@ -255,43 +232,45 @@ Module MRA.
     oplus_facts:> OPlusFactsWeak (T:=car);
     bar_facts:> BarFactsWeak (T:=car);
     eps_facts:> EpsFacts (T:=car);
+    affinity: forall a, a ⊑ ε;
+    bar_intro: forall a, a ⊑ a ⊕ |a|;
   }.
 
-  Global Program Instance unitize (mra: NU.t): t := {
-    car := pointed mra.(NU.car);
-  }
-  .
-  Next Obligation.
-    econs; ss.
-    - ii. upt. des_ifs; try refl.
-    - ii. upt. des_ifs; ss. upt. sym; et.
-    - ii. upt. des_ifs; ss. etrans; et.
-  Qed.
-  Next Obligation.
-    econs; ss.
-    - econs.
-      + ii. upt. des_ifs; try refl.
-      + ii. upt. des_ifs; try etrans; et.
-    - ii. upt. des_ifs. eapply ref_oplus; et.
-    - ii. upt. des_ifs. rewrite <- H. refl.
-  Qed.
-  Next Obligation.
-    econs; ss.
-    - ii. upt. des_ifs; try refl. eapply oplus_comm_weak.
-    - ii. upt. des_ifs; try refl. eapply oplus_assoc_weak.
-    - ii. upt. des_ifs; try refl. rewrite H. rewrite H0. refl.
-  Qed.
-  Next Obligation.
-    econs; ss.
-    - ii. upt. des_ifs; try refl. r. upt. esplits; eapply bar_idemp_weak.
-    - ii. upt. des_ifs; try refl; r; upt; esplits; try refl; try eapply bar_oplus_weak.
-    - ii. upt. des_ifs; try refl. eapply bar_Proper_weak; ss.
-  Qed.
-  Next Obligation.
-    econs; ss.
-    - ii. upt. des_ifs; try refl.
-    - ii. upt. des_ifs; try refl.
-  Qed.
+  (* Global Program Instance unitize (mra: NU.t): t := { *)
+  (*   car := pointed mra.(NU.car); *)
+  (* } *)
+  (* . *)
+  (* Next Obligation. *)
+  (*   econs; ss. *)
+  (*   - ii. upt. des_ifs; try refl. *)
+  (*   - ii. upt. des_ifs; ss. upt. sym; et. *)
+  (*   - ii. upt. des_ifs; ss. etrans; et. *)
+  (* Qed. *)
+  (* Next Obligation. *)
+  (*   econs; ss. *)
+  (*   - econs. *)
+  (*     + ii. upt. des_ifs; try refl. *)
+  (*     + ii. upt. des_ifs; try etrans; et. *)
+  (*   - ii. upt. des_ifs. eapply ref_oplus; et. *)
+  (*   - ii. upt. des_ifs. rewrite <- H. refl. *)
+  (* Qed. *)
+  (* Next Obligation. *)
+  (*   econs; ss. *)
+  (*   - ii. upt. des_ifs; try refl. eapply oplus_comm_weak. *)
+  (*   - ii. upt. des_ifs; try refl. eapply oplus_assoc_weak. *)
+  (*   - ii. upt. des_ifs; try refl. rewrite H. rewrite H0. refl. *)
+  (* Qed. *)
+  (* Next Obligation. *)
+  (*   econs; ss. *)
+  (*   - ii. upt. des_ifs; try refl. r. upt. esplits; eapply bar_idemp_weak. *)
+  (*   - ii. upt. des_ifs; try refl; r; upt; esplits; try refl; try eapply bar_oplus_weak. *)
+  (*   - ii. upt. des_ifs; try refl. eapply bar_Proper_weak; ss. *)
+  (* Qed. *)
+  (* Next Obligation. *)
+  (*   econs; ss. *)
+  (*   - ii. upt. des_ifs; try refl. *)
+  (*   - ii. upt. des_ifs; try refl. *)
+  (* Qed. *)
 
 End MRA.
 
