@@ -922,6 +922,144 @@ Section SIM.
     intros. eapply wrespect8_uclo; eauto with paco. eapply lbindC_wrespectful.
   Qed.
 
+  Structure grespectful clo : Prop :=
+    grespect_intro {
+        grespect_mon: monotone8 clo;
+        grespect_respect :
+        forall l r
+               (LE: l <8= r)
+               (GF: l <8= @_sim_itree r),
+          clo l <8= gpaco8 (_sim_itree) (cpn8 (_sim_itree)) bot8 (rclo8 (clo \9/ gupaco8 (_sim_itree) (cpn8 (_sim_itree))) r);
+      }.
+
+  Lemma grespect_uclo clo
+    (RESPECT: grespectful clo)
+    :
+    clo <9= gupaco8 (_sim_itree) (cpn8 (_sim_itree)).
+  Proof.
+    eapply grespect8_uclo; eauto with paco.
+    econs.
+    { eapply RESPECT. }
+    i. hexploit grespect_respect.
+    { eauto. }
+    { eapply LE. }
+    { eapply GF. }
+    { eauto. }
+    i. inv H. eapply rclo8_mon.
+    { eauto. }
+    i. ss. des; ss. eapply _paco8_unfold in PR0.
+    2:{ ii. eapply sim_itree_mon; [eapply PR1|]. i. eapply rclo8_mon; eauto. }
+    ss. eapply sim_itree_mon.
+    { eapply PR0; eauto. }
+    i. eapply rclo8_clo. right. econs.
+    eapply rclo8_mon; eauto. i. inv PR2.
+    { left. eapply paco8_mon; eauto. i. ss. des; ss.
+      left. auto. }
+    { des; ss. right. auto. }
+  Qed.
+
+  Variant tauNC
+    (r: forall S0 S1 (SS: st_local -> st_local -> S0 -> S1 -> Prop),
+        bool -> bool -> world -> (st_local * itree Es S0) -> (st_local * itree Es S1) -> Prop):
+    forall S0 S1 (SS: st_local -> st_local -> S0 -> S1 -> Prop),
+      bool -> bool -> world -> (st_local * itree Es S0) -> (st_local * itree Es S1) -> Prop :=
+    | tauNC_intro
+        f_src0 f_tgt0 R0 R1 (RR: st_local -> st_local -> R0 -> R1 -> Prop) itr_src1 itr_tgt1 itr_src0 itr_tgt0
+        st_src0 st_tgt0 w0
+        (SIM: r _ _ RR f_src0 f_tgt0 w0 (st_src0, itr_src1) (st_tgt0, itr_tgt1))
+        n
+        (LEFT: itr_src0 = tau^{n};; itr_src1)
+        m
+        (RIGHT: itr_tgt0 = tau^{m};; itr_tgt1)
+      :
+      tauNC r RR f_src0 f_tgt0 w0 (st_src0, itr_src0) (st_tgt0, itr_tgt0)
+  .
+  Hint Constructors tauNC: core.
+
+  Lemma tauNC_mon
+    r1 r2
+    (LE: r1 <8= r2)
+    :
+    tauNC r1 <8= tauNC r2
+  .
+  Proof. ii. destruct PR; econs; et. Qed.
+  Hint Resolve tauNC_mon: paco.
+
+  Lemma tauNC_spec: tauNC <9= gupaco8 (_sim_itree) (cpn8 (_sim_itree)).
+  Proof.
+    intros. eapply grespect_uclo; eauto with paco.
+    econs; eauto with paco.
+    ii. ss. inv PR0. simpl_depind. subst.
+    revert m. induction n; i; ss.
+    - induction m; i; ss.
+      + gfinal. right. eapply GF in SIM. pfold. eapply sim_itree_mon; et. ii; ss. right. eapply rclo8_base; ss.
+      + guclo sim_itree_indC_spec. econs; et. guclo lflagC_spec. econs; et.
+    - guclo sim_itree_indC_spec. econs; et. guclo lflagC_spec. econs; et.
+  Qed.
+
+  Variant guttC (r: forall S0 S1 (SS: st_local -> st_local -> S0 -> S1 -> Prop),
+        bool -> bool -> world -> (st_local * itree Es S0) -> (st_local * itree Es S1) -> Prop):
+    forall S0 S1 (SS: st_local -> st_local -> S0 -> S1 -> Prop),
+      bool -> bool -> world -> (st_local * itree Es S0) -> (st_local * itree Es S1) -> Prop :=
+    | guttC_intro
+        f_src0 f_tgt0 R0 R1 (RR: st_local -> st_local -> R0 -> R1 -> Prop) itr_src1 itr_tgt1 itr_src0 itr_tgt0
+        st_src0 st_tgt0 w0
+        (SIM: r _ _ RR f_src0 f_tgt0 w0 (st_src0, itr_src1) (st_tgt0, itr_tgt1))
+        (LEFT: itr_src0 ≳ itr_src1)
+        (RIGHT: itr_tgt0 ≳ itr_tgt1)
+      (* (MON: postcond_mon RR) *)
+      :
+      guttC r RR f_src0 f_tgt0 w0 (st_src0, itr_src0) (st_tgt0, itr_tgt0)
+  .
+  Hint Constructors guttC: core.
+
+  Lemma guttC_mon
+    r1 r2
+    (LE: r1 <8= r2)
+    :
+    guttC r1 <8= guttC r2
+  .
+  Proof. ii. destruct PR; econs; et. Qed.
+  Hint Resolve guttC_mon: paco.
+
+  Lemma guttC_grespectful: grespectful guttC.
+  Proof.
+    econs; eauto with paco.
+    ii. inv PR. csc.
+    eapply GF in SIM.
+    rename x2 into RR. rename x3 into f_src. rename x4 into f_tgt. rename x5 into w0.
+    revert_until SIM. revert itr_src0 itr_tgt0.
+    remember (st_src0, itr_src1) as tmp; revert Heqtmp.
+    remember (st_tgt0, itr_tgt1) as tmp0; revert Heqtmp0. revert itr_src1 itr_tgt1 st_src0 st_tgt0.
+    induction SIM using _sim_itree_ind2; i; clarify; simpl_euttge.
+    { guclo tauNC_spec. }
+    { guclo tauNC_spec. econs; et.
+      gstep. econs; eauto. i. subst. gbase. eapply rclo8_clo. left. econs; ss. eapply rclo8_base. eauto.
+    }
+    { guclo tauNC_spec. econs; et.
+      gstep. econs; eauto. i. subst. gbase. eapply rclo8_clo. left. econs; ss. eapply rclo8_base. eauto.
+    }
+    { guclo tauNC_spec. econs; et. 2: { instantiate (2:=0). ss. } guclo sim_itree_indC_spec. econs; et.
+      eapply IHSIM; et. eapply eqit_bind; ss. refl.
+    }
+    { guclo sim_itree_indC_spec. econs; et. }
+    { guclo tauNC_spec. econs; et. 2: { instantiate (2:=0). ss. } guclo sim_itree_indC_spec. econs; et. }
+    { guclo tauNC_spec. econs; et. 2: { instantiate (2:=0). ss. } guclo sim_itree_indC_spec. econs; et. i. eapply K; et. }
+    { guclo tauNC_spec. econs; et. 2: { instantiate (2:=0). ss. } guclo sim_itree_indC_spec. econs; et. }
+    { guclo tauNC_spec. econs; et. 2: { instantiate (2:=0). ss. } guclo sim_itree_indC_spec. econs; et. }
+    { guclo sim_itree_indC_spec. econs; et. }
+    { guclo tauNC_spec. econs; et. 2: { instantiate (2:=0). ss. } guclo sim_itree_indC_spec. econs; et. i. eapply K; et. }
+    { guclo tauNC_spec. econs; et. 2: { instantiate (2:=0). ss. } guclo sim_itree_indC_spec. econs; et. }
+    { guclo tauNC_spec. econs; et. 2: { instantiate (2:=0). ss. } guclo sim_itree_indC_spec. econs; et. }
+    { guclo tauNC_spec. econs; et. 2: { instantiate (2:=0). ss. } guclo sim_itree_indC_spec. econs; et. }
+    { gstep. econs; eauto. gbase. eapply rclo8_clo. eauto with paco. }
+  Qed.
+
+  Lemma guttC_spec: guttC <9= gupaco8 (_sim_itree) (cpn8 (_sim_itree)).
+  Proof.
+    intros. eapply grespect_uclo; eauto with paco. eapply guttC_grespectful.
+  Qed.
+
 End SIM.
 Hint Resolve sim_itree_mon: paco.
 Hint Resolve cpn8_wcompat: paco.
@@ -1288,7 +1426,6 @@ Lemma adequacy_aux
 .
 Proof.
   ginit.
-  { i. eapply cpn7_wcompat; eauto with paco. }
   revert_until SIM.
   gcofix CIH. i.
   {
@@ -1350,7 +1487,6 @@ Proof.
   eapply adequacy_global_itree; ss.
   inv SIM.
   des. ginit.
-  { eapply cpn7_wcompat; eauto with paco. }
   unfold ModSem.initial_itr, guarantee.
   steps.
   force. esplits; et. steps.

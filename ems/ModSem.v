@@ -265,8 +265,7 @@ Section MODSEM.
       end
     | VisF (Choose X) k => demonic
     | VisF (Take X) k => angelic
-    | VisF (SyscallOut fn args rvs) k => vis
-    | VisF (SyscallIn rv) k => vis
+    | VisF (Syscall fn args rvs) k => vis
     end
   .
 
@@ -283,14 +282,12 @@ Section MODSEM.
       X k (x: X)
     :
       step (Vis (subevent _ (Take X)) k) None (k x)
-  | step_syscall_out
-      fn args (rvs: Any.t -> Prop) k
+  | step_syscall
+      fn args rv (rvs: Any.t -> Prop) k
+      (SYSCALL: syscall_sem (event_sys fn args rv))
+      (RETURN: rvs rv)
     :
-      step (Vis (subevent _ (SyscallOut fn args rvs)) k) (Some (event_out fn args)) (k tt)
-  | step_syscall_in
-      rv k
-    :
-      step (Vis (subevent _ (SyscallIn rv)) k) (Some (event_in rv)) (k tt)
+      step (Vis (subevent _ (Syscall fn args rvs)) k) (Some (event_sys fn args rv)) (k rv)
   .
 
   Lemma step_trigger_choose_iff X k itr e
@@ -304,7 +301,6 @@ Section MODSEM.
     { eapply f_equal with (f:=observe) in H0. ss.
       unfold trigger in H0. ss. cbn in H0.
       dependent destruction H0. ired. et.  }
-    { eapply f_equal with (f:=observe) in H0. ss. }
     { eapply f_equal with (f:=observe) in H0. ss. }
     { eapply f_equal with (f:=observe) in H0. ss. }
   Qed.
@@ -321,7 +317,6 @@ Section MODSEM.
     { eapply f_equal with (f:=observe) in H0. ss.
       unfold trigger in H0. ss. cbn in H0.
       dependent destruction H0. ired. et.  }
-    { eapply f_equal with (f:=observe) in H0. ss. }
     { eapply f_equal with (f:=observe) in H0. ss. }
   Qed.
 
@@ -422,7 +417,6 @@ Section MODSEM.
       { irw in H0; csc. }
       { irw in H0; csc. }
       { irw in H0; csc. }
-      { rewrite <- bind_trigger in H0. irw in H0. simpl_depind. }
       { rewrite <- bind_trigger in H0. irw in H0. simpl_depind. }
     - inv STEP. des. subst; ss. unfold initial_itr, guarantee in STEP. inv STEP; ss; csc.
       { irw in H0; csc. }

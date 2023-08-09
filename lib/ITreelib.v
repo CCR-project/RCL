@@ -580,3 +580,87 @@ Proof.
   erewrite (itree_eta_ itr1).
   f_equal. auto.
 Qed.
+
+Ltac simpobs_all :=
+  repeat match goal with
+         | [H: VisF _ _ = _ |- _ ] => apply simpobs in H; f in H
+         | [H: RetF _ = _ |- _ ] => apply simpobs in H; f in H
+         | [H: TauF _ = _ |- _ ] => apply simpobs in H; f in H
+         | [H: _ = VisF _ _ |- _ ] => sym in H; apply simpobs in H; f in H
+         | [H: _ = RetF _ |- _ ] => sym in H; apply simpobs in H; f in H
+         | [H: _ = TauF _ |- _ ] => sym in H; apply simpobs in H; f in H
+         end;
+  subst.
+
+Lemma euttge_inv
+      A R (itr0 itr1: itree A R)
+      (TAU: (tau;; itr0) ≳ (tau;; itr1))
+  :
+  <<TAU: itr0 ≳ itr1>>.
+Proof.
+  eapply eqit_Tau. eauto.
+Qed.
+
+Lemma euttge_tau_inv
+      A R (itr0 itr1: itree A R)
+      (TAU: itr0 ≳ (tau;; itr1))
+  :
+  exists itr0', <<EQ: itr0 = tau;; itr0'>> /\ <<TAU: itr0' ≳ itr1>>.
+Proof.
+  punfold TAU. r in TAU. dup TAU. dependent induction TAU; simpobs_all.
+  - pclearbot. esplits; eauto.
+  - esplits; eauto. eapply euttge_inv; eauto.
+  - rr in CHECK. ss.
+Qed.
+
+Fixpoint TauN {E R} (n: nat) (itr: itree E R): itree E R :=
+  match n with
+  | 0 => itr
+  | S n => tau;; TauN n itr
+  end
+.
+
+Notation "tau^{ n };; t2" := (TauN n t2) (at level 200, right associativity) : itree_scope.
+
+Lemma euttge_vis_inv
+      A B R (itr0: itree A R) (ktr: ktree A B R)
+      E `{E -< A} (e: E B)
+      (TAU: itr0 ≳ (trigger e) >>= ktr)
+  : exists n ktr0, <<EQ: itr0 = tau^{n};; trigger e >>= ktr0>> /\ <<TL: forall x, ktr0 x ≳ ktr x>>
+.
+Proof.
+  punfold TAU. r in TAU.
+  (* dup TAU. *)
+  remember (observe (` x : _ <- trigger e;; ktr x)) as tmp; revert Heqtmp.
+  remember (observe itr0) as tmp0; revert Heqtmp0.
+  revert itr0 e ktr.
+  induction TAU; i; des_ifs; repeat simpl_existT; subst; simpobs_all.
+  - rewrite bind_trigger in Heqtmp. csc. exists 0. cbn. esplits; et.
+    { rewrite bind_trigger. ss. }
+    ss. i. pclearbot. eauto.
+  - hexploit IHTAU; et. i; des. subst. exists (S n). esplits; ss; et.
+Qed.
+
+Lemma euttge_ret_inv
+      A R (itr0: itree A R)
+      a
+      (TAU: itr0 ≳ Ret a)
+  : exists n, <<EQ: itr0 = tau^{n};; Ret a>>
+.
+Proof.
+  punfold TAU. r in TAU.
+  remember (observe (Ret a)) as tmp; revert Heqtmp.
+  remember (observe itr0) as tmp0; revert Heqtmp0.
+  revert itr0.
+  induction TAU; i; des_ifs; repeat simpl_existT; subst; simpobs_all.
+  - exists 0; ss.
+  - hexploit IHTAU; et. i; des. subst. exists (S n). esplits; ss; et.
+Qed.
+
+Ltac simpl_euttge :=
+  repeat match goal with
+    | [H: _ ≳ tau;; _ |- _ ] => apply euttge_tau_inv in H
+    | [H: _ ≳ Ret _ |- _ ] => apply euttge_ret_inv in H
+    | [H: _ ≳ _ >>= _ |- _ ] => apply euttge_vis_inv in H
+    end; des; subst
+.

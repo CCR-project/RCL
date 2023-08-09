@@ -689,6 +689,7 @@ End SIM.
 Hint Constructors _simg.
 Hint Unfold simg.
 Hint Resolve simg_mon: paco.
+Hint Resolve cpn7_wcompat: paco.
 Hint Constructors flagC: core.
 Hint Resolve flagC_mon: paco.
 Hint Constructors bindR: core.
@@ -749,4 +750,150 @@ Proof.
   { econs; eauto. }
   { econs; eauto. }
   { econs; eauto. }
+Qed.
+
+Theorem eutt_simg: forall R0 R1 RR (u: itree (eventE) R0) (t: itree (eventE) R1) (EUTT: eqit RR true true u t),
+    simg RR false false u t.
+Proof.
+  i. ginit. revert_until R1. gcofix CIH. i.
+  punfold EUTT. red in EUTT.
+  dependent induction EUTT; try apply simpobs in x; try apply simpobs in x0; try f in x; try f in x0; subst.
+  - gstep; econs; eauto.
+  - guclo simg_indC_spec. econs; eauto.
+    guclo simg_indC_spec. econs; eauto.
+    gstep. econs; eauto; try (instantiate (1:=0); eapply OrdArith.lt_from_nat; lia).
+    gbase. eapply CIH. pclearbot. eauto.
+  - rewrite <- ! bind_trigger.
+    destruct e.
+    + guclo simg_indC_spec. econsr; eauto. i.
+      guclo simg_indC_spec. econs; eauto.
+      esplits. gstep. econs; eauto; try (instantiate (1:=0); eapply OrdArith.lt_from_nat; lia).
+      gbase. eapply CIH. pclearbot. eauto.
+    + guclo simg_indC_spec. econs; eauto. i.
+      guclo simg_indC_spec. econsr; eauto.
+      esplits. gstep. econs; eauto; try (instantiate (1:=0); eapply OrdArith.lt_from_nat; lia).
+      gbase. eapply CIH. pclearbot. eauto.
+    + guclo simg_indC_spec. econs; eauto. i. subst.
+      gstep. econs; eauto; try (instantiate (1:=0); eapply OrdArith.lt_from_nat; lia).
+      gbase. eapply CIH. pclearbot. eauto.
+  - guclo simg_indC_spec. econs; eauto. guclo flagC_spec.
+  - guclo simg_indC_spec. econs; eauto. guclo flagC_spec.
+Qed.
+
+Structure grespectful clo : Prop :=
+  grespect_intro {
+      grespect_mon: monotone7 clo;
+      grespect_respect :
+      forall l r
+             (LE: l <7= r)
+             (GF: l <7= @_simg r),
+        clo l <7= gpaco7 (_simg) (cpn7 (_simg)) bot7 (rclo7 (clo \8/ gupaco7 (_simg) (cpn7 (_simg))) r);
+    }.
+
+Lemma grespect_uclo clo
+      (RESPECT: grespectful clo)
+  :
+  clo <8= gupaco7 (_simg) (cpn7 (_simg)).
+Proof.
+  eapply grespect7_uclo; eauto with paco.
+  econs.
+  { eapply RESPECT. }
+  i. hexploit grespect_respect.
+  { eauto. }
+  { eapply LE. }
+  { eapply GF. }
+  { eauto. }
+  i. inv H. eapply rclo7_mon.
+  { eauto. }
+  i. ss. des; ss. eapply _paco7_unfold in PR0.
+  2:{ ii. eapply simg_mon; [eapply PR1|]. i. eapply rclo7_mon; eauto. }
+  ss. eapply simg_mon.
+  { eapply PR0; eauto. }
+  i. eapply rclo7_clo. right. econs.
+  eapply rclo7_mon; eauto. i. inv PR2.
+  { left. eapply paco7_mon; eauto. i. ss. des; ss.
+    left. auto. }
+  { des; ss. right. auto. }
+Qed.
+
+Variant tauNC (r: forall S0 S1 (SS: S0 -> S1 -> Prop), bool -> bool -> (itree (eventE) S0) -> (itree (eventE) S1) -> Prop):
+  forall S0 S1 (SS: S0 -> S1 -> Prop), bool -> bool -> (itree (eventE) S0) -> (itree (eventE) S1) -> Prop :=
+| tauNC_intro
+    f_src0 f_tgt0 R0 R1 (RR: R0 -> R1 -> Prop) itr_src1 itr_tgt1 itr_src0 itr_tgt0
+    (SIM: r _ _ RR f_src0 f_tgt0 itr_src1 itr_tgt1)
+    n
+    (LEFT: itr_src0 = tau^{n};; itr_src1)
+    m
+    (RIGHT: itr_tgt0 = tau^{m};; itr_tgt1)
+  :
+    tauNC r RR f_src0 f_tgt0 itr_src0 itr_tgt0
+.
+Hint Constructors tauNC: core.
+
+Lemma tauNC_mon
+      r1 r2
+      (LE: r1 <7= r2)
+  :
+    tauNC r1 <7= tauNC r2
+.
+Proof. ii. destruct PR; econs; et. Qed.
+Hint Resolve tauNC_mon: paco.
+
+Lemma tauNC_spec: tauNC <8= gupaco7 (_simg) (cpn7 (_simg)).
+Proof.
+  intros. eapply grespect_uclo; eauto with paco.
+  econs; eauto with paco.
+  ii. ss. inv PR0. simpl_depind. subst.
+  revert m. induction n; i; ss.
+  - induction m; i; ss.
+    + gfinal. right. eapply GF in SIM. pfold. eapply simg_mon; et. ii; ss. right. eapply rclo7_base; ss.
+    + guclo simg_indC_spec. econs; et. guclo flagC_spec.
+  - guclo simg_indC_spec. econs; et. guclo flagC_spec.
+Qed.
+
+Variant guttC (r: forall S0 S1 (SS: S0 -> S1 -> Prop), bool -> bool -> (itree (eventE) S0) -> (itree (eventE) S1) -> Prop):
+  forall S0 S1 (SS: S0 -> S1 -> Prop), bool -> bool -> (itree (eventE) S0) -> (itree (eventE) S1) -> Prop :=
+| guttC_intro
+    f_src0 f_tgt0 R0 R1 (RR: R0 -> R1 -> Prop) itr_src1 itr_tgt1 itr_src0 itr_tgt0
+    (SIM: r _ _ RR f_src0 f_tgt0 itr_src1 itr_tgt1)
+    (LEFT: itr_src0 ≳ itr_src1)
+    (RIGHT: itr_tgt0 ≳ itr_tgt1)
+    (* (MON: postcond_mon RR) *)
+  :
+    guttC r RR f_src0 f_tgt0 itr_src0 itr_tgt0
+.
+Hint Constructors guttC: core.
+
+Lemma guttC_mon
+      r1 r2
+      (LE: r1 <7= r2)
+  :
+    guttC r1 <7= guttC r2
+.
+Proof. ii. destruct PR; econs; et. Qed.
+Hint Resolve guttC_mon: paco.
+
+Lemma guttC_grespectful: grespectful guttC.
+Proof.
+  econs; eauto with paco.
+  ii. inv PR. csc.
+  eapply GF in SIM.
+  rename x2 into RR. rename x5 into itr_src0. rename x6 into itr_tgt0.
+  revert_until SIM. revert itr_src0 itr_tgt0. induction SIM using _simg_ind2; i; clarify; simpl_euttge.
+  { guclo tauNC_spec. }
+  { guclo tauNC_spec. econs; et.
+    gstep. econs; eauto. i. subst. gbase. eapply rclo7_clo. left. econs; ss. eapply rclo7_base. eauto.
+  }
+  { guclo simg_indC_spec. }
+  { guclo simg_indC_spec. }
+  { guclo tauNC_spec. econs; et. 2: { instantiate (2:=0). ss. } guclo simg_indC_spec. }
+  { guclo tauNC_spec. econs; et. 2: { instantiate (2:=0). ss. } guclo simg_indC_spec. econs; et. i. eapply SIM; et. }
+  { guclo tauNC_spec. econs; et. 2: { instantiate (2:=0). ss. } guclo simg_indC_spec. econs; et. i. eapply SIM; et. }
+  { guclo tauNC_spec. econs; et. 2: { instantiate (2:=0). ss. } guclo simg_indC_spec. }
+  { gstep. econs; eauto. gbase. eapply rclo7_clo. eauto with paco. }
+Qed.
+
+Lemma guttC_spec: guttC <8= gupaco7 (_simg) (cpn7 (_simg)).
+Proof.
+  intros. eapply grespect_uclo; eauto with paco. eapply guttC_grespectful.
 Qed.
