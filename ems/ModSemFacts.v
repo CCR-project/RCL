@@ -114,7 +114,7 @@ Next Obligation.
   i. ss.
   eapply Forall2_In_r in FINDS; et. des. des_ifs. des; ss. clarify.
   esplits; et.
-  admit "ez - eutt".
+  ii. subst. des_u. eapply eutt_sim_itree. sym; ss.
 Qed.
 
 Global Program Instance ModSem_ref_refB: subrelation (⊑) ((⊑B)).
