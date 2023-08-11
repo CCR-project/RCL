@@ -436,10 +436,6 @@ Section MODSEM.
 
   End INTERP.
 
-  Program Definition semantics_empty: semantics :=
-    {| STS.state := unit; STS.step := bot3; STS.initial_state := tt; STS.state_sort := fun _ => angelic |}.
-  Next Obligation. ss. Qed.
-
   Definition compile' `{EMSConfig} (ms: t) (P: Prop): semantics :=
     match ms with
     | just ms => compile ms P

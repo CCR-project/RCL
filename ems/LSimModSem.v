@@ -1064,6 +1064,104 @@ End SIM.
 Hint Resolve sim_itree_mon: paco.
 Hint Resolve cpn8_wcompat: paco.
 
+Ltac my_red_both := try (Red.prw IRed._red_gen 2 1 0); try (Red.prw IRed._red_gen 1 1 0).
+
+Lemma sim_itree_srcl
+  mt W (wf wf': W -> Any.t * Any.t -> Prop) le R f_src f_tgt (w0: W) st_srcl0 st_srcr0 st_tgt0 itr_src0 itr_tgt0
+  (SIM: sim_itree (R:=R) mt wf' le f_src f_tgt w0 (st_srcl0, itr_src0) (st_tgt0, itr_tgt0))
+  (WF: forall w0 st_src st_tgt, (exists st_srcl st_srcr, st_src = Any.pair st_srcl st_srcr /\ wf' w0 (st_srcl, st_tgt))
+                                <-> wf w0 (st_src, st_tgt))
+  :
+  <<SIM: sim_itree mt wf le f_src f_tgt w0 (Any.pair st_srcl0 st_srcr0, focus_left itr_src0) (st_tgt0, itr_tgt0)>>
+.
+Proof.
+  ginit. revert_until R. gcofix CIH.
+  i. punfold SIM.
+  remember (st_srcl0, itr_src0) as tmp. revert Heqtmp. revert st_srcl0 itr_src0.
+  remember (st_tgt0, itr_tgt0) as tmp0. revert Heqtmp0. revert st_tgt0 itr_tgt0.
+  remember (lift_rel wf' le w0 eq) as tmp1. revert Heqtmp1. revert st_srcr0.
+  induction SIM using _sim_itree_ind2; i; clarify;
+    repeat (esplits; try (spc K); my_red_both; try (guclo sim_itree_indC_spec; econs; et); i; des; et).
+  - rr in RET. des; subst. rr. esplits; et. eapply WF; et.
+  - eapply WF; et.
+  - gstep. econsr; et. gbase. eapply WF in WF1. des; subst. eapply CIH; et.
+    exploit K; et. i. pclearbot. eapply sim_itree_bot_flag_up; et.
+  - gstep. econsr; et. gbase. eapply CIH; et. eapply sim_itree_bot_flag_up; pclearbot. et.
+  - pclearbot. gstep. econsr; et. gbase. eapply CIH; et.
+Qed.
+
+Lemma sim_itree_srcr
+  mt W (wf wf': W -> Any.t * Any.t -> Prop) le R f_src f_tgt (w0: W) st_srcl0 st_srcr0 st_tgt0 itr_src0 itr_tgt0
+  (SIM: sim_itree (R:=R) mt wf' le f_src f_tgt w0 (st_srcr0, itr_src0) (st_tgt0, itr_tgt0))
+  (WF: forall w0 st_src st_tgt, (exists st_srcl st_srcr, st_src = Any.pair st_srcl st_srcr /\ wf' w0 (st_srcr, st_tgt))
+                                <-> wf w0 (st_src, st_tgt))
+  :
+  <<SIM: sim_itree mt wf le f_src f_tgt w0 (Any.pair st_srcl0 st_srcr0, focus_right itr_src0) (st_tgt0, itr_tgt0)>>
+.
+Proof.
+  ginit. revert_until R. gcofix CIH.
+  i. punfold SIM.
+  remember (st_srcr0, itr_src0) as tmp. revert Heqtmp. revert st_srcl0 itr_src0.
+  remember (st_tgt0, itr_tgt0) as tmp0. revert Heqtmp0. revert st_tgt0 itr_tgt0.
+  remember (lift_rel wf' le w0 eq) as tmp1. revert Heqtmp1. revert st_srcr0.
+  induction SIM using _sim_itree_ind2; i; clarify;
+    repeat (esplits; try (spc K); my_red_both; try (guclo sim_itree_indC_spec; econs; et); i; des; et).
+  - rr in RET. des; subst. rr. esplits; et. eapply WF; et.
+  - eapply WF; et.
+  - gstep. econsr; et. gbase. eapply WF in WF1. des; subst. eapply CIH; et.
+    exploit K; et. i. pclearbot. eapply sim_itree_bot_flag_up; et.
+  - gstep. econsr; et. gbase. eapply CIH; et. eapply sim_itree_bot_flag_up; pclearbot. et.
+  - pclearbot. gstep. econsr; et. gbase. eapply CIH; et.
+Qed.
+
+Lemma sim_itree_tgtl
+  W (wf wf': W -> Any.t * Any.t -> Prop) le R f_src f_tgt (w0: W) st_src0 st_tgtl0 st_tgtr0 itr_src0 itr_tgt0
+  (SIM: sim_itree (R:=R) [] wf' le f_src f_tgt w0 (st_src0, itr_src0) (st_tgtl0, itr_tgt0))
+  (WF: forall w0 st_src st_tgt, (exists st_tgtl st_tgtr, st_tgt = Any.pair st_tgtl st_tgtr /\ wf' w0 (st_src, st_tgtl))
+                                <-> wf w0 (st_src, st_tgt))
+  :
+  <<SIM: sim_itree [] wf le f_src f_tgt w0 (st_src0, itr_src0) (Any.pair st_tgtl0 st_tgtr0, focus_left itr_tgt0)>>
+.
+Proof.
+  ginit. revert_until R. gcofix CIH.
+  i. punfold SIM.
+  remember (st_tgtl0, itr_tgt0) as tmp. revert Heqtmp. revert st_tgtl0 itr_tgt0.
+  remember (st_src0, itr_src0) as tmp0. revert Heqtmp0. revert st_src0 itr_src0.
+  remember (lift_rel wf' le w0 eq) as tmp1. revert Heqtmp1. revert st_tgtr0.
+  induction SIM using _sim_itree_ind2; i; clarify;
+    repeat (esplits; try (spc K); my_red_both; try (guclo sim_itree_indC_spec; econs; et); i; des; et).
+  - rr in RET. des; subst. rr. esplits; et. eapply WF; et.
+  - eapply WF; et.
+  - gstep. econsr; et. gbase. eapply WF in WF1. des; subst. eapply CIH; et.
+    exploit K; et. i. pclearbot. eapply sim_itree_bot_flag_up; et.
+  - gstep. econsr; et. gbase. eapply CIH; et. eapply sim_itree_bot_flag_up; pclearbot. et.
+  - pclearbot. gstep. econsr; et. gbase. eapply CIH; et.
+Qed.
+
+Lemma sim_itree_tgtr
+  W (wf wf': W -> Any.t * Any.t -> Prop) le R f_src f_tgt (w0: W) st_src0 st_tgtl0 st_tgtr0 itr_src0 itr_tgt0
+  (SIM: sim_itree (R:=R) [] wf' le f_src f_tgt w0 (st_src0, itr_src0) (st_tgtr0, itr_tgt0))
+  (WF: forall w0 st_src st_tgt, (exists st_tgtl st_tgtr, st_tgt = Any.pair st_tgtl st_tgtr /\ wf' w0 (st_src, st_tgtr))
+                                <-> wf w0 (st_src, st_tgt))
+  :
+  <<SIM: sim_itree [] wf le f_src f_tgt w0 (st_src0, itr_src0) (Any.pair st_tgtl0 st_tgtr0, focus_right itr_tgt0)>>
+.
+Proof.
+  ginit. revert_until R. gcofix CIH.
+  i. punfold SIM.
+  remember (st_tgtr0, itr_tgt0) as tmp. revert Heqtmp. revert st_tgtl0 itr_tgt0.
+  remember (st_src0, itr_src0) as tmp0. revert Heqtmp0. revert st_src0 itr_src0.
+  remember (lift_rel wf' le w0 eq) as tmp1. revert Heqtmp1. revert st_tgtr0.
+  induction SIM using _sim_itree_ind2; i; clarify;
+    repeat (esplits; try (spc K); my_red_both; try (guclo sim_itree_indC_spec; econs; et); i; des; et).
+  - rr in RET. des; subst. rr. esplits; et. eapply WF; et.
+  - eapply WF; et.
+  - gstep. econsr; et. gbase. eapply WF in WF1. des; subst. eapply CIH; et.
+    exploit K; et. i. pclearbot. eapply sim_itree_bot_flag_up; et.
+  - gstep. econsr; et. gbase. eapply CIH; et. eapply sim_itree_bot_flag_up; pclearbot. et.
+  - pclearbot. gstep. econsr; et. gbase. eapply CIH; et.
+Qed.
+
 Lemma sim_itree_fsubset mt0 mt1 (INCL: incl mt0 mt1): sim_itree mt0 <9= sim_itree mt1.
 Proof.
   i. ginit. revert_until INCL. gcofix CIH.

@@ -47,3 +47,7 @@ Record semantics : Type := Semantics_gen {
   wf_demonic: forall st0 ev st1 (VIS: state_sort st0 = demonic) (STEP: step st0 ev st1), ev = None;
   wf_final: forall st0 ev st1 r (FIN: state_sort st0 = final r) (STEP: step st0 ev st1), False;
 }.
+
+Program Definition semantics_empty: semantics :=
+  {| STS.state := unit; STS.step := bot3; STS.initial_state := tt; STS.state_sort := fun _ => angelic |}.
+Next Obligation. ss. Qed.

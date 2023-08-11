@@ -8,7 +8,7 @@ Require Import STS Behavior.
 Require Import Any.
 Require Import Permutation.
 Require Import ModSem.
-Require Import LSimModSem.
+Require Import Mod ModSemFacts.
 
 Set Implicit Arguments.
 
@@ -16,8 +16,18 @@ Set Implicit Arguments.
 
 Section FACTS.
 
-Global Program Instance ModSem_OPlusFactsWeak: OPlusFactsWeak (T:=ModSem.t).
+Context `{Sk.ld}.
+
+Global Program Instance enclose_equiv_Proper: Proper ((≡) ==> (eq)) (Mod.enclose).
 Next Obligation.
+  ii. rr in H0. des. unfold Mod.enclose. erewrite Mod.get_modsem_Proper; et.
+Qed.
+
+Global Program Instance Mod_OPlusFactsWeak: OPlusFactsWeak (T:=Mod.t).
+Next Obligation.
+  do 2 r; i.
+  ii.
+Qed.
   eapply ModSemPair.adequacy.
   destruct a as [a|]; ss.
   2: { upt. des_ifs; ss. refl. }

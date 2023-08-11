@@ -3,7 +3,7 @@ Require Import ITreelib.
 Require Import ImpPrelude.
 Require Import STS.
 Require Import Behavior.
-Require Import ModSem.
+Require Import Mod ModSem.
 Require Import Skeleton.
 
 Set Implicit Arguments.
@@ -78,7 +78,7 @@ Section PROOF.
 
 
 
-  Definition MemSem (sk: Sk.t): ModSem.t :=
+  Definition MemSem (sk: Sk.t): ModSem.t := Algebra.just
     {|
       ModSem.fnsems := [("alloc", cfunU allocF) ; ("free", cfunU freeF) ; ("load", cfunU loadF) ; ("store", cfunU storeF) ; ("cmp", cfunU cmpF)];
       ModSem.initial_st := (Mem.load_mem sk)↑;

@@ -1,7 +1,7 @@
-Require Import Coqlib.
+Require Import Coqlib Algebra.
 Require Export sflib.
 Require Export ITreelib.
-Require Export ModSem ModSemE.
+Require Export ModSem ModSemE ModSemFacts.
 Export Events.
 Require Export AList.
 Require Import Skeleton.
@@ -22,25 +22,27 @@ Section MOD.
     enclose: ModSem.t := (get_modsem sk);
     (* get_modsem_Proper:> Proper ((≡) ==> eq) get_modsem; *)
     get_modsem_Proper:> forall sk0 sk1 (EQV: sk0 ≡ sk1) (WF: Sk.wf sk0), get_modsem sk0 = get_modsem sk1;
-    get_modsem_extends:> forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1), get_modsem sk1 ⊑ get_modsem sk0;
-    (*** Check: do we need extends_core? Do we need Sk.extends? Isn't sk there always eps? ***)
-    get_modsem_extends_core:> forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1), | get_modsem sk1 | ⊑ | get_modsem sk0 |;
+    get_modsem_affine:> forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1), get_modsem sk1 ⊑ get_modsem sk0;
+    get_modsem_affine_core:> forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1), | get_modsem sk1 | ⊑ | get_modsem sk0 |;
   }
   .
 
-  (* Definition wf (md: t): Prop := (<<SK: Sk.wf (md.(sk))>>). *)
-  Definition wf (md: t): Prop := (<<WF: ModSem.wf md.(enclose)>> /\ <<SK: Sk.wf (md.(sk))>>).
+  Definition wf (md: t): Prop := (<<SK: Sk.wf (md.(sk))>>).
+  (* Definition wf (md: t): Prop := (<<WF: ModSem.wf md.(enclose)>> /\ <<SK: Sk.wf (md.(sk))>>). *)
 
   Program Definition core (md: t): t := mk (fun sk => |(md.(get_modsem) sk)| ) md.(sk) _ _ _.
   Next Obligation.
     erewrite get_modsem_Proper; et.
   Qed.
   Next Obligation.
-    eapply get_modsem_extends_core; et.
+    rewrite get_modsem_affine_core; et. refl.
   Qed.
   Next Obligation.
-    rewrite ! ModSem.core_idemp.
-    eapply get_modsem_extends_core; et.
+    erewrite (@bar_idemp_weak).
+    2: { eapply ModSem_MRA. }
+    erewrite (@bar_idemp_weak).
+    2: { eapply ModSem_MRA. }
+    rewrite get_modsem_affine_core; et. refl.
   Qed.
 
   Global Program Instance bar: Bar t := core.
@@ -50,7 +52,10 @@ Section MOD.
   Context {CONF: EMSConfig}.
 
   Definition compile (md: t): semantics :=
-    ModSem.compile_itree (ModSem.initial_itr md.(enclose) (Some (wf md))).
+    match md.(enclose) with
+    | just ms => ModSem.compile_itree (ModSem.initial_itr ms (wf md))
+    | _ => semantics_empty
+    end.
 
   (* Record wf (md: t): Prop := mk_wf { *)
   (*   wf_sk: Sk.wf md.(sk); *)
@@ -67,56 +72,53 @@ Section MOD.
     ii. rewrite ! (@get_modsem_Proper _ _ _ EQV); et.
   Qed.
   Next Obligation.
-    admit "should hold".
+    rewrite (get_modsem_affine _ EQV); et.
+    rewrite (get_modsem_affine _ EQV); et.
+    refl.
   Qed.
   Next Obligation.
-    admit "should hold".
+    erewrite (@bar_oplus_weak).
+    2: { eapply ModSem_MRA. }
+    erewrite (@bar_oplus_weak).
+    2: { eapply ModSem_MRA. }
+    rewrite (get_modsem_affine_core _ EQV); et.
+    rewrite (get_modsem_affine_core _ EQV); et.
+    refl.
   Qed.
 
   Global Program Instance add_OPlus: OPlus t := add.
 
-  Program Definition empty: t := {|
-    get_modsem := fun _ => ModSem.mk [] tt↑;
+  Global Program Instance eps: Eps t := {|
+    get_modsem := fun _ => ε;
     sk := Sk.unit;
-  |}
+  |}.
+  Next Obligation. refl. Qed.
+  Next Obligation. refl. Qed.
+
+  Global Program Instance equiv: Equiv t :=
+    fun md0 md1 => md0.(sk) ≡ md1.(sk) /\ forall sk0, md0.(get_modsem) sk0 = md1.(get_modsem) sk0
   .
+
+  Global Program Instance equiv_Equiv: EquivFacts.
   Next Obligation.
-    ss.
-  Qed.
-  Next Obligation.
-    ss.
+    econs.
+    - ii; ss. rr. esplits; refl.
+    - ii; ss. rr in H0; des. rr. esplits; sym; try apply H0; et.
+    - ii; ss. rr in H0; rr in H1; des. rr. esplits; (etrans; [try apply H0|try apply H1]; et).
   Qed.
 
   End BEH.
 
   Section REFINE.
 
-  Definition cref' {CONF: EMSConfig} (md_tgt md_src: t): Prop :=
-    forall (ctx: t), Beh.of_program (compile (ctx ⊕ md_tgt)) <1=
-                       Beh.of_program (compile (ctx ⊕ md_src))
+  Global Program Instance refb: RefB t :=
+    fun md_tgt md_src =>
+      forall `{EMSConfig}, Beh.of_program (compile md_tgt) <1= Beh.of_program (compile md_src)
   .
 
-  Definition cref (md_tgt md_src: t): Prop :=
-    forall {CONF: EMSConfig}, cref' md_tgt md_src.
-
-  Section CONF.
-    Context {CONF: EMSConfig}.
-
-    Global Program Instance cref_PreOrder: PreOrder cref.
-    Next Obligation.
-      ii. ss.
-    Qed.
-    Next Obligation.
-      ii. eapply H0 in PR. eapply H1 in PR. eapply PR.
-    Qed.
-
-    Global Program Instance cref'_PreOrder: PreOrder cref'.
-    Next Obligation. ii. ss. Qed.
-    Next Obligation. ii. eapply H1. eapply H0. ss. Qed.
-  End CONF.
-
-  Definition bref {CONF: EMSConfig} (md_tgt md_src: t): Prop :=
-    Beh.of_program (compile md_tgt) <1= Beh.of_program (compile md_src)
+  Global Program Instance ref: Ref t :=
+    fun ms_tgt ms_src =>
+      forall (ctx: t), (ctx ⊕ ms_tgt) ⊑B (ctx ⊕ ms_src)
   .
 
   End REFINE.
