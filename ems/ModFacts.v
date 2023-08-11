@@ -16,168 +16,77 @@ Set Implicit Arguments.
 
 Section FACTS.
 
-Context `{Sk.ld}.
+Context `{SK: Sk.ld}.
 
-Global Program Instance enclose_equiv_Proper: Proper ((≡) ==> (eq)) (Mod.enclose).
-Next Obligation.
-  ii. rr in H0. des. unfold Mod.enclose. erewrite Mod.get_modsem_Proper; et.
+(* Global Program Instance enclose_equiv_Proper: Proper ((≡) ==> (eq)) (Mod.enclose). *)
+(* Next Obligation. *)
+(*   ii. rr in H0. des. unfold Mod.enclose. erewrite Mod.get_modsem_Proper; et. *)
+(* Qed. *)
+
+(* Global Program Instance enclose_equiv_Proper: Proper ((⊑B) ==> (⊑B)) (Mod.enclose). *)
+(* Next Obligation. *)
+(*   ii. rr in H0. do 2 spc H0. *)
+(*   unfold Mod.compile in *. unfold ModSem.compile' in *. des_ifs; et. *)
+(* Qed. *)
+
+Theorem GSimMod
+  md0 md1
+  (SIMSK: md0.(Mod.sk) ≡ md1.(Mod.sk))
+  (SEM: forall sk, md0.(Mod.get_modsem) sk ⊑B md1.(Mod.get_modsem) sk)
+  :
+  md0 ⊑B md1
+.
+Proof.
+  assert(T: Sk.wf (Mod.sk md1) = Sk.wf (Mod.sk md0)).
+  { eapply prop_ext. split; eapply Sk.wf_equiv; et. sym; et. }
+  destruct (classic (Sk.wf md0.(Mod.sk))).
+  {
+    ii. unfold Mod.compile in *. des_ifs.
+    { do 2 r in SEM. unfold Mod.enclose in *. unfold ModSem.compile' in *.
+      specialize (SEM md0.(Mod.sk) H0 (Mod.wf md0) x0). rewrite Heq0 in *.
+      erewrite Mod.get_modsem_Proper in Heq; et.
+      2: { sym; eauto. }
+      2: { rewrite T; et. }
+      rewrite Heq in *. unfold Mod.wf in *. rewrite T. et.
+    }
+    { admit "". }
+    { admit "". }
+  }
+  { ii. unfold Mod.compile in PR.
+    admit "".
+  }
+Qed.
+
+Theorem LSimMod
+  md0 md1
+  (SIMSK: md0.(Mod.sk) ≡ md1.(Mod.sk))
+  (SEM: forall sk, md0.(Mod.get_modsem) sk ⊑ md1.(Mod.get_modsem) sk)
+  :
+  md0 ⊑ md1
+.
+Proof.
+  do 2 r. i.
+  eapply GSimMod; et.
+  { ss. rewrite SIMSK; ss. refl. }
+  i. cbn. do 2 r in SEM. et.
 Qed.
 
 Global Program Instance Mod_OPlusFactsWeak: OPlusFactsWeak (T:=Mod.t).
 Next Obligation.
-  do 2 r; i.
-  ii.
-Qed.
-  eapply ModSemPair.adequacy.
-  destruct a as [a|]; ss.
-  2: { upt. des_ifs; ss. refl. }
-  destruct b as [b|]; ss.
-  2: { upt. des_ifs; ss. refl. }
-  econs.
-  { instantiate (1:=top2). ss. }
-  2: { instantiate (2:=unit).
-       instantiate (1:=fun _ '(st_src, st_tgt) => exists st0 st1, st_tgt = Any.pair st0 st1 /\ st_src = Any.pair st1 st0).
-       ss. esplits; et. ss. }
-  i. ss. rewrite in_app_iff in FINDS. des.
-  - rewrite in_map_iff in *. des; ss. destruct x; ss. clarify.
-    esplits; et.
-    { rewrite in_app_iff. right. rewrite in_map_iff. esplits; et. ss. }
-    ii. des; subst. des_u. eapply sim_itree_fsubset with []; ss. clear_tac.
-    clears b. clear b. clear_tac.
-    abstr (i y) itr. clear_tac.
-    revert st0 st1 itr. ginit. gcofix CIH. i.
-    Ltac my_steps :=
-      repeat (esplits; my_red_both;
-              try (guclo sim_itree_indC_spec; first [apply sim_itree_indC_choose_tgt|apply sim_itree_indC_take_src|econs]; et);
-              i; des; ss; subst; et).
-    ides itr; my_steps.
-    + rr. esplits; ss; et.
-    + gstep. econs; et. gbase. eapply CIH.
-    + destruct e.
-      { destruct c; rewrite <- ! bind_trigger; resub. my_steps; gstep; econs; et; gbase; eapply CIH. }
-      destruct s.
-      { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-      { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-  - rewrite in_map_iff in *. des; ss. destruct x; ss. clarify.
-    esplits; et.
-    { rewrite in_app_iff. left. rewrite in_map_iff. esplits; et. ss. }
-    ii. des; subst. des_u. eapply sim_itree_fsubset with []; ss. clear_tac.
-    clears a. clear a. clear_tac.
-    abstr (i y) itr. clear_tac.
-    revert st0 st1 itr. ginit. gcofix CIH. i.
-    ides itr; my_steps.
-    + rr. esplits; ss; et.
-    + gstep. econs; et. gbase. eapply CIH.
-    + destruct e.
-      { destruct c; rewrite <- ! bind_trigger; resub. my_steps; gstep; econs; et; gbase; eapply CIH. }
-      destruct s.
-      { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-      { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
+  eapply LSimMod; et.
+  { ss. rewrite Sk.add_comm; ss. refl. }
+  i. ss. eapply oplus_comm_weak.
 Qed.
 Next Obligation.
-  eapply ModSemPair.adequacy.
-  destruct a as [a|]; ss.
-  2: { upt. des_ifs; ss; refl. }
-  destruct b as [b|]; ss.
-  2: { upt. des_ifs; ss; refl. }
-  destruct c as [c|]; ss.
-  2: { upt. des_ifs; ss; refl. }
-  econs; eauto.
-  { instantiate (1:=top2). ss. }
-  2: { instantiate (2:=unit).
-       instantiate (1:=fun _ '(st_src, st_tgt) => exists st0 st1 st2,
-                           st_tgt = (Any.pair st0 (Any.pair st1 st2)) /\ st_src = (Any.pair (Any.pair st0 st1) st2)).
-       ss. esplits; et. ss. }
-  i. ss. rewrite in_app_iff in FINDS. des; revgoals.
-  {
-    rewrite in_map_iff in *. des; ss. destruct x; ss. clarify.
-    esplits; et.
-    { rewrite in_app_iff. right. rewrite map_app. rewrite in_app_iff. right. rewrite List.map_map. rewrite in_map_iff.
-      eexists (_, _); esplits; ss; et. }
-    ii. des; subst. des_u. eapply sim_itree_fsubset with []; ss. clear_tac.
-    clears c. clear c. clear_tac.
-    abstr (i y) itr. clear_tac.
-    revert st0 st1 st2 itr. ginit. gcofix CIH. i.
-    ides itr; my_steps.
-    + rr. esplits; ss; et.
-    + gstep. econs; et. gbase. eapply CIH.
-    + destruct e.
-      { destruct c; rewrite <- ! bind_trigger; resub. my_red_both. (*** FIXME ***) rewrite focus_right_callE. my_steps.
-        gstep; econs; et; gbase; eapply CIH. }
-      destruct s.
-      { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-      { destruct e; rewrite <- ! bind_trigger; resub;
-          my_red_both; (*** FIXME ***) rewrite focus_right_eventE; my_steps; gstep; econs; et; gbase; eapply CIH.
-      }
-  }
-  rewrite in_map_iff in *. des. destruct x; ss; clarify. rewrite in_app_iff in *. des.
-  {
-    rewrite in_map_iff in *. des; ss. destruct x; ss. clarify.
-    esplits; et.
-    { rewrite in_app_iff. left. rewrite in_map_iff. eexists (_, _); esplits; ss; et. }
-    ii. des; subst. des_u. eapply sim_itree_fsubset with []; ss. clear_tac.
-    clears a. clear a. clear_tac.
-    abstr (i0 y) itr. clear_tac.
-    revert st0 st1 st2 itr. ginit. gcofix CIH. i.
-    ides itr; my_steps.
-    + rr. esplits; ss; et.
-    + gstep. econs; et. gbase. eapply CIH.
-    + destruct e.
-      { destruct c; rewrite <- ! bind_trigger; resub. my_red_both. (*** FIXME ***) rewrite focus_left_callE. my_steps.
-        gstep; econs; et; gbase; eapply CIH. }
-      destruct s.
-      { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-      { destruct e; rewrite <- ! bind_trigger; resub;
-          my_red_both; (*** FIXME ***) rewrite focus_left_eventE; my_steps; gstep; econs; et; gbase; eapply CIH.
-      }
-  }
-  {
-    rewrite in_map_iff in *. des; ss. destruct x; ss. clarify.
-    esplits; et.
-    { rewrite in_app_iff. right. rewrite map_app. rewrite in_app_iff. left. rewrite List.map_map. rewrite in_map_iff.
-      eexists (_, _); esplits; ss; et. }
-    ii. des; subst. des_u. eapply sim_itree_fsubset with []; ss. clear_tac.
-    clears b. clear b. clear_tac.
-    abstr (i0 y) itr. clear_tac.
-    revert st0 st1 st2 itr. ginit. gcofix CIH. i.
-    ides itr; my_steps.
-    + rr. esplits; ss; et.
-    + gstep. econs; et. gbase. eapply CIH.
-    + destruct e.
-      { destruct c; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-      destruct s.
-      { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-      { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-  }
+  eapply LSimMod; et.
+  { ss. rewrite Sk.add_assoc; ss. refl. }
+  i. ss. eapply oplus_assoc_weak.
 Qed.
 Next Obligation.
-  ii.
-  upt. des_ifs.
-  rr in H. des. rr in H0. des. rr. ss. esplits; et.
-  2: { congruence. }
-  eapply Forall2_app.
-  - eapply Forall2_apply_Forall2; et. ii; ss. des_ifs. ss. des; clarify. esplits; et.
-    ii. unfold focus_left. rewrite H4. refl.
-  - eapply Forall2_apply_Forall2; et. ii; ss. des_ifs. ss. des; clarify. esplits; et.
-    ii. unfold focus_right. rewrite H4. refl.
-Qed.
-
-Global Program Instance ModSem_equiv_ref: subrelation ((≡)) (⊑).
-Next Obligation.
-  r; i. eapply ModSemPair.adequacy.
-  destruct x as [x|].
-  2: { upt. des_ifs. }
-  destruct y as [y|].
-  2: { upt. des_ifs. }
-  upt. ss. destruct H as [T U].
-  econs; ss.
-  { instantiate (1:=top2). ss. }
-  2: { instantiate (2:=unit).
-       instantiate (1:=fun _ '(st_src, st_tgt) => st_src = st_tgt). ss. }
-  i. ss.
-  eapply Forall2_In_r in FINDS; et. des. des_ifs. des; ss. clarify.
-  esplits; et.
-  ii. subst. des_u. eapply eutt_sim_itree. sym; ss.
+  ii. rr in H. rr in H0. des; subst.
+  rr. ss. esplits; et.
+  - rewrite H. rewrite H0. refl.
+  - ii. rewrite H1. rewrite H2. refl.
 Qed.
 
 Global Program Instance ModSem_ref_refB: subrelation (⊑) ((⊑B)).

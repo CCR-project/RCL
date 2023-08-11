@@ -30,7 +30,7 @@ Section MOD.
   Definition wf (md: t): Prop := (<<SK: Sk.wf (md.(sk))>>).
   (* Definition wf (md: t): Prop := (<<WF: ModSem.wf md.(enclose)>> /\ <<SK: Sk.wf (md.(sk))>>). *)
 
-  Program Definition core (md: t): t := mk (fun sk => |(md.(get_modsem) sk)| ) md.(sk) _ _ _.
+  Global Program Instance bar: Bar t := fun (md: t) => mk (fun sk => |(md.(get_modsem) sk)| ) md.(sk) _ _ _.
   Next Obligation.
     erewrite get_modsem_Proper; et.
   Qed.
@@ -45,15 +45,13 @@ Section MOD.
     rewrite get_modsem_affine_core; et. refl.
   Qed.
 
-  Global Program Instance bar: Bar t := core.
-
   Section BEH.
 
   Context {CONF: EMSConfig}.
 
   Definition compile (md: t): semantics :=
     match md.(enclose) with
-    | just ms => ModSem.compile_itree (ModSem.initial_itr ms (wf md))
+    | just ms => ModSem.compile ms (wf md)
     | _ => semantics_empty
     end.
 
@@ -63,7 +61,7 @@ Section MOD.
   (* . *)
   (*** wf about modsem is enforced in the semantics ***)
 
-  Program Definition add (md0 md1: t): t := {|
+  Global Program Instance oplus: OPlus t := fun (md0 md1: t) => {|
     get_modsem := fun sk => (md0.(get_modsem) sk) ⊕ (md1.(get_modsem) sk);
     sk := md0.(sk) ⊕ md1.(sk);
   |}
@@ -85,8 +83,6 @@ Section MOD.
     rewrite (get_modsem_affine_core _ EQV); et.
     refl.
   Qed.
-
-  Global Program Instance add_OPlus: OPlus t := add.
 
   Global Program Instance eps: Eps t := {|
     get_modsem := fun _ => ε;
