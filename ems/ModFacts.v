@@ -40,7 +40,41 @@ Proof.
   assert(T: Sk.wf (Mod.sk md1) = Sk.wf (Mod.sk md0)).
   { eapply prop_ext. split; eapply Sk.wf_equiv; et. sym; et. }
   destruct (classic (Sk.wf md0.(Mod.sk))).
+  { ii. do 2 r in SEM. unfold Mod.enclose in *. unfold ModSem.compile' in *.
+    specialize (SEM md0.(Mod.sk) H0 (Mod.wf md0) x0).
+    unfold Mod.compile in *. unfold Mod.enclose in *. unfold Mod.wf in *.
+    rewrite T. erewrite Mod.get_modsem_Proper; et.
+    { sym; et. }
+    { rewrite T; et. }
+  }
   {
+    ii. unfold Mod.compile, Mod.enclose in *. des_ifs.
+    - punfold PR. inv PR; csc; ss.
+      { punfold SPIN; inv SPIN; ss. des; ss. unfold ModSem.initial_itr, guarantee in *. irw in STEP0. inv STEP0; ss; csc. }
+      { eapply Beh.nb_bottom. }
+      { rr in STEP. des; subst. ss. unfold ModSem.initial_itr, guarantee in *. irw in STEP0. inv STEP0; ss; csc. }
+    - specialize (SEM md0.(Mod.sk) H0 (Mod.wf md0) x0). rewrite Heq0 in *. ss.
+      spc SEM. unfold ModSem.compile' in *. rewrite Heq in *.
+      unfold Mod.compile in *. unfold Mod.enclose in *. unfold Mod.wf in *.
+      rewrite T. erewrite Mod.get_modsem_Proper; et.
+      { sym; et. }
+      { rewrite T; et. }
+      specialize (SEM admit "".
+    - rr. pfold. econsr; et. rr. ii; ss.
+      cut (x0 = Tr.nb).
+      { i. subst. eapply Beh.nb_bottom. }
+      clear - PR.
+      punfold PR. induction PR using Beh.of_state_ind; csc; ss.
+      { admit "". }
+      { rr in STEP. ss.
+      { clear - SPIN. exfalso.
+        punfold SPIN. induction SPIN; ii; ss.
+        punfold SPIN; inv SPIN; ss. des; ss. unfold ModSem.initial_itr, guarantee in *. irw in STEP0. inv STEP0; ss; csc. }
+      { eapply Beh.nb_bottom. }
+      { rr in STEP. des; subst. ss. unfold ModSem.initial_itr, guarantee in *. irw in STEP0. inv STEP0; ss; csc. }
+    -
+    -
+    
     ii. unfold Mod.compile in *. des_ifs.
     { do 2 r in SEM. unfold Mod.enclose in *. unfold ModSem.compile' in *.
       specialize (SEM md0.(Mod.sk) H0 (Mod.wf md0) x0). rewrite Heq0 in *.
@@ -50,6 +84,13 @@ Proof.
       rewrite Heq in *. unfold Mod.wf in *. rewrite T. et.
     }
     { admit "". }
+    { do 2 r in SEM. unfold Mod.enclose in *. unfold ModSem.compile' in *.
+      specialize (SEM md0.(Mod.sk) H0 (Mod.wf md0) x0). rewrite Heq0 in *.
+      erewrite Mod.get_modsem_Proper in Heq; et.
+      2: { sym; eauto. }
+      2: { rewrite T; et. }
+      rewrite Heq in *. unfold Mod.wf in *. et.
+    }
     { admit "". }
   }
   { ii. unfold Mod.compile in PR.

@@ -439,7 +439,7 @@ Section MODSEM.
   Definition compile' `{EMSConfig} (ms: t) (P: Prop): semantics :=
     match ms with
     | just ms => compile ms P
-    | _ => semantics_empty
+    | _ => semantics_UB
     end
   .
 
@@ -554,5 +554,5 @@ Section MODSEM.
 End MODSEM.
 End ModSem.
 
-Coercion ModSem_pointed (ms: ModSem.t): pointed ModSem.t := just ms.
+Coercion ModSem_pointed (ms: ModSem._t): ModSem.t := just ms.
 

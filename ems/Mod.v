@@ -52,7 +52,7 @@ Section MOD.
   Definition compile (md: t): semantics :=
     match md.(enclose) with
     | just ms => ModSem.compile ms (wf md)
-    | _ => semantics_empty
+    | _ => semantics_UB
     end.
 
   (* Record wf (md: t): Prop := mk_wf { *)
