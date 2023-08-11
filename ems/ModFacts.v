@@ -29,6 +29,19 @@ Context `{SK: Sk.ld}.
 (*   unfold Mod.compile in *. unfold ModSem.compile' in *. des_ifs; et. *)
 (* Qed. *)
 
+(* Global Program Definition ModSem_Mod (ms: ModSem.t): Mod.t := Mod.mk (fun _ => ms) (Sk.unit) _ _ _. *)
+(* Next Obligation. refl. Qed. *)
+(* Next Obligation. refl. Qed. *)
+
+(* Global Program Instance enclose_equiv_Proper: Proper ((⊑) ==> (⊑)) (Mod.enclose). *)
+(* Next Obligation. *)
+(*   ii. rr in H. ss. specialize (H (ModSem_Mod ctx)). do 2 spc H. *)
+(*   unfold Mod.compile in *. unfold ModSem.compile' in *. des_ifs; et. *)
+(* Qed. *)
+
+Lemma ModSem_Mod_compile `{EMSConfig} md: ModSem.compile' (Mod.enclose md) (Mod.wf md) = Mod.compile md.
+Proof. ss. Qed.
+
 Theorem GSimMod
   md0 md1
   (SIMSK: md0.(Mod.sk) ≡ md1.(Mod.sk))
@@ -39,62 +52,12 @@ Theorem GSimMod
 Proof.
   assert(T: Sk.wf (Mod.sk md1) = Sk.wf (Mod.sk md0)).
   { eapply prop_ext. split; eapply Sk.wf_equiv; et. sym; et. }
-  destruct (classic (Sk.wf md0.(Mod.sk))).
-  { ii. do 2 r in SEM. unfold Mod.enclose in *. unfold ModSem.compile' in *.
-    specialize (SEM md0.(Mod.sk) H0 (Mod.wf md0) x0).
+  { ii. des. do 2 r in SEM. unfold Mod.enclose in *. unfold ModSem.compile' in *.
+    specialize (SEM md0.(Mod.sk) H0 (Mod.wf md0) tr).
     unfold Mod.compile in *. unfold Mod.enclose in *. unfold Mod.wf in *.
     rewrite T. erewrite Mod.get_modsem_Proper; et.
     { sym; et. }
     { rewrite T; et. }
-  }
-  {
-    ii. unfold Mod.compile, Mod.enclose in *. des_ifs.
-    - punfold PR. inv PR; csc; ss.
-      { punfold SPIN; inv SPIN; ss. des; ss. unfold ModSem.initial_itr, guarantee in *. irw in STEP0. inv STEP0; ss; csc. }
-      { eapply Beh.nb_bottom. }
-      { rr in STEP. des; subst. ss. unfold ModSem.initial_itr, guarantee in *. irw in STEP0. inv STEP0; ss; csc. }
-    - specialize (SEM md0.(Mod.sk) H0 (Mod.wf md0) x0). rewrite Heq0 in *. ss.
-      spc SEM. unfold ModSem.compile' in *. rewrite Heq in *.
-      unfold Mod.compile in *. unfold Mod.enclose in *. unfold Mod.wf in *.
-      rewrite T. erewrite Mod.get_modsem_Proper; et.
-      { sym; et. }
-      { rewrite T; et. }
-      specialize (SEM admit "".
-    - rr. pfold. econsr; et. rr. ii; ss.
-      cut (x0 = Tr.nb).
-      { i. subst. eapply Beh.nb_bottom. }
-      clear - PR.
-      punfold PR. induction PR using Beh.of_state_ind; csc; ss.
-      { admit "". }
-      { rr in STEP. ss.
-      { clear - SPIN. exfalso.
-        punfold SPIN. induction SPIN; ii; ss.
-        punfold SPIN; inv SPIN; ss. des; ss. unfold ModSem.initial_itr, guarantee in *. irw in STEP0. inv STEP0; ss; csc. }
-      { eapply Beh.nb_bottom. }
-      { rr in STEP. des; subst. ss. unfold ModSem.initial_itr, guarantee in *. irw in STEP0. inv STEP0; ss; csc. }
-    -
-    -
-    
-    ii. unfold Mod.compile in *. des_ifs.
-    { do 2 r in SEM. unfold Mod.enclose in *. unfold ModSem.compile' in *.
-      specialize (SEM md0.(Mod.sk) H0 (Mod.wf md0) x0). rewrite Heq0 in *.
-      erewrite Mod.get_modsem_Proper in Heq; et.
-      2: { sym; eauto. }
-      2: { rewrite T; et. }
-      rewrite Heq in *. unfold Mod.wf in *. rewrite T. et.
-    }
-    { admit "". }
-    { do 2 r in SEM. unfold Mod.enclose in *. unfold ModSem.compile' in *.
-      specialize (SEM md0.(Mod.sk) H0 (Mod.wf md0) x0). rewrite Heq0 in *.
-      erewrite Mod.get_modsem_Proper in Heq; et.
-      2: { sym; eauto. }
-      2: { rewrite T; et. }
-      rewrite Heq in *. unfold Mod.wf in *. et.
-    }
-    { admit "". }
-  }
-  { ii. unfold Mod.compile in PR.
-    admit "".
   }
 Qed.
 
@@ -130,9 +93,19 @@ Next Obligation.
   - ii. rewrite H1. rewrite H2. refl.
 Qed.
 
-Global Program Instance ModSem_ref_refB: subrelation (⊑) ((⊑B)).
+Global Program Instance Mod_ref_refB: subrelation (⊑) ((⊑B)).
 Next Obligation.
-  do 1 r. i. do 2 r in H. specialize H with mytt. upt. des_ifs.
+  ii. rr in H. des. specialize (H ε _ tr). ss.
+  exploit H; et.
+  { clear H.
+    rewrite Sk.add_unit_l. esplits; ss.
+    unfold Mod.compile, Mod.enclose in *. ss. rewrite Sk.add_unit_l. upt. ss.
+    des_ifs; et. unfold Mod.wf in *. ss. rewrite Sk.add_unit_l. ss.
+  }
+  intro T; des.
+  rewrite Sk.add_unit_l in T. esplits; ss. clear - T0.
+  unfold Mod.compile, Mod.enclose in *. ss. rewrite Sk.add_unit_l in T0. upt. ss.
+  des_ifs; et. unfold Mod.wf in *. ss. rewrite Sk.add_unit_l in T0. ss.
 Qed.
 
 Global Program Instance ModSem_RefBFacts: RefBFacts.
@@ -142,7 +115,10 @@ Next Obligation.
   - ii. eapply H0. eapply H; ss.
 Qed.
 Next Obligation.
-  etrans; typeclasses eauto.
+  ii. des. rr in H. des. esplits; et.
+  - rewrite <- H. ss.
+  - unfold Mod.compile, Mod.enclose in *. ss. rewrite H3 in *. erewrite <- Mod.get_modsem_Proper; et. des_ifs.
+    unfold Mod.wf in *. admit "Remove P".
 Qed.
 
 Global Program Instance ModSem_Ref_PreOrder: PreOrder ((⊑)).
@@ -155,81 +131,107 @@ Qed.
 
 Global Program Instance ModSem_EpsFacts: EpsFacts.
 Next Obligation.
-  upt. des_ifs. refl.
+  rr. ss. rewrite Sk.add_unit_r. esplits; try refl. ii. upt. des_ifs.
 Qed.
 Next Obligation.
-  upt. des_ifs. refl.
+  rr. ss. rewrite Sk.add_unit_l. esplits; try refl. ii. upt. des_ifs.
 Qed.
 Next Obligation.
-  upt. des_ifs.
+  rr. ss. esplits; try refl.
 Qed.
 
-(*
-a ⊑ a'
-b ⊑ b'
-a + b ⊑ a' + b'
-
-∀ c. (c + a) ⊑B (c + a')
-∀ c. (c + b) ⊑B (c + b')
-∀ c. (c + a + b) ⊑B (c + a' + b')
-
-
-
-Q: should a ⊑ a' denote both
-(1) ∀ c. (c + a) ⊑B (c + a')
-and
-(2) a ⊑B a'
-?
-
-Even without proper ε, we can derive (2) from (1) using ε' with the following:
-ε' + a ⊒⊑B a.
-
-Let us try without proper ε, and see what happens
-TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTttt
-*)
-Global Program Instance ModSem_RefFacts: RefFacts (T:=ModSem.t).
+Global Program Instance Mod_RefFacts: RefFacts (T:=Mod.t).
 Next Obligation.
   do 3 r. i.
-  unfold ref, ModSem.ref in *.
+  unfold ref, Mod.ref in *.
   i. rewrite oplus_assoc_weak. rewrite H0.
   rewrite oplus_comm_weak. rewrite oplus_assoc_weak. rewrite H.
   rewrite oplus_assoc_weak2. rewrite oplus_comm_weak.
   rewrite oplus_assoc_weak2. refl.
 Qed.
-
-Global Program Instance ModSem_EquivFacts: EquivFacts (T:=ModSem.t).
 Next Obligation.
-  econs.
-  - ii. upt. des_ifs; try refl.
-  - ii. upt. des_ifs; try sym; et.
-  - ii. upt. des_ifs; etrans; et.
+  ii. des. ss. rr in H. des. esplits; et.
+  - rewrite <- H. ss.
+  - unfold Mod.compile in *. ss.
+    erewrite <- (Mod.get_modsem_Proper ctx); et.
+    2: { rewrite H; refl. }
+    erewrite <- (Mod.get_modsem_Proper y); et.
+    2: { rewrite H. refl. }
+    rewrite <- H3. des_ifs.
+    unfold Mod.wf in *.
+    admit "Remove P".
 Qed.
 
-Global Program Instance pointed_equiv_Proper `{Equiv T}: Proper ((≡) ==> (≡)) just.
-Next Obligation. ii. upt. ss. Qed.
-
-Global Program Instance pointed_ref_Proper `{Ref T}: Proper ((⊑) ==> (⊑)) just.
-Next Obligation. do 3 r. i. ss. Qed.
-
-Global Program Instance pointed_ref_both_Proper `{Ref T}: Proper ((⊒⊑) ==> (⊒⊑)) just.
-Next Obligation. ii. upt. ss. Qed.
-
-Global Program Instance ModSem_MRA: MRA.t := {
-  car := ModSem.t;
+Global Program Instance Mod_MRA: MRA.t := {
+  car := Mod.t;
 }.
 Next Obligation.
   econs.
   - i. cut ( | |a| | ≡ |a| ).
     { intro T. rewrite T. refl. }
-    upt. des_ifs; try refl. erewrite ModSem.core_idemp. refl.
-  - i. upt. des_ifs; try refl. erewrite ModSem.core_oplus. refl.
-  - ii. upt. des_ifs. rr in H.  rr. des. esplits; et.
-    eapply Forall2_apply_Forall2; et. ii. ss. des_ifs. ss. des. clarify.
-    esplits; ss. ii.
-  (* (| i1 |) x ≈ (| i2 |) x *)
-    admit "ez".
+    rr. ss. esplits; try refl. i. set (Mod.get_modsem a sk0) as tmp.
+    admit "Make equiv".
+  - admit "Make equiv".
+  - ii. rr in H. des. rr. esplits; ss; try refl. ii. rewrite H0; ss.
 Qed.
 Next Obligation.
+  ii. des. ss. rewrite Sk.add_unit_r. esplits.
+  { eapply Sk.wf_mon; et. rr. esplits; refl. }
+  assert(T:=MRA.affinity). ss. do 4 r in T. ss.
+  rewrite <- ModSem_Mod_compile in H1. ss. eapply T in H1. clear T.
+  rewrite <- ModSem_Mod_compile. ss.
+  assert(U: (Mod.get_modsem ctx (Mod.sk ctx ⊕ Mod.sk a) ⊕ ε) ⊑B (Mod.get_modsem ctx (Mod.sk ctx ⊕ Sk.unit) ⊕ ε)).
+  { rewrite ! eps_r.
+    rewrite Mod.get_modsem_affine; et; try refl.
+    { rewrite Sk.add_unit_r. rr. esplits; refl. }
+  }
+  eapply U.
+  replace (Mod.wf (ctx ⊕ ε)) with (Mod.wf (ctx ⊕ a)) by admit "Remove P".
+  ss.
+Qed.
+Next Obligation.
+  ii. des. ss. esplits; ss.
+  { rewrite Sk.add_unit_r; ss. }
+  assert(U: (Mod.get_modsem a (Mod.sk ctx ⊕ Mod.sk a)) ⊑ (Mod.get_modsem (a ⊕ |a| ) (Mod.sk ctx ⊕ Mod.sk a))).
+  { ss.
+    etrans.
+    { erewrite (MRA.bar_intro (t:=ModSem_MRA)). refl. }
+    refl.
+  }
+  eapply ModSem_ref_refB in U. unfold Mod.compile, Mod.enclose. ss. rewrite Sk.add_unit_r. des_ifs.
+  { upt. des_ifs. eapply U.
+  }
+  assert(U: (Mod.get_modsem (ctx ⊕ a) (Mod.sk ctx ⊕ Mod.sk a)) ⊑B (Mod.get_modsem (ctx ⊕ (a ⊕ |a| )) (Mod.sk ctx ⊕ Mod.sk a))).
+  { rewrite MRA.bar_intro.
+    rewrite Mod.get_modsem_affine; et; try refl.
+    { rewrite Sk.add_unit_r. rr. esplits; refl. }
+  }
+  { eapply Sk.wf_mon; et. rr. esplits; refl. }
+  assert(T:=MRA.affinity). ss. do 4 r in T. ss.
+  rewrite <- ModSem_Mod_compile in H1. ss. eapply T in H1. clear T.
+  rewrite <- ModSem_Mod_compile. ss.
+  assert(U: (Mod.get_modsem ctx (Mod.sk ctx ⊕ Mod.sk a) ⊕ ε) ⊑B (Mod.get_modsem ctx (Mod.sk ctx ⊕ Sk.unit) ⊕ ε)).
+  { rewrite ! eps_r.
+    rewrite Mod.get_modsem_affine; et; try refl.
+    { rewrite Sk.add_unit_r. rr. esplits; refl. }
+  }
+  eapply U.
+  replace (Mod.wf (ctx ⊕ ε)) with (Mod.wf (ctx ⊕ a)) by admit "Remove P".
+  ss.
+Qed.
+Next Obligation.
+  ii. des. ss. rewrite Sk.add_unit_r. esplits.
+  { eapply Sk.wf_mon; et. rr. esplits; refl. }
+  assert(T:=MRA.affinity). ss. do 4 r in T. ss.
+  rewrite <- ModSem_Mod_compile. ss. eapply T. clear T.
+  rewrite <- ModSem_Mod_compile in H1. ss.
+  replace (Mod.wf (ctx ⊕ ε)) with (Mod.wf (ctx ⊕ a)) by admit "Remove P".
+  eapply Mod.get_modsem_affine; et.
+  { rr. esplits. rewrite Sk.add_comm. refl. }
+  2: {
+  rewrite Sk.add_unit_r. rp; et.
+  rr.
+  upt.
   do 2 r. i. upt. des_ifs; ss; clear_tac.
   - eapply ModSemPair.adequacy_whole. ss.
     econs.

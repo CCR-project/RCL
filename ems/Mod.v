@@ -30,7 +30,7 @@ Section MOD.
   Definition wf (md: t): Prop := (<<SK: Sk.wf (md.(sk))>>).
   (* Definition wf (md: t): Prop := (<<WF: ModSem.wf md.(enclose)>> /\ <<SK: Sk.wf (md.(sk))>>). *)
 
-  Global Program Instance bar: Bar t := fun (md: t) => mk (fun sk => |(md.(get_modsem) sk)| ) md.(sk) _ _ _.
+  Global Program Instance bar: Bar t := fun (md: t) => mk (fun sk => |(md.(get_modsem) sk)| ) Sk.unit _ _ _.
   Next Obligation.
     erewrite get_modsem_Proper; et.
   Qed.
@@ -109,7 +109,8 @@ Section MOD.
 
   Global Program Instance refb: RefB t :=
     fun md_tgt md_src =>
-      forall `{EMSConfig}, Beh.of_program (compile md_tgt) <1= Beh.of_program (compile md_src)
+      (<<REF: forall `{EMSConfig} tr, (Sk.wf md_tgt.(sk) /\ Beh.of_program (compile md_tgt) tr) ->
+                                      (Sk.wf md_src.(sk) /\ Beh.of_program (compile md_src) tr)>>)
   .
 
   Global Program Instance ref: Ref t :=
