@@ -93,6 +93,18 @@ Next Obligation.
   - ii. rewrite H1. rewrite H2. refl.
 Qed.
 
+Global Program Instance Mod_OPlusFactsWeak2: OPlusFactsWeak (T:=Mod.t) (H1:=Mod.refb).
+Next Obligation.
+  eapply GSimMod.
+  { ss. eapply Sk.add_comm; et. }
+  i. ss. rewrite oplus_comm_weak. refl.
+Qed.
+Next Obligation.
+  eapply GSimMod.
+  { ss. rewrite Sk.add_assoc; et. refl. }
+  i. ss. rewrite oplus_assoc_weak. refl.
+Qed.
+
 Global Program Instance Mod_ref_refB: subrelation (⊑) ((⊑B)).
 Next Obligation.
   ii. rr in H. des. specialize (H ε _ tr). ss.
@@ -190,116 +202,27 @@ Next Obligation.
   ss.
 Qed.
 Next Obligation.
+  do 2 r. i. etrans.
+  2: { eapply (@oplus_assoc_weak2); try apply Mod_OPlusFactsWeak2. eapply refb_Preorder. }
   ii. des. ss. esplits; ss.
   { rewrite Sk.add_unit_r; ss. }
+  set (Mod.sk ctx ⊕ Mod.sk a) as sk. folder.
   assert(U: (Mod.get_modsem a (Mod.sk ctx ⊕ Mod.sk a)) ⊑ (Mod.get_modsem (a ⊕ |a| ) (Mod.sk ctx ⊕ Mod.sk a))).
   { ss.
     etrans.
     { erewrite (MRA.bar_intro (t:=ModSem_MRA)). refl. }
     refl.
   }
-  eapply ModSem_ref_refB in U. unfold Mod.compile, Mod.enclose. ss. rewrite Sk.add_unit_r. des_ifs.
-  { upt. des_ifs. eapply U.
+  assert(V: (Mod.get_modsem (ctx ⊕ a) sk) ⊑B (Mod.get_modsem (ctx ⊕ a ⊕ |a| ) sk)).
+  { do 2 r in U. ss. folder.
+    etrans.
+    { eapply U. }
+    rewrite oplus_assoc_weak. refl.
   }
-  assert(U: (Mod.get_modsem (ctx ⊕ a) (Mod.sk ctx ⊕ Mod.sk a)) ⊑B (Mod.get_modsem (ctx ⊕ (a ⊕ |a| )) (Mod.sk ctx ⊕ Mod.sk a))).
-  { rewrite MRA.bar_intro.
-    rewrite Mod.get_modsem_affine; et; try refl.
-    { rewrite Sk.add_unit_r. rr. esplits; refl. }
-  }
-  { eapply Sk.wf_mon; et. rr. esplits; refl. }
-  assert(T:=MRA.affinity). ss. do 4 r in T. ss.
-  rewrite <- ModSem_Mod_compile in H1. ss. eapply T in H1. clear T.
-  rewrite <- ModSem_Mod_compile. ss.
-  assert(U: (Mod.get_modsem ctx (Mod.sk ctx ⊕ Mod.sk a) ⊕ ε) ⊑B (Mod.get_modsem ctx (Mod.sk ctx ⊕ Sk.unit) ⊕ ε)).
-  { rewrite ! eps_r.
-    rewrite Mod.get_modsem_affine; et; try refl.
-    { rewrite Sk.add_unit_r. rr. esplits; refl. }
-  }
-  eapply U.
-  replace (Mod.wf (ctx ⊕ ε)) with (Mod.wf (ctx ⊕ a)) by admit "Remove P".
+  rewrite <- ModSem_Mod_compile. ss. rewrite Sk.add_unit_r. folder.
+  eapply V.
+  replace (Mod.wf (ctx ⊕ a ⊕ ( |a| ))) with (Mod.wf (ctx ⊕ a)) by admit "Remove P".
   ss.
-Qed.
-Next Obligation.
-  ii. des. ss. rewrite Sk.add_unit_r. esplits.
-  { eapply Sk.wf_mon; et. rr. esplits; refl. }
-  assert(T:=MRA.affinity). ss. do 4 r in T. ss.
-  rewrite <- ModSem_Mod_compile. ss. eapply T. clear T.
-  rewrite <- ModSem_Mod_compile in H1. ss.
-  replace (Mod.wf (ctx ⊕ ε)) with (Mod.wf (ctx ⊕ a)) by admit "Remove P".
-  eapply Mod.get_modsem_affine; et.
-  { rr. esplits. rewrite Sk.add_comm. refl. }
-  2: {
-  rewrite Sk.add_unit_r. rp; et.
-  rr.
-  upt.
-  do 2 r. i. upt. des_ifs; ss; clear_tac.
-  - eapply ModSemPair.adequacy_whole. ss.
-    econs.
-    { instantiate (1:=top2). ss. }
-    2: { instantiate (2:=unit). instantiate (1:=fun _ '(st_src, st_tgt) => exists ste, st_tgt = Any.pair st_src ste).
-         ss. esplits; ss; et. }
-    i. ss. esplits; et.
-    { rewrite in_app_iff. left. rewrite in_map_iff. esplits; et. ss. }
-    ii. des_u. clarify. des. subst.
-    abstr (f_src y) itr. clear_tac. clear FINDS. clear_tac.
-    eapply sim_itree_fsubset with []; ss.
-    {
-      clear_tac. revert mrs_src ste itr. ginit. gcofix CIH. i.
-      ides itr; my_steps.
-      + rr. esplits; ss; et.
-      + gstep. econs; et. gbase. eapply CIH.
-      + destruct e.
-        { destruct c; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-        destruct s.
-        { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-        { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-    }
-  - eapply ModSemPair.adequacy_unit.
-Qed.
-Next Obligation.
-  upt. des_ifs; ss; try refl.
-  eapply ModSemPair.adequacy. ss.
-  econs.
-  { instantiate (1:=top2). ss. }
-  2: { instantiate (2:=unit). instantiate (1:=fun _ '(st_src, st_tgt) => exists _st, st_src = Any.pair st_tgt _st).
-       ss. esplits; ss; et. }
-  i. ss. rewrite List.map_map in *. rewrite in_app_iff in *. des.
-  { rewrite in_map_iff in *. des. destruct x as [fn0 itr]; ss. clarify.
-    esplits; et.
-    ii. des; subst. des_u. abstr (itr y) itr0.
-    clear FINDS0. clear_tac.
-    eapply sim_itree_fsubset with []; ss.
-    {
-      clear_tac. revert mrs_tgt _st itr0. ginit. gcofix CIH. i.
-      ides itr0; my_steps.
-      + rr. esplits; ss; et.
-      + gstep. econs; et. gbase. eapply CIH.
-      + destruct e.
-        { destruct c; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-        destruct s.
-        { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-        { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-    }
-  }
-  { rewrite in_map_iff in *. des. destruct x as [fn0 itr]; ss. clarify. esplits; et.
-    ii. des; subst. des_u. unfold bar, ktree_Bar. abstr (itr y) itr0. unfold bar, itree_Bar.
-    clear FINDS0. clear_tac.
-    eapply sim_itree_fsubset with []; ss.
-    {
-      clear_tac. revert mrs_tgt _st itr0. ginit. gcofix CIH. i.
-      ides itr0; my_steps.
-      + rr. esplits; ss; et.
-      + gstep. econs; et. gbase. eapply CIH.
-      + destruct e.
-        { destruct c; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-        destruct s.
-        { destruct p; rewrite <- ! bind_trigger; resub; my_steps.
-          - (*** FIXME ***) unfold core_h. unfold triggerUB. my_steps.
-          - (*** FIXME ***) unfold core_h. unfold triggerUB. my_steps.
-        }
-        { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-    }
-  }
 Qed.
 
 End FACTS.

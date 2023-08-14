@@ -59,7 +59,6 @@ Module Sk.
     add_assoc: forall a b c, a ⊕ (b ⊕ c) = (a ⊕ b) ⊕ c;
     add_unit_l: forall a, unit ⊕ a = a;
     add_unit_r: forall a, a ⊕ unit = a;
-    wf_comm: forall a b, wf (a ⊕ b) -> wf (b ⊕ a);
     unit_wf: wf unit;
     wf_equiv:> Proper ((≡) ==> impl) wf;
     add_equiv:> Proper ((≡) ==> (≡) ==> (≡)) add;
@@ -67,6 +66,11 @@ Module Sk.
     wf_mon: forall a b, extends a b -> wf b -> wf a;
   }
   .
+
+  Theorem wf_comm `{ld}: forall a b, wf (a ⊕ b) -> wf (b ⊕ a).
+  Proof.
+    i. rewrite add_comm; ss.
+  Qed.
 
   Global Program Instance add_OPlus `{ld}: OPlus t := add.
 
@@ -110,7 +114,7 @@ Module Sk.
 
   Program Definition gdefs: ld :=
     @mk (alist gname gdef) (@Permutation _) _ nil (@List.app _)
-      (fun sk => @List.NoDup _ (List.map fst sk)) _ _ _ _ _ _ _ _ _.
+      (fun sk => @List.NoDup _ (List.map fst sk)) _ _ _ _ _ _ _ _.
   Next Obligation.
     eapply Permutation_app_comm.
     (* econs; ii; ss. *)
@@ -125,12 +129,6 @@ Module Sk.
   Proof.
     unfold oplus.
     rewrite List.app_nil_r. auto.
-  Qed.
-  Next Obligation.
-  Proof.
-    i. eapply Permutation.Permutation_NoDup; [|et].
-    eapply Permutation.Permutation_map.
-    apply Permutation.Permutation_app_comm.
   Qed.
   Next Obligation.
   Proof.
