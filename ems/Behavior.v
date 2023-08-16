@@ -382,3 +382,12 @@ Hint Resolve Beh.state_spin_mon: paco.
 Hint Constructors Beh._of_state.
 Hint Unfold Beh.of_state.
 Hint Resolve Beh.of_state_mon: paco.
+
+Lemma semantics_UB_spec: Beh.of_program semantics_UB Tr.ub.
+Proof. i. pfold. econsr; ss. Qed.
+Lemma semantics_NB_spec: forall tr, Beh.of_program semantics_NB tr -> tr = Tr.nb.
+Proof.
+  i. punfold H. inv H; ss.
+  + punfold SPIN. inv SPIN; ss. des; subst. ss.
+  + rr in STEP. des; ss.
+Qed.

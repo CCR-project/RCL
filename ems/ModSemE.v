@@ -185,12 +185,9 @@ Section EVENTS.
                 end
   .
 
-  Definition core: itree Es ~> itree Es :=
-    fun _ itr =>
-      interp (case_ trivial_Handler (case_ core_h trivial_Handler)) itr
+  Global Program Instance itree_Bar {R}: Bar (itree Es R) :=
+    fun itr => interp (case_ trivial_Handler (case_ core_h trivial_Handler)) itr
   .
-
-  Global Program Instance itree_Bar {R}: Bar (itree Es R) := @core R.
   Global Program Instance ktree_Bar {R S}: Bar (ktree Es R S) := fun ktr x => |ktr x|.
 
   Definition focus_left: itree Es ~> itree Es :=
@@ -202,6 +199,12 @@ Section EVENTS.
     fun _ itr =>
       interp (case_ trivial_Handler (case_ focus_right_h trivial_Handler)) itr
   .
+
+
+  Global Program Instance bar_Proper {R}: Proper (A:=itree Es R -> itree Es R) ((≈) ==> (≈)) ( |-| ).
+  Next Obligation.
+    ii. unfold bar, itree_Bar. eapply eutt_interp; ss. ii. refl.
+  Qed.
 
 
 
@@ -600,123 +603,123 @@ Section EVENTS.
 
 
 
-  Lemma core_bind
+  Lemma bar_bind
         A B
         (itr: itree Es A) (ktr: A -> itree Es B)
     :
-      core (itr >>= ktr) = a <- (core itr);; (core (ktr a))
+      bar (itr >>= ktr) = a <- (bar itr);; (bar (ktr a))
   .
-  Proof. unfold core. grind. Qed.
+  Proof. unfold bar, itree_Bar. grind. Qed.
 
-  Lemma core_tau
+  Lemma bar_tau
         A
         (itr: itree Es A)
     :
-      core (tau;; itr) = tau;; (core itr)
+      bar (tau;; itr) = tau;; (bar itr)
   .
-  Proof. unfold core. grind. Qed.
+  Proof. unfold bar, itree_Bar. grind. Qed.
 
-  Lemma core_ret
+  Lemma bar_ret
         A
         (a: A)
     :
-      core (Ret a) = Ret a
+      bar (Ret a) = Ret a
   .
-  Proof. unfold core. grind. Qed.
+  Proof. unfold bar, itree_Bar. grind. Qed.
 
-  Lemma core_callE
+  Lemma bar_callE
         fn args
     :
-      core (trigger (Call fn args)) =
+      bar (trigger (Call fn args)) =
       r <- (trigger (Call fn args));;
       tau;; Ret r
   .
-  Proof. unfold core. rewrite unfold_interp. ss. grind. Qed.
+  Proof. unfold bar, itree_Bar. rewrite unfold_interp. ss. grind. Qed.
 
-  Lemma core_pE
+  Lemma bar_pE
         T (e: pE T)
     :
-      core (trigger e) = r <- (core_h e);; tau;; Ret r
+      bar (trigger e) = r <- (core_h e);; tau;; Ret r
   .
-  Proof. dependent destruction e; ss; unfold core; rewrite unfold_interp; ss; grind. Qed.
+  Proof. dependent destruction e; ss; unfold bar, itree_Bar; rewrite unfold_interp; ss; grind. Qed.
 
-  Lemma core_eventE
+  Lemma bar_eventE
         T (e: eventE T)
     :
-      core (trigger e) = r <- trigger e;; tau;; Ret r
+      bar (trigger e) = r <- trigger e;; tau;; Ret r
   .
-  Proof. dependent destruction e; ss; unfold core; rewrite unfold_interp; ss; grind. Qed.
+  Proof. dependent destruction e; ss; unfold bar, itree_Bar; rewrite unfold_interp; ss; grind. Qed.
 
-  Lemma core_triggerUB
+  Lemma bar_triggerUB
         T
     :
-      core (triggerUB: itree _ T) = triggerUB
+      bar (triggerUB: itree _ T) = triggerUB
   .
-  Proof. unfold triggerUB. unfold core; rewrite unfold_interp; ss; grind. Qed.
+  Proof. unfold triggerUB. unfold bar, itree_Bar; rewrite unfold_interp; ss; grind. Qed.
 
-  Lemma core_triggerNB
+  Lemma bar_triggerNB
         T
     :
-      core (triggerNB: itree _ T) = triggerNB
+      bar (triggerNB: itree _ T) = triggerNB
   .
-  Proof. unfold triggerNB. unfold core; rewrite unfold_interp; ss; grind. Qed.
+  Proof. unfold triggerNB. unfold bar, itree_Bar; rewrite unfold_interp; ss; grind. Qed.
 
 
-  Lemma core_unwrapU
+  Lemma bar_unwrapU
         R (r: option R)
     :
-      core (unwrapU r) = unwrapU r
+      bar (unwrapU r) = unwrapU r
   .
   Proof.
     unfold unwrapU. des_ifs.
-    - rewrite core_ret. grind.
-    - rewrite core_triggerUB. unfold triggerUB. grind.
+    - rewrite bar_ret. grind.
+    - rewrite bar_triggerUB. unfold triggerUB. grind.
   Qed.
 
-  Lemma core_unwrapN
+  Lemma bar_unwrapN
         R (r: option R)
     :
-      core (unwrapN r) = unwrapN r
+      bar (unwrapN r) = unwrapN r
   .
   Proof.
     unfold unwrapN. des_ifs.
-    - rewrite core_ret. grind.
-    - rewrite core_triggerNB. unfold triggerNB. grind.
+    - rewrite bar_ret. grind.
+    - rewrite bar_triggerNB. unfold triggerNB. grind.
   Qed.
 
-  Lemma core_assume
+  Lemma bar_assume
         (P: Prop)
     :
-      core (assume P) = assume P;;; tau;; Ret (tt)
+      bar (assume P) = assume P;;; tau;; Ret (tt)
   .
   Proof.
     unfold assume.
-    repeat (try rewrite core_bind; try rewrite bind_bind). grind.
-    rewrite core_eventE.
-    repeat (try rewrite core_bind; try rewrite bind_bind). grind.
-    rewrite core_ret.
+    repeat (try rewrite bar_bind; try rewrite bind_bind). grind.
+    rewrite bar_eventE.
+    repeat (try rewrite bar_bind; try rewrite bind_bind). grind.
+    rewrite bar_ret.
     refl.
   Qed.
 
-  Lemma core_guarantee
+  Lemma bar_guarantee
         (P: Prop)
     :
-      core (guarantee P) = guarantee P;;; tau;; Ret (tt)
+      bar (guarantee P) = guarantee P;;; tau;; Ret (tt)
   .
   Proof.
     unfold guarantee.
-    repeat (try rewrite core_bind; try rewrite bind_bind). grind.
-    rewrite core_eventE.
-    repeat (try rewrite core_bind; try rewrite bind_bind). grind.
-    rewrite core_ret.
+    repeat (try rewrite bar_bind; try rewrite bind_bind). grind.
+    rewrite bar_eventE.
+    repeat (try rewrite bar_bind; try rewrite bind_bind). grind.
+    rewrite bar_ret.
     refl.
   Qed.
 
-  Lemma core_ext
+  Lemma bar_ext
         R (itr0 itr1: itree _ R)
         (EQ: itr0 = itr1)
     :
-      core itr0 = core itr1
+      bar itr0 = bar itr1
   .
   Proof. subst; refl. Qed.
 

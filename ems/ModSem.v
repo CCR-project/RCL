@@ -75,23 +75,23 @@ Section AUX.
       (mk_box focus_right_ext)
   .
 
-  Global Program Instance core_rdb: red_database (mk_box (@core)) :=
+  Global Program Instance core_rdb: red_database (mk_box (@bar)) :=
     mk_rdb
       0
-      (mk_box core_bind)
-      (mk_box core_tau)
-      (mk_box core_ret)
-      (mk_box core_pE)
-      (mk_box core_pE)
-      (mk_box core_callE)
-      (mk_box core_eventE)
-      (mk_box core_triggerUB)
-      (mk_box core_triggerNB)
-      (mk_box core_unwrapU)
-      (mk_box core_unwrapN)
-      (mk_box core_assume)
-      (mk_box core_guarantee)
-      (mk_box core_ext)
+      (mk_box bar_bind)
+      (mk_box bar_tau)
+      (mk_box bar_ret)
+      (mk_box bar_pE)
+      (mk_box bar_pE)
+      (mk_box bar_callE)
+      (mk_box bar_eventE)
+      (mk_box bar_triggerUB)
+      (mk_box bar_triggerNB)
+      (mk_box bar_unwrapU)
+      (mk_box bar_unwrapN)
+      (mk_box bar_assume)
+      (mk_box bar_guarantee)
+      (mk_box bar_ext)
   .
 
 End AUX.
@@ -99,7 +99,7 @@ End AUX.
 Theorem core_idemp {R}: forall (itr: itree _ R), | | itr | | ≈ | itr | .
 Proof.
   i.
-  unfold bar, itree_Bar, core.
+  unfold bar, itree_Bar.
   rewrite interp_interp.
   eapply eutt_interp; try refl.
   ii.
@@ -428,7 +428,7 @@ Section MODSEM.
   Lemma core_idemp: forall ms0, | |ms0| | ≡ |ms0|.
   Proof.
     i.
-    unfold Algebra.bar, bar, core.
+    unfold Algebra.bar, bar.
     ss. rr. esplits; ss.
     rewrite ! List.map_map.
     eapply Forall2_apply_Forall2.
@@ -440,7 +440,7 @@ Section MODSEM.
   Lemma core_oplus: forall ms0 ms1, |ms0 ⊕ ms1| ≡ |ms0| ⊕ |ms1|.
   Proof.
     i.
-    unfold Algebra.bar, bar, core, Algebra.oplus. ss.
+    unfold Algebra.bar, bar, Algebra.oplus. ss.
     ss. rr. esplits; ss.
     rewrite ! List.map_map.
     rewrite ! List.map_app.
@@ -449,7 +449,7 @@ Section MODSEM.
       eapply Forall2_apply_Forall2.
       { refl. }
       ii; ss. subst. des_ifs. destruct b; ss. clarify. esplits; ss.
-      i. unfold focus_left, Algebra.bar, ktree_Bar, Algebra.bar, itree_Bar, Events.core.
+      i. unfold focus_left, Algebra.bar, ktree_Bar, Algebra.bar, itree_Bar.
       rewrite ! interp_interp. eapply eutt_interp; try refl. ii. ss.
       unfold trivial_Handler.
       destruct a.
@@ -467,7 +467,7 @@ Section MODSEM.
       eapply Forall2_apply_Forall2.
       { refl. }
       ii; ss. subst. des_ifs. destruct b; ss. clarify. esplits; ss.
-      i. unfold focus_right, Algebra.bar, ktree_Bar, Algebra.bar, itree_Bar, Events.core.
+      i. unfold focus_right, Algebra.bar, ktree_Bar, Algebra.bar, itree_Bar.
       rewrite ! interp_interp. eapply eutt_interp; try refl. ii. ss.
       unfold trivial_Handler.
       destruct a.

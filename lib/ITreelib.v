@@ -664,3 +664,6 @@ Ltac simpl_euttge :=
     | [H: _ ≳ _ >>= _ |- _ ] => apply euttge_vis_inv in H
     end; des; subst
 .
+
+Notation "≈" := (eutt eq) (at level 70).
+Notation "a ≈ b" := (eutt a b) (at level 70).

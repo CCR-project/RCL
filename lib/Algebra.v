@@ -95,6 +95,10 @@ Class BarFactsWeak `{Equiv T, Bar T, OPlus T, Ref T} := {
     bar_Proper_weak:> Proper ((≡) ==> (≡)) (|-|);
 }.
 
+Global Program Instance BarFactsWeaken `{Equiv T, Bar T, OPlus T, Ref T, !EquivFacts, !BarFacts, !RefFacts}: BarFactsWeak.
+Next Obligation. rewrite bar_idemp. refl. Qed.
+Next Obligation. rewrite bar_oplus. refl. Qed.
+
 (* Class OPlusFacts `{Equiv T, OPlus T, Ref T} `{EQVF: EquivFacts T} `{@RefFacts _ _ EQVF _ _} := { *)
 Class OPlusFacts `{Equiv T, OPlus T} := {
     oplus_comm: forall (a b: T), a ⊕ b ≡ b ⊕ a;
@@ -107,6 +111,10 @@ Class OPlusFactsWeak `{Equiv T, OPlus T, Ref T} := {
     oplus_assoc_weak: forall a b c, a ⊕ (b ⊕ c) ⊑ (a ⊕ b) ⊕ c;
     oplus_Proper_weak:> Proper ((≡) ==> (≡) ==> (≡)) ((⊕));
 }.
+
+Global Program Instance OPlusFactsWeaken `{Equiv T, OPlus T, Ref T, !EquivFacts, !OPlusFacts, !RefFacts}: OPlusFactsWeak.
+Next Obligation. rewrite oplus_comm. refl. Qed.
+Next Obligation. rewrite oplus_assoc. refl. Qed.
 
 Lemma oplus_assoc_weak2 `{Equiv T, OPlus T, Ref T, !OPlusFactsWeak, !PreOrder ((⊑))}: forall a b c, (a ⊕ b) ⊕ c ⊑ a ⊕ (b ⊕ c).
 Proof.

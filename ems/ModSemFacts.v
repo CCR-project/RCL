@@ -254,21 +254,23 @@ Next Obligation. do 3 r. i. ss. Qed.
 Global Program Instance pointed_ref_both_Proper `{Ref T}: Proper ((⊒⊑) ==> (⊒⊑)) just.
 Next Obligation. ii. upt. ss. Qed.
 
+Global Program Instance ModSem_BarFacts: BarFacts (T:=ModSem.t).
+Next Obligation.
+  upt. des_ifs; try refl. erewrite ModSem.core_idemp. refl.
+Qed.
+Next Obligation.
+  upt. des_ifs; try refl. erewrite ModSem.core_oplus. refl.
+Qed.
+Next Obligation.
+  ii. upt. des_ifs. rr in H.  rr. des. esplits; et.
+  eapply Forall2_apply_Forall2; et. ii. ss. des_ifs. ss. des. clarify.
+  esplits; ss. ii.
+  eapply bar_Proper. ss.
+Qed.
+  
 Global Program Instance ModSem_MRA: MRA.t := {
   car := ModSem.t;
 }.
-Next Obligation.
-  econs.
-  - i. cut ( | |a| | ≡ |a| ).
-    { intro T. rewrite T. refl. }
-    upt. des_ifs; try refl. erewrite ModSem.core_idemp. refl.
-  - i. upt. des_ifs; try refl. erewrite ModSem.core_oplus. refl.
-  - ii. upt. des_ifs. rr in H.  rr. des. esplits; et.
-    eapply Forall2_apply_Forall2; et. ii. ss. des_ifs. ss. des. clarify.
-    esplits; ss. ii.
-  (* (| i1 |) x ≈ (| i2 |) x *)
-    admit "ez".
-Qed.
 Next Obligation.
   do 2 r. i. upt. des_ifs; ss; clear_tac.
   - eapply ModSemPair.adequacy_whole. ss.
@@ -320,7 +322,7 @@ Next Obligation.
     }
   }
   { rewrite in_map_iff in *. des. destruct x as [fn0 itr]; ss. clarify. esplits; et.
-    ii. des; subst. des_u. unfold bar, ktree_Bar. abstr (itr y) itr0. unfold bar, itree_Bar.
+    ii. des; subst. des_u. unfold bar, ktree_Bar. abstr (itr y) itr0.
     clear FINDS0. clear_tac.
     eapply sim_itree_fsubset with []; ss.
     {
