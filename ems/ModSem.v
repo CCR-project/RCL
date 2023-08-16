@@ -247,8 +247,7 @@ Section MODSEM.
 
   Definition initial_p_state: p_state := ms.(initial_st).
 
-  Definition initial_itr (P: Prop): itree (eventE) Any.t :=
-    guarantee (<<WF: P>>);;;
+  Definition initial_itr: itree (eventE) Any.t :=
     snd <$> interp_Es prog (prog (Call "main" initial_arg)) (initial_p_state).
 
 
@@ -391,8 +390,7 @@ Section MODSEM.
   Next Obligation. inv STEP; ss. Qed.
   Next Obligation. inv STEP; ss. Qed.
 
-  Definition compile P: semantics :=
-    compile_itree (initial_itr P).
+  Definition compile: semantics := compile_itree (initial_itr).
 
   (* Program Definition interp_no_forge: semantics := {| *)
   (*   STS.state := state; *)
@@ -405,49 +403,18 @@ Section MODSEM.
   (* Next Obligation. inv STEP; ss. Qed. *)
   (* Next Obligation. inv STEP; ss. Qed. *)
 
-  Lemma initial_itr_not_wf P
-        (WF: ~ P)
-        tr
-        (BEH: Beh.of_program (compile_itree (initial_itr P)) tr)
-    :
-      tr = Tr.nb.
-  Proof.
-    punfold BEH. inv BEH; ss.
-    - punfold SPIN. inv SPIN; ss. des; ss. unfold initial_itr in STEP0. unfold guarantee in *. inv STEP0; ss; csc.
-      { irw in H0; csc. }
-      { irw in H0; csc. }
-      { irw in H0; csc. }
-      { rewrite <- bind_trigger in H0. irw in H0. simpl_depind. }
-    - inv STEP. des. subst; ss. unfold initial_itr, guarantee in STEP. inv STEP; ss; csc.
-      { irw in H0; csc. }
-      { irw in H0; csc. }
-      { irw in H0; csc. }
-  Qed.
-
-  Lemma compile_not_wf P
-        (WF: ~ P)
-        tr
-        (BEH: Beh.of_program (compile P) tr)
-    :
-      tr = Tr.nb.
-  Proof.
-    eapply initial_itr_not_wf; et.
-  Qed.
-
   End INTERP.
 
-  Definition compile' `{EMSConfig} (ms: t) (P: Prop): semantics :=
+  Definition compile' `{EMSConfig} (ms: t): semantics :=
     match ms with
-    | just ms => compile ms P
-    | _ => if (excluded_middle_informative P)
-           then semantics_UB
-           else semantics_NB
+    | just ms => compile ms
+    | _ => semantics_UB
     end
   .
 
   Global Program Instance refb: RefB t :=
     fun ms_tgt ms_src =>
-      forall `{EMSConfig} P, Beh.of_program (compile' ms_tgt P) <1= Beh.of_program (compile' ms_src P)
+      forall `{EMSConfig}, Beh.of_program (compile' ms_tgt) <1= Beh.of_program (compile' ms_src)
   .
 
   Global Program Instance ref: Ref t :=

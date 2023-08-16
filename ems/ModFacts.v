@@ -39,25 +39,6 @@ Context `{SK: Sk.ld}.
 (*   unfold Mod.compile in *. unfold ModSem.compile' in *. des_ifs; et. *)
 (* Qed. *)
 
-Lemma compile_not_wf
-        `{EMSConfig}
-        md tr
-        (WF: ~ Mod.wf md)
-        (TR: Beh.of_program (Mod.compile md) tr)
-  :
-  tr = Tr.nb
-.
-Proof.
-  unfold Mod.compile in *. des_ifs; ss.
-  - eapply ModSem.compile_not_wf; et.
-  - punfold TR. inv TR; ss; csc.
-    + punfold SPIN. inv SPIN; ss; csc. des; subst. ss.
-    + rr in STEP. des; ss.
-Qed.
-
-Lemma ModSem_Mod_compile `{EMSConfig} md: ModSem.compile' (Mod.enclose md) (Mod.wf md) = Mod.compile md.
-Proof. ss. Qed.
-
 Theorem GSimMod
   md0 md1
   (SIMSK: md0.(Mod.sk) ≡ md1.(Mod.sk))
@@ -67,7 +48,7 @@ Theorem GSimMod
 .
 Proof.
   destruct (classic (Sk.wf (Mod.sk md1))).
-  2: { ii. eapply compile_not_wf in PR; ss.
+  2: { ii. eapply Mod.compile_not_wf in PR; ss.
        - subst. eapply Beh.nb_bottom.
        - intro T. r in T. des. rewrite SIMSK in T. ss.
   }
@@ -75,9 +56,10 @@ Proof.
   { eapply prop_ext. split; eapply Sk.wf_equiv; et. sym; et. }
   { ii. des. do 2 r in SEM. unfold Mod.enclose in *. unfold ModSem.compile' in *.
     rename x0 into tr.
-    specialize (SEM md0.(Mod.sk) H0 (Mod.wf md0) tr).
+    specialize (SEM md0.(Mod.sk) H0 tr).
     unfold Mod.compile in *. unfold Mod.enclose in *. unfold Mod.wf in *.
-    rewrite T. erewrite Mod.get_modsem_Proper; et.
+    rewrite T.
+    des_ifs_safe. erewrite Mod.get_modsem_Proper; et.
     { sym; et. }
   }
 Qed.
@@ -200,18 +182,19 @@ Next Obligation.
   ii. des. ss.
   destruct (classic (Sk.wf (Mod.sk ctx ⊕ Mod.sk a))).
   2: {
-    eapply compile_not_wf in PR; ss. subst. eapply Beh.nb_bottom.
+    eapply Mod.compile_not_wf in PR; ss. subst. eapply Beh.nb_bottom.
+  }
+  unfold Mod.compile in *. des_ifs.
+  2: { ss. unfold Mod.wf in *. ss. contradict n. rewrite Sk.add_unit_r. eapply Sk.wf_mon; et. r. esplits; refl.
   }
   assert(T:=MRA.affinity). ss. do 4 r in T. ss.
-  rewrite <- ModSem_Mod_compile in PR. ss. eapply T in PR. clear T.
-  rewrite <- ModSem_Mod_compile. ss.
+  eapply T in PR. clear T.
   assert(U: (Mod.get_modsem ctx (Mod.sk ctx ⊕ Mod.sk a) ⊕ ε) ⊑B (Mod.get_modsem ctx (Mod.sk ctx ⊕ Sk.unit) ⊕ ε)).
   { rewrite ! eps_r.
     rewrite Mod.get_modsem_affine; et; try refl.
     { rewrite Sk.add_unit_r. rr. esplits; refl. }
   }
   eapply U.
-  replace (Mod.wf (ctx ⊕ ε)) with (Mod.wf (ctx ⊕ a)) by admit "Remove P".
   ss.
 Qed.
 Next Obligation.

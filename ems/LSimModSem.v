@@ -1611,26 +1611,22 @@ Qed.
 
 Theorem _adequacy_whole
   `{EMSConfig}
-  (P Q: Prop)
   ms_src ms_tgt
   (SIM: ModSemPair._sim ms_src ms_tgt)
-  (WF: P -> Q)
   :
-  (Beh.of_program (ModSem.compile ms_tgt P))
+  (Beh.of_program (ModSem.compile ms_tgt))
   <1=
-    (Beh.of_program (ModSem.compile ms_src Q)).
+    (Beh.of_program (ModSem.compile ms_src)).
 Proof.
   eapply adequacy_global_itree; ss.
   inv SIM.
   des. ginit.
   unfold ModSem.initial_itr, guarantee.
-  steps.
-  force. esplits; et. steps.
-  unfold ITree.map. steps. unfold assume. steps. des.
+  unfold snd, fmap; ss. unfold ITree.map. steps. unfold assume. steps. des.
   exploit sim_fnsems; et.
   { eapply nth_error_In; et. }
   intro U; des. eapply In_nth_error in FINDT. des. force. esplits; et. steps.
-  force. unshelve esplits; et. steps. rewrite x1, FINDT. ss. steps.
+  force. unshelve esplits; et. steps. rewrite x0, FINDT. ss. steps.
   guclo bindC_spec. econs.
   { eapply simg_progress_flag. gfinal. right. eapply adequacy_aux; et. }
   { i. des_ifs. r in SIM0. des; clarify. steps. }
@@ -1669,12 +1665,6 @@ Theorem adequacy_unit
 Proof.
   ii. ss. unfold ModSem.compile' in *. des_ifs; ss.
   - pfold. econsr; ss.
-  - punfold PR. inv PR; ss; csc.
-    + punfold SPIN. inv SPIN; ss; csc. des; ss. pclearbot.
-      unfold ModSem.initial_itr, guarantee in STEP0. irw in STEP0. inv STEP0; ss; csc.
-    + eapply Beh.nb_bottom.
-    + rr in STEP. des. ss. subst.
-      unfold ModSem.initial_itr, guarantee in STEP0. irw in STEP0. inv STEP0; ss; csc.
 Qed.
 
 End ModSemPair.

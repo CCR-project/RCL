@@ -50,12 +50,10 @@ Section MOD.
   Context {CONF: EMSConfig}.
 
   Definition compile (md: t): semantics :=
-    match md.(enclose) with
-    | just ms => ModSem.compile ms (wf md)
-    | _ => if excluded_middle_informative (wf md)
-           then semantics_UB
-           else semantics_NB
-    end.
+    if excluded_middle_informative (wf md)
+    then ModSem.compile' md.(enclose)
+    else semantics_NB
+  .
 
   (* Record wf (md: t): Prop := mk_wf { *)
   (*   wf_sk: Sk.wf md.(sk); *)
@@ -122,6 +120,21 @@ Section MOD.
   .
 
   End REFINE.
+
+  Lemma compile_not_wf
+    `{EMSConfig}
+    md tr
+    (WF: ~ wf md)
+    (TR: Beh.of_program (compile md) tr)
+    :
+    tr = Tr.nb
+  .
+  Proof.
+    unfold compile in *. des_ifs; ss.
+    - punfold TR. inv TR; ss; csc.
+      + punfold SPIN. inv SPIN; ss; csc. des; subst. ss.
+      + rr in STEP. des; ss.
+  Qed.
 
 End MOD.
 End Mod.
