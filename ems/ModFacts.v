@@ -14,7 +14,7 @@ Set Implicit Arguments.
 
 
 
-Section FACTS.
+Section ALGEBRA.
 
 Context `{SK: Sk.ld}.
 
@@ -203,4 +203,4 @@ Next Obligation.
   i. eapply (@MRA.bar_intro ModSem_MRA).
 Qed.
 
-End FACTS.
+End ALGEBRA.

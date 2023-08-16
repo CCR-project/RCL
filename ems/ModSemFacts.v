@@ -14,7 +14,39 @@ Set Implicit Arguments.
 
 
 
-Section FACTS.
+Ltac my_steps :=
+  repeat (esplits; my_red_both;
+          try (guclo sim_itree_indC_spec; first [apply sim_itree_indC_choose_tgt|apply sim_itree_indC_take_src|econs]; et);
+          i; des; ss; subst; et).
+
+Theorem bar_state_irr: forall ms0 ms1, ms0.(ModSem.fnsems) = ms1.(ModSem.fnsems) -> |just ms0| ⊑ |just ms1|.
+Proof.
+  i. eapply ModSemPair.adequacy. ss.
+  econs.
+  { instantiate (1:=top2). ss. }
+  2: { instantiate (2:=unit).
+       instantiate (1:=top2). ss. }
+  i. esplits; ss.
+  { rewrite H. et. }
+  ii. subst. des_u.
+  eapply sim_itree_fsubset with []; ss. clear_tac.
+  rewrite in_map_iff in *. des; ss. destruct x; ss. clarify.
+  clears fn. clear fn. clear_tac.
+  unfold bar, ktree_Bar. ss.
+  abstr (i y) itr. clear_tac.
+  revert mrs_src mrs_tgt itr. ginit. gcofix CIH. i.
+  ides itr; my_steps.
+  + gstep. econs; et. gbase. eapply CIH.
+  + destruct e.
+    { destruct c; rewrite <- ! bind_trigger; resub. my_steps; gstep; econs; et; gbase; eapply CIH. }
+    destruct s.
+    { destruct p; rewrite <- ! bind_trigger; resub; my_steps.
+      - unfold core_h. unfold triggerUB. my_steps.
+      - unfold core_h. unfold triggerUB. my_steps. }
+    { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econsr; et; gbase; eapply CIH. }
+Qed.
+
+Section ALGEBRA.
 
 Global Program Instance ModSem_OPlusFactsWeak: OPlusFactsWeak (T:=ModSem.t).
 Next Obligation.
@@ -36,10 +68,6 @@ Next Obligation.
     clears b. clear b. clear_tac.
     abstr (i y) itr. clear_tac.
     revert st0 st1 itr. ginit. gcofix CIH. i.
-    Ltac my_steps :=
-      repeat (esplits; my_red_both;
-              try (guclo sim_itree_indC_spec; first [apply sim_itree_indC_choose_tgt|apply sim_itree_indC_take_src|econs]; et);
-              i; des; ss; subst; et).
     ides itr; my_steps.
     + rr. esplits; ss; et.
     + gstep. econs; et. gbase. eapply CIH.
@@ -342,4 +370,4 @@ Next Obligation.
   }
 Qed.
 
-End FACTS.
+End ALGEBRA.
