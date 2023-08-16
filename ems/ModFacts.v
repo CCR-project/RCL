@@ -174,6 +174,7 @@ Next Obligation.
   - i. cut ( | |a| | ≡ |a| ).
     { intro T. rewrite T. refl. }
     rr. ss. esplits; try refl. i. set (Mod.get_modsem a sk0) as tmp.
+    rewrite bar_idemp.
     admit "Make equiv".
   - admit "Make equiv".
   - ii. rr in H. des. rr. esplits; ss; try refl. ii. rewrite H0; ss.
