@@ -92,7 +92,7 @@ Section MOD.
   Next Obligation. refl. Qed.
 
   Global Program Instance equiv: Equiv t :=
-    fun md0 md1 => md0.(sk) ≡ md1.(sk) /\ forall sk0, md0.(get_modsem) sk0 = md1.(get_modsem) sk0
+    fun md0 md1 => md0.(sk) ≡ md1.(sk) /\ forall sk0, md0.(get_modsem) sk0 ≡ md1.(get_modsem) sk0
   .
 
   Global Program Instance equiv_Equiv: EquivFacts.

@@ -110,10 +110,10 @@ Qed.
 
 Global Program Instance ModSem_EpsFacts: EpsFacts.
 Next Obligation.
-  rr. ss. rewrite Sk.add_unit_r. esplits; try refl. ii. upt. des_ifs.
+  rr. ss. rewrite Sk.add_unit_r. esplits; try refl. ii. upt. des_ifs. refl.
 Qed.
 Next Obligation.
-  rr. ss. rewrite Sk.add_unit_l. esplits; try refl. ii. upt. des_ifs.
+  rr. ss. rewrite Sk.add_unit_l. esplits; try refl. ii. upt. des_ifs. refl.
 Qed.
 Next Obligation.
   rr. ss. esplits; try refl.
@@ -171,13 +171,13 @@ Global Program Instance Mod_MRA: MRA.t := {
 }.
 Next Obligation.
   econs.
-  - i. cut ( | |a| | ≡ |a| ).
-    { intro T. rewrite T. refl. }
-    rr. ss. esplits; try refl. i. set (Mod.get_modsem a sk0) as tmp.
-    rewrite bar_idemp.
-    admit "Make equiv".
-  - admit "Make equiv".
-  - ii. rr in H. des. rr. esplits; ss; try refl. ii. rewrite H0; ss.
+  - i. eapply equiv_ref_both.
+    rr. ss. esplits; try refl. i. rewrite bar_idemp. refl.
+  - i. eapply equiv_ref_both.
+    rr. ss. esplits; try refl.
+    { rewrite Sk.add_unit_r; refl. }
+    i. rewrite bar_oplus. refl.
+  - ii. rr in H. des. rr. esplits; ss; try refl. ii. rewrite H0; ss. refl.
 Qed.
 Next Obligation.
   ii. des. ss.
