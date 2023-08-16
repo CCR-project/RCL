@@ -52,7 +52,9 @@ Section MOD.
   Definition compile (md: t): semantics :=
     match md.(enclose) with
     | just ms => ModSem.compile ms (wf md)
-    | _ => semantics_UB
+    | _ => if excluded_middle_informative (wf md)
+           then semantics_UB
+           else semantics_NB
     end.
 
   (* Record wf (md: t): Prop := mk_wf { *)
@@ -109,8 +111,9 @@ Section MOD.
 
   Global Program Instance refb: RefB t :=
     fun md_tgt md_src =>
-      (<<REF: forall `{EMSConfig} tr, (Sk.wf md_tgt.(sk) /\ Beh.of_program (compile md_tgt) tr) ->
-                                      (Sk.wf md_src.(sk) /\ Beh.of_program (compile md_src) tr)>>)
+      (* (<<REF: forall `{EMSConfig} tr, (Sk.wf md_tgt.(sk) /\ Beh.of_program (compile md_tgt) tr) -> *)
+      (*                                 (Sk.wf md_src.(sk) /\ Beh.of_program (compile md_src) tr)>>) *)
+      (<<REF: forall `{EMSConfig}, Beh.of_program (compile md_tgt) <1= Beh.of_program (compile md_src)>>)
   .
 
   Global Program Instance ref: Ref t :=

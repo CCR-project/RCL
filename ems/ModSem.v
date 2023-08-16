@@ -439,7 +439,9 @@ Section MODSEM.
   Definition compile' `{EMSConfig} (ms: t) (P: Prop): semantics :=
     match ms with
     | just ms => compile ms P
-    | _ => semantics_UB
+    | _ => if (excluded_middle_informative P)
+           then semantics_UB
+           else semantics_NB
     end
   .
 

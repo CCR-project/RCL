@@ -1667,7 +1667,14 @@ Theorem adequacy_unit
   ms_tgt ⊑B ε
 .
 Proof.
-  ii. ss. pfold. econsr; ss.
+  ii. ss. unfold ModSem.compile' in *. des_ifs; ss.
+  - pfold. econsr; ss.
+  - punfold PR. inv PR; ss; csc.
+    + punfold SPIN. inv SPIN; ss; csc. des; ss. pclearbot.
+      unfold ModSem.initial_itr, guarantee in STEP0. irw in STEP0. inv STEP0; ss; csc.
+    + eapply Beh.nb_bottom.
+    + rr in STEP. des. ss. subst.
+      unfold ModSem.initial_itr, guarantee in STEP0. irw in STEP0. inv STEP0; ss; csc.
 Qed.
 
 End ModSemPair.
