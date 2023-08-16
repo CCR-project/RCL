@@ -3,7 +3,7 @@ Require Import ITreelib.
 Require Import ImpPrelude.
 Require Import STS.
 Require Import Behavior.
-Require Import Mod ModSem LSimModSem ModSemFacts.
+Require Import Mod ModSem SimModSem ModSemFacts.
 Require Import Skeleton.
 
 Set Implicit Arguments.

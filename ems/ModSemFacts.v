@@ -8,7 +8,7 @@ Require Import STS Behavior.
 Require Import Any.
 Require Import Permutation.
 Require Import ModSem.
-Require Import LSimModSem.
+Require Import SimModSem.
 
 Set Implicit Arguments.
 
