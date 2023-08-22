@@ -59,10 +59,10 @@ End RPT0.
 
 Module RPT1.
 
-  Fixpoint fun_iter (f: Any.t -> itree Es Any.t) (n: nat) (x: Any.t): itree Es Any.t :=
+  Fixpoint fun_iter (f: Any.t -> itree Es Any.t) (n: nat) (x: itree Es Any.t): itree Es Any.t :=
     match n with
-    | O => (f x)
-    | S n' => fun_iter (fun x => (f x) >>= f) n' x
+    | O => x
+    | S n' => fun_iter f n' (x >>= f)
     end.
 
   Definition rptF (fn: string) (f: Any.t -> itree Es Any.t) : list val -> itree Es val :=
@@ -72,7 +72,7 @@ Module RPT1.
       if (String.eqb fn fn0)
       then
         assume(intrange_64 n);;;
-        vret <- (fun_iter f (Z.to_nat n) (Vint x)↑);;
+        vret <- (fun_iter f (Z.to_nat n) (Ret (Vint x)↑));;
         ` vret0: val <- unwrapU vret↓;; Ret vret0
       else
         triggerUB.
@@ -101,7 +101,7 @@ Section PROOF.
   Ltac ired_both := ired_l; ired_r.
 
   Lemma succ_rpt_sim:
-    ModSemPair.sim (RPT1.rptMS "rpt" (cfunU SUCC.succF)) (RPT0.rptMS ⊕ SUCC.succMS).
+    ModSemPair.sim (RPT1.rptMS "succ" (cfunU SUCC.succF)) (RPT0.rptMS ⊕ SUCC.succMS).
   Proof.
     ss. eapply mk. eapply Nat.le_preorder. instantiate (1:= fun _ _ => True).
     { i. ss. des; clarify. exists (cfunU RPT0.rptF). split.
@@ -112,18 +112,5 @@ Section PROOF.
       unfold sim_fsem. ii. subst y.
       ginit. 
 
-
-Inductive _sim (ms_src ms_tgt : ModSem._t) : Prop := mk
-  { world : Type;
-    wf : world -> Any.t * Any.t -> Prop;
-    le : world -> world -> Prop;
-    le_PreOrder : PreOrder le;
-    sim_fnsems : forall (fn : string) (f_src : Any.t -> itree Es Any.t),
-                 In (fn, f_src) (ModSem.fnsems ms_src) ->
-                 exists f_tgt : Any.t -> itree Es Any.t,
-                   << In (fn, f_tgt) (ModSem.fnsems ms_tgt) >> /\
-                   << sim_fsem (ModSem.fnsems ms_tgt) wf le f_src f_tgt >>;
-    sim_initial : exists w_init : world,
-                    wf w_init (ModSem.initial_st ms_src, ModSem.initial_st ms_tgt) }.
 
 End PROOF.
