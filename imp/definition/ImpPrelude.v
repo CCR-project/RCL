@@ -59,7 +59,7 @@ Definition min_64 := (- modulus_64_half)%Z.
 
 (* Definition intrange_64 : Z -> Prop := fun z => (min_64 <= z <= max_64)%Z. *)
 (* Definition modrange_64 : Z -> Prop := fun z => (- 1 < z < modulus_64)%Z. *)
-Definition intrange_64 : Z -> bool := fun z => (Z_le_gt_dec min_64 z) && (Z_le_gt_dec z max_64).
+Definition intrange_64 : Z -> bool := fun z => (Z_le_dec min_64 z) && (Z_le_dec z max_64).
 Definition modrange_64 : Z -> bool := fun z => (Z_le_gt_dec 0 z) && (Z_lt_ge_dec z modulus_64).
 
 
