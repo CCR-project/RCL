@@ -61,7 +61,7 @@ Module RPT0.
   Definition rptF : list val -> itree Es val :=
     fun varg =>
       '(fb, (n, x)) <- (pargs [Tptr; Tint; Tint] varg)?;;
-      assume(intrange_64 n);;;
+      (* assume(intrange_64 n);;; *)
       if (Z_lt_le_dec n 1)
       then Ret (Vint x)
       else
@@ -94,7 +94,7 @@ Module RPT1.
       fn0 <- ((unname (Vptr (fst fb) (snd fb)))?);;
       if (String.eqb fn fn0)
       then
-        assume(intrange_64 n);;;
+        (* assume(intrange_64 n);;; *)
         vret <- (fun_iter f (Z.to_nat n) (Ret (Vint x)↑));;
         vret0 <- (vret↓)?;;
         Ret vret0
@@ -142,10 +142,11 @@ Section PROOFSIM.
       destruct (eqb_spec "succ" s).
       2:{ steps. }
       clarify.
-      steps. force_r. eexists; auto.
+      (* steps. force_r. eexists; auto. *)
       steps. rename z0 into v.
       remember (Z.to_nat z) as n.
-      revert x z v _UNWRAPU _ASSUME Heqn. induction n; intros.
+      (* revert x z v _UNWRAPU _ASSUME Heqn. induction n; intros. *)
+      revert x z v _UNWRAPU Heqn. induction n; intros.
       { hexploit Z_to_nat_le_zero; eauto. intros. des_ifs.
         2:{ lia. }
         ss. steps.  unfold lift_rel. exists w; auto.
@@ -158,12 +159,12 @@ Section PROOFSIM.
         rewrite ! SUCC.red_succF. steps.
         { left. instantiate (1:= focus_left (T:=Any.t) ∘ cfunU RPT0.rptF). auto. }
         unfold cfunU at 5. steps. unfold RPT0.rptF at 3. steps.
-        force_r.
-        { clear - _ASSUME ZRANGE. unfold_intrange_64.
-          des_ifs. apply sumbool_to_bool_true in _ASSUME, H.
-          apply andb_true_intro. split; apply sumbool_to_bool_is_true; lia.
-        }
-        steps.
+        (* force_r. *)
+        (* { clear - _ASSUME ZRANGE. unfold_intrange_64. *)
+        (*   des_ifs. apply sumbool_to_bool_true in _ASSUME, H. *)
+        (*   apply andb_true_intro. split; apply sumbool_to_bool_is_true; lia. *)
+        (* } *)
+        (* steps. *)
         specialize (IHn ([Vptr (inr "succ") 0; Vint (z - 1); Vint (v +1)]↑) (z - 1)%Z (v + 1)%Z).
         hexploit IHn; auto.
         { apply Any.upcast_downcast. }
@@ -175,10 +176,13 @@ Section PROOFSIM.
                gpaco8 _ _ _ _ _ _ _ _ _ _ _ (?t2)] =>
               replace t2 with t1
           end.
-          auto. f_equal. ired_eq_l. auto.
+          guclo lflagC_spec. econs. eapply IHn.
+          all: auto.
+          f_equal. ired_eq_l. auto.
         }
         { steps. irw in IHn.
-          guclo guttC_spec. econs. eapply IHn.
+          guclo guttC_spec. econs.
+          { guclo lflagC_spec. econs. eapply IHn. all: auto. }
           - apply Reflexive_eqit_eq.
           - ired_eq_r.
             apply eqit_bind. apply Reflexive_eqit_eq. ii.
@@ -206,10 +210,11 @@ Section PROOFSIM.
       destruct (eqb_spec "putOnce" s).
       2:{ steps. }
       clarify.
-      steps. force_r. eexists; auto.
+      (* steps. force_r. eexists; auto. *)
       steps. rename z0 into v.
       remember (Z.to_nat z) as n.
-      revert x z v _UNWRAPU _ASSUME Heqn. induction n; intros.
+      (* revert x z v _UNWRAPU _ASSUME Heqn. induction n; intros. *)
+      revert x z v _UNWRAPU Heqn. induction n; intros.
       { hexploit Z_to_nat_le_zero; eauto. intros. des_ifs.
         2:{ lia. }
         ss. steps.  unfold lift_rel. exists w; auto.
@@ -222,12 +227,12 @@ Section PROOFSIM.
         unfold PUT.putOnceF at 3 5. steps.
         { left. instantiate (1:= focus_left (T:=Any.t) ∘ cfunU RPT0.rptF). auto. }
         unfold cfunU at 5. steps. unfold RPT0.rptF at 3. steps.
-        force_r.
-        { clear - _ASSUME ZRANGE. unfold_intrange_64.
-          des_ifs. apply sumbool_to_bool_true in _ASSUME, H.
-          apply andb_true_intro. split; apply sumbool_to_bool_is_true; lia.
-        }
-        steps.
+        (* force_r. *)
+        (* { clear - _ASSUME ZRANGE. unfold_intrange_64. *)
+        (*   des_ifs. apply sumbool_to_bool_true in _ASSUME, H. *)
+        (*   apply andb_true_intro. split; apply sumbool_to_bool_is_true; lia. *)
+        (* } *)
+        (* steps. *)
         specialize (IHn ([Vptr (inr "putOnce") 0; Vint (z - 1); Vint (v)]↑) (z - 1)%Z (v)%Z).
         hexploit IHn; auto.
         { apply Any.upcast_downcast. }
@@ -239,10 +244,13 @@ Section PROOFSIM.
                gpaco8 _ _ _ _ _ _ _ _ _ _ _ (?t2)] =>
               replace t2 with t1
           end.
-          auto. f_equal. ired_eq_l. auto.
+          guclo lflagC_spec. econs. eapply IHn.
+          all: auto.
+          f_equal. ired_eq_l. auto.
         }
         { steps. irw in IHn.
-          guclo guttC_spec. econs. eapply IHn.
+          guclo guttC_spec. econs.
+          { guclo lflagC_spec. econs. eapply IHn. all: auto. }
           - apply Reflexive_eqit_eq.
           - ired_eq_r.
             apply eqit_bind. apply Reflexive_eqit_eq. ii.
