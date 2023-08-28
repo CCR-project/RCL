@@ -1622,7 +1622,7 @@ Proof.
   inv SIM.
   des. ginit.
   unfold ModSem.initial_itr, guarantee.
-  unfold snd, fmap; ss. unfold ITree.map. steps. unfold assume. steps. des.
+  unfold snd, base.fmap; ss. unfold fmap_itree, ITree.map. steps. unfold assume. steps. des.
   exploit sim_fnsems; et.
   { eapply nth_error_In; et. }
   intro U; des. eapply In_nth_error in FINDT. des. force. esplits; et. steps.

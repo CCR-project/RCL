@@ -34,7 +34,7 @@ Next Obligation.
   repeat (decide equality).
 Defined.
 
-Global Program Instance EMSConfigImp: EMSConfig := {|
+Global Instance EMSConfigImp: EMSConfig := {|
   finalize := fun rv =>
                 match rv↓ with
                 | Some (rv) =>

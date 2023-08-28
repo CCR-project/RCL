@@ -94,7 +94,7 @@ Module Sk.
 
   Global Program Instance extends_wf `{ld}: Proper ((extends) --> impl) wf.
   Next Obligation.
-    ii. rr in H0. des. rewrite <- H0 in *. eapply wf_mon; et. r. esplits; et. refl.
+    ii. rr in H0. des. rewrite <- H0 in *. eapply wf_mon; et. r. esplits; et.
   Qed.
 
   Global Program Instance add_extends_Proper `{ld}: Proper ((extends) ==> (extends) ==> (extends)) ((⊕)).

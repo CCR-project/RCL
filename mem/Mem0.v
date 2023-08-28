@@ -120,6 +120,7 @@ Section PROOF.
     f_equiv. erewrite equiv_load_mem; ss.
   Qed.
   Next Obligation.
+    i; cbn.
     eapply ModSemPair.adequacy. ss.
     econs.
     { instantiate (1:=top2). ss. }
@@ -230,6 +231,7 @@ Section PROOF.
     }
   Qed.
   Next Obligation.
+    i; cbn.
     eapply bar_state_irr; ss.
   Qed.
 

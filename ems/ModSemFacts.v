@@ -50,7 +50,7 @@ Section ALGEBRA.
 
 Global Program Instance ModSem_OPlusFactsWeak: OPlusFactsWeak (T:=ModSem.t).
 Next Obligation.
-  eapply ModSemPair.adequacy.
+  i. eapply ModSemPair.adequacy.
   destruct a as [a|]; ss.
   2: { upt. des_ifs; ss. refl. }
   destruct b as [b|]; ss.
@@ -93,7 +93,7 @@ Next Obligation.
       { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
 Qed.
 Next Obligation.
-  eapply ModSemPair.adequacy.
+  i. eapply ModSemPair.adequacy.
   destruct a as [a|]; ss.
   2: { upt. des_ifs; ss; refl. }
   destruct b as [b|]; ss.
@@ -175,9 +175,9 @@ Next Obligation.
   2: { congruence. }
   eapply Forall2_app.
   - eapply Forall2_apply_Forall2; et. ii; ss. des_ifs. ss. des; clarify. esplits; et.
-    ii. unfold focus_left. rewrite H4. refl.
+    ii. cbn. unfold focus_left. rewrite H4. refl.
   - eapply Forall2_apply_Forall2; et. ii; ss. des_ifs. ss. des; clarify. esplits; et.
-    ii. unfold focus_right. rewrite H4. refl.
+    ii. cbn. unfold focus_right. rewrite H4. refl.
 Qed.
 
 Global Program Instance ModSem_equiv_ref: subrelation ((≡)) (⊑).
@@ -213,7 +213,7 @@ Next Obligation.
   etrans; typeclasses eauto.
 Qed.
 
-Global Program Instance ModSem_Ref_PreOrder: PreOrder ((⊑)).
+Global Program Instance ModSem_Ref_PreOrder: PreOrder ((⊑@{ModSem.t})).
 Next Obligation.
   ii; ss.
 Qed.
@@ -223,10 +223,10 @@ Qed.
 
 Global Program Instance ModSem_EpsFacts: EpsFacts.
 Next Obligation.
-  upt. des_ifs. refl.
+  i. upt. des_ifs.
 Qed.
 Next Obligation.
-  upt. des_ifs. refl.
+  i. upt. des_ifs.
 Qed.
 Next Obligation.
   upt. des_ifs.
@@ -258,7 +258,7 @@ TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTttt
 Global Program Instance ModSem_RefFacts: RefFacts (T:=ModSem.t).
 Next Obligation.
   do 3 r. i.
-  unfold ref, ModSem.ref in *.
+  unfold sqsubseteq, ModSem.ref in *.
   i. rewrite oplus_assoc_weak. rewrite H0.
   rewrite oplus_comm_weak. rewrite oplus_assoc_weak. rewrite H.
   rewrite oplus_assoc_weak2. rewrite oplus_comm_weak.
@@ -276,18 +276,18 @@ Qed.
 Global Program Instance pointed_equiv_Proper `{Equiv T}: Proper ((≡) ==> (≡)) just.
 Next Obligation. ii. upt. ss. Qed.
 
-Global Program Instance pointed_ref_Proper `{Ref T}: Proper ((⊑) ==> (⊑)) just.
+Global Program Instance pointed_ref_Proper `{Ref T}: Proper ((⊑@{ModSem.t}) ==> (⊑)) just.
 Next Obligation. do 3 r. i. ss. Qed.
 
-Global Program Instance pointed_ref_both_Proper `{Ref T}: Proper ((⊒⊑) ==> (⊒⊑)) just.
+Global Program Instance pointed_ref_both_Proper `{Ref T}: Proper ((⊒⊑@{ModSem.t}) ==> (⊒⊑)) just.
 Next Obligation. ii. upt. ss. Qed.
 
 Global Program Instance ModSem_BarFacts: BarFacts (T:=ModSem.t).
 Next Obligation.
-  upt. des_ifs; try refl. erewrite ModSem.core_idemp. refl.
+  i. upt. des_ifs; try refl. erewrite ModSem.core_idemp. refl.
 Qed.
 Next Obligation.
-  upt. des_ifs; try refl. erewrite ModSem.core_oplus. refl.
+  i. upt. des_ifs; try refl. erewrite ModSem.core_oplus. refl.
 Qed.
 Next Obligation.
   ii. upt. des_ifs. rr in H.  rr. des. esplits; et.
@@ -308,7 +308,7 @@ Next Obligation.
          ss. esplits; ss; et. }
     i. ss. esplits; et.
     { rewrite in_app_iff. left. rewrite in_map_iff. esplits; et. ss. }
-    ii. des_u. clarify. des. subst.
+    ii. des_u. clarify. des. subst. cbn.
     abstr (f_src y) itr. clear_tac. clear FINDS. clear_tac.
     eapply sim_itree_fsubset with []; ss.
     {
@@ -325,7 +325,7 @@ Next Obligation.
   - eapply ModSemPair.adequacy_unit.
 Qed.
 Next Obligation.
-  upt. des_ifs; ss; try refl.
+  i. upt. des_ifs; ss; try refl.
   eapply ModSemPair.adequacy. ss.
   econs.
   { instantiate (1:=top2). ss. }
@@ -334,7 +334,7 @@ Next Obligation.
   i. ss. rewrite List.map_map in *. rewrite in_app_iff in *. des.
   { rewrite in_map_iff in *. des. destruct x as [fn0 itr]; ss. clarify.
     esplits; et.
-    ii. des; subst. des_u. abstr (itr y) itr0.
+    ii. des; subst. cbn. des_u. abstr (itr y) itr0.
     clear FINDS0. clear_tac.
     eapply sim_itree_fsubset with []; ss.
     {
@@ -350,7 +350,7 @@ Next Obligation.
     }
   }
   { rewrite in_map_iff in *. des. destruct x as [fn0 itr]; ss. clarify. esplits; et.
-    ii. des; subst. des_u. unfold bar, ktree_Bar. abstr (itr y) itr0.
+    ii. des; subst. cbn. des_u. unfold bar, ktree_Bar. abstr (itr y) itr0.
     clear FINDS0. clear_tac.
     eapply sim_itree_fsubset with []; ss.
     {
