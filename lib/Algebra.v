@@ -21,8 +21,8 @@ Class Ref (T: Type) := ref : T -> T -> Prop.
 
 Definition ref_both `{Ref T}: T -> T -> Prop := fun a b => ref a b /\ ref b a.
 
-Notation "⊑" := ref (at level 60).
-Notation "a ⊑ b" := (ref a b) (at level 60, right associativity).
+Notation "⊑" := ref (at level 70).
+Notation "a ⊑ b" := (ref a b) (at level 70).
 Notation "⊒⊑" := ref_both (at level 60).
 Notation "a ⊒⊑ b" := (ref_both a b) (at level 60).
 
