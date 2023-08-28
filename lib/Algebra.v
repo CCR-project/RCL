@@ -324,7 +324,7 @@ Module MRAS.
     bar_facts:> BarFacts (T:=car);
     eps_facts:> EpsFacts (T:=car);
     affinity: forall a, a ⊑ ε;
-    bar_intro: forall a, a ⊑ a ⊕ |a|;
+    bar_intro: forall a, a ≡ a ⊕ |a|;
   }.
 
 End MRAS.
@@ -387,7 +387,15 @@ Next Obligation.
   i. eapply MRA.affinity.
 Qed.
 Next Obligation.
-  i. eapply MRA.bar_intro.
+  i. rr. esplits; ss.
+  - rr. esplits; ss.
+    + eapply MRA.bar_intro.
+    + rewrite <- (eps_r a) at 3. eapply ref_oplus; ss. eapply MRA.affinity.
+  - rr. esplits; ss.
+    + rewrite bar_oplus_weak. eapply MRA.bar_intro.
+    + rewrite bar_oplus_weak.
+      rewrite <- (eps_r (|a|)) at 3.
+      eapply ref_oplus; ss. eapply MRA.affinity.
 Qed.
 
 Global Program Instance hat_Proper `{MRA.t}: Proper ((≡) ==> equiv_relaxed) (fun x => x).
@@ -437,6 +445,35 @@ Section INCLUDEDFACTS.
   Lemma unit_included: ∀ x, ε ≼ x.
   Proof.
     ii. r. esplits. rewrite eps_l. refl.
+  Qed.
+
+  Lemma included_ref: forall a b, a ≼ b -> b ⊑ a.
+  Proof.
+    ii. rr in H. des; setoid_subst. erewrite <- (eps_r a) at 2. eapply ref_oplus; try refl. eapply MRAS.affinity.
+  Qed.
+
+  Global Program Instance ref_included: Proper ((≼) ==> (≼) --> impl) (⊑).
+  Next Obligation.
+    ii. etrans.
+    { eapply included_ref; et. }
+    etrans; et.
+    r in H1.
+    { eapply included_ref; et. }
+  Qed.
+
+  Lemma bar_mono: ∀ a b, a ≼ b -> |a| ≼ |b|.
+  Proof.
+    ii. rr in H. des; setoid_subst. rewrite bar_oplus. r; et.
+  Qed.
+
+  Global Program Instance bar_included: Proper ((≼) ==> (≼)) (|-|).
+  Next Obligation.
+    ii. eapply bar_mono; et.
+  Qed.
+
+  Global Program Instance oplus_ref: Proper ((⊑) ==> (⊑) ==> (⊑)) ((⊕)).
+  Next Obligation.
+    ii. eapply ref_oplus; et.
   Qed.
 
 End INCLUDEDFACTS.
