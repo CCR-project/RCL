@@ -120,9 +120,6 @@ Next Obligation.
   i; cbn.
   rr. ss. rewrite Sk.add_unit_l. esplits; try refl. ii. upt. des_ifs.
 Qed.
-Next Obligation.
-  rr. ss.
-Qed.
 
 Global Program Instance refb_equiv: subrelation ((≡)) ((⊑B)).
 Next Obligation.
@@ -185,6 +182,7 @@ Next Obligation.
     { rewrite Sk.add_unit_r; refl. }
     i. rewrite bar_oplus. refl.
   - ii. rr in H. des. rr. esplits; ss; try refl. ii. rewrite H0; ss.
+  - rr. ss.
 Qed.
 Next Obligation.
   ii. des. ss.

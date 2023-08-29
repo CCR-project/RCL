@@ -80,21 +80,24 @@ Next Obligation.
   ii. rr. rr in H6. des. rewrite H4 in *. rewrite H5 in *. esplits; et.
 Qed.
 
-Class BarFacts `{Equiv T, Bar T, OPlus T} := {
+Class BarFacts `{Equiv T, Bar T, OPlus T, Eps T} := {
     bar_idemp: forall a, | |a| | ≡ |a|;
     bar_oplus: forall a b, |a ⊕ b| ≡ |a| ⊕ |b|;
     bar_Proper:> Proper ((≡) ==> (≡)) (|-|);
+    bar_eps: |ε| ≡ ε;
 }.
 
-Class BarFactsWeak `{Equiv T, Bar T, OPlus T, Ref T} := {
+Class BarFactsWeak `{Equiv T, Bar T, OPlus T, Ref T, Eps T} := {
     bar_idemp_weak: forall a, | |a| | ⊒⊑ |a|;
     bar_oplus_weak: forall a b, |a ⊕ b| ⊒⊑ |a| ⊕ |b|;
     bar_Proper_weak:> Proper ((≡) ==> (≡)) (|-|);
+    bar_eps_weak: |ε| ≡ ε;
 }.
 
-Global Program Instance BarFactsWeaken `{Equiv T, Bar T, OPlus T, Ref T, !EquivFacts, !BarFacts, !RefFacts}: BarFactsWeak.
+Global Program Instance BarFactsWeaken `{Equiv T, Bar T, OPlus T, Ref T, Eps T, !EquivFacts, !BarFacts, !RefFacts}: BarFactsWeak.
 Next Obligation. i. rewrite bar_idemp. refl. Qed.
 Next Obligation. i. rewrite bar_oplus. refl. Qed.
+Next Obligation. i. rewrite bar_eps. refl. Qed.
 
 (* Class OPlusFacts `{Equiv T, OPlus T, Ref T} `{EQVF: EquivFacts T} `{@RefFacts _ _ EQVF _ _} := { *)
 Class OPlusFacts `{Equiv T, OPlus T} := {
@@ -119,10 +122,9 @@ Proof.
   rewrite oplus_comm_weak. refl.
 Qed.
 
-Class EpsFacts `{Equiv T, Eps T, OPlus T, Bar T} := {
+Class EpsFacts `{Equiv T, Eps T, OPlus T} := {
     eps_r: forall a, a ⊕ ε ≡ a;
     eps_l: forall a, ε ⊕ a ≡ a;
-    eps_bar: |ε| ≡ ε;
 }.
 
 Variant pointed (T: Type) :=
@@ -372,16 +374,16 @@ Next Obligation.
       refl.
   - ii. rr in H. des. rr. esplits; et.
     + rewrite ! bar_idemp_weak. ss.
+  - rr. esplits; try rewrite ! bar_eps_weak; refl.
 Qed.
 Next Obligation.
   econs; try typeclasses eauto.
   - ii. rr. esplits; et.
     + rewrite eps_r. refl.
-    + rewrite bar_oplus_weak. rewrite eps_bar. rewrite eps_r. refl.
+    + rewrite bar_oplus_weak. rewrite bar_eps_weak. rewrite eps_r. refl.
   - ii. rr. esplits; et.
     + rewrite eps_l. refl.
-    + rewrite bar_oplus_weak. rewrite eps_bar. rewrite eps_l. refl.
-  - rr. esplits; try rewrite ! eps_bar; refl.
+    + rewrite bar_oplus_weak. rewrite bar_eps_weak. rewrite eps_l. refl.
 Qed.
 Next Obligation.
   i. eapply MRA.affinity.
@@ -477,5 +479,6 @@ Section INCLUDEDFACTS.
   Qed.
 
 End INCLUDEDFACTS.
+
 
 

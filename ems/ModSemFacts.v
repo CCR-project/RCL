@@ -228,9 +228,6 @@ Qed.
 Next Obligation.
   i. upt. des_ifs.
 Qed.
-Next Obligation.
-  upt. des_ifs.
-Qed.
 
 (*
 a ⊑ a'
@@ -294,6 +291,9 @@ Next Obligation.
   eapply Forall2_apply_Forall2; et. ii. ss. des_ifs. ss. des. clarify.
   esplits; ss. ii.
   eapply bar_Proper. ss.
+Qed.
+Next Obligation.
+  upt. des_ifs.
 Qed.
   
 Global Program Instance ModSem_MRA: MRA.t := {

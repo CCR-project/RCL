@@ -14,6 +14,87 @@ Arguments Z.of_nat: simpl nomatch.
 
 
 
+Ltac r_first rs :=
+  match rs with
+  | (?rs0 ⊕ ?rs1) =>
+    let tmp0 := r_first rs0 in
+    constr:(tmp0)
+  | ?r => constr:(r)
+  end
+.
+
+Ltac r_solve :=
+  repeat rewrite oplus_assoc;
+  repeat (try rewrite eps_r; try rewrite eps_l);
+  match goal with
+  | [|- ?lhs ≡ (_ ⊕ _) ] =>
+    let a := r_first lhs in
+    try rewrite <- (oplus_comm a);
+    try rewrite <- ! oplus_assoc;
+    try (f_equiv; r_solve)
+  | _ => try reflexivity
+  end
+.
+
+
+
+Module CM.
+
+  Class t: Type := {
+    car:> Type;
+    equiv:> Equiv car;
+    oplus:> OPlus car;
+    eps:> Eps car;
+    equiv_facts:> EquivFacts (T:=car);
+    oplus_facts:> OPlusFacts (T:=car);
+    eps_facts:> EpsFacts (T:=car);
+  }.
+
+End CM.
+Coercion MRA.car: MRA.t >-> Sortclass.
+Coercion MRAS.car: MRAS.t >-> Sortclass.
+Coercion CM.car: CM.t >-> Sortclass.
+
+
+
+Module WA.
+Section FUNCTOR.
+  Context {A: MRAS.t}.
+  Context {S: CM.t}.
+
+  Class t := {
+      morph: S -> A -> A;
+      morph_oplus: forall s a b, (morph s a) ⊕ (morph s b) ≡ (morph s (a ⊕ b));
+      morph_unit: ∀ a, morph ε a ≡ a;
+      morph_unit2: ∀ a, morph a ε ≡ ε;
+      morph_Proper:> Proper ((≡) ==> (≡) ==> (≡)) morph;
+  }.
+
+  Class Idem `{W: t} :=
+    morph_idem: ∀ s0 s1 a, morph s1 (morph s0 a) ≡ morph (s0 ⊕ s1) a.
+
+  Section THEORIES.
+
+    Context `{t}.
+
+    Lemma morph_mono: forall s a b, a ≼ b -> morph s a ≼ morph s b.
+    Proof.
+      ii. rr in H0. des; setoid_subst. rr. esplits; et. rewrite morph_oplus; ss.
+    Qed.
+
+    Global Program Instance morph_included: Proper (eq ==> (≼) ==> (≼)) morph.
+    Next Obligation.
+      ii. subst. eapply morph_mono; et.
+    Qed.
+
+  End THEORIES.
+
+End FUNCTOR.
+End WA.
+Notation "𝑤_{ a } b" := (WA.morph a b) (at level 50).
+
+
+
 Section LOGIC.
 
   Context `{M: MRAS.t}.
@@ -360,217 +441,188 @@ Section LOGIC.
   Global Instance mProp_bi_bupd: BiBUpd mPropp :=
     {| bi_bupd_mixin := mProp_bupd_mixin |}.
 
-  Context `{S: CM.t, EF: @EndoFun.t _ S}.
+  Context `{CM: CM.t} `{W: !WA.t}.
 
-  Program Definition MyMod (s0: CM.car) (P: mProp): mProp :=
-    mProp_intro (fun sm => exists sm0, (EndoFun.morph s0 sm0) ≼ sm /\ (P: mPred) sm0) _.
+  Program Definition Wrap (s0: CM.car) (P: mProp): mProp :=
+    mProp_intro (fun sm => exists sm0, (𝑤_{s0} sm0) ≼ sm /\ (P: mPred) sm0) _.
   Next Obligation.
     ii. des. esplits; et. etrans; et.
   Qed.
 
-  Lemma mymod_mono: forall s P Q, (P ⊢ Q) -> ((MyMod s P) ⊢ (MyMod s Q)).
+  Notation "𝑊_{ a } b" := (Wrap a b) (at level 50).
+
+  Lemma wrap_mono: forall s P Q, (P ⊢ Q) -> 𝑊_{s} P ⊢ 𝑊_{s} Q.
   Proof.
     ii. econs; ii; ss. des. esplits; et. eapply H; et.
   Qed.
 
-  Lemma mymod_idem: forall s0 s1 P, (MyMod s1 (MyMod s0 P)) ⊣⊢ (MyMod (s0 ⋅ s1) P).
+  Lemma wrap_idem: forall `{!WA.Idem} s0 s1 P, (𝑊_{s1} (𝑊_{s0} P)) ⊣⊢ (𝑊_{s0 ⊕ s1} P).
   Proof.
     ii. unfold equiv. unfold mPred_Equiv. eapply mProp_eta. extensionalities sm. eapply Axioms.prop_ext.
     split; ii; ss; des.
-    - esplits; et. etrans; et. rewrite <- EndoFun.morph_idem. rewrite EndoFun.morph_mono; et. refl.
-    - rewrite <- EndoFun.morph_idem in H. esplits; et. refl.
+    - esplits; et. etrans; et. rewrite <- WA.morph_idem. rewrite WA.morph_mono; et. refl.
+    - rewrite <- WA.morph_idem in H0. esplits; et. refl.
   Qed.
 
-  Lemma mymod_sep: forall s P Q, (MyMod s (P ∗ Q)) ⊣⊢ (MyMod s P) ∗ (MyMod s Q).
+  Lemma wrap_sep: forall s P Q, (𝑊_{s} (P ∗ Q)) ⊣⊢ (𝑊_{s} P) ∗ (𝑊_{s} Q).
   Proof.
     ii. unfold equiv. unfold mPred_Equiv. eapply mProp_eta. extensionalities sm. eapply Axioms.prop_ext.
     unfold bi_sep. cbn. split; ii; ss; des; subst.
     - rr in H. des. subst.
-      eexists (EndoFun.morph s a ⋅ ctx), (EndoFun.morph s b). esplits.
-      { setoid_subst. rewrite <- EndoFun.morph_add. r_solve. }
+      eexists (𝑤_{s} a ⊕ ctx), (𝑤_{s} b). esplits.
+      { setoid_subst. rewrite <- ! WA.morph_oplus. r_solve. }
       { r. et. }
       { ss. }
       { refl. }
       { ss. }
-    - setoid_subst. esplits; eauto. rewrite <- EndoFun.morph_add. rewrite H0. rewrite H1. refl.
+    - setoid_subst. esplits; eauto. rewrite <- WA.morph_oplus. rewrite H0. rewrite H1. refl.
   Qed.
 
-  Lemma mymod_pers_commute: forall s P, MyMod s (<pers> P) ⊢ <pers> (MyMod s P).
-  Proof.
-    unfold MyMod, bi_persistently. econs; ii; ss. des. esplits; et. rewrite EndoFun.morph_core.
-    eapply Mod.core_extends. et.
-  Qed.
-
-  (* Lemma mymod_ref_commute: forall s P, MyMod s (bupd P) ⊢ |==> (MyMod s P). *)
-  (* Proof. *)
-  (*   unfold MyMod, bi_persistently. econs; ii; ss. des. esplits. *)
-  (*   3: { rewrite <- H. eapply EndoFun.morph_ref. eauto. } *)
-  (*   { refl. } *)
-  (*   { ss. } *)
-  (* Qed. *)
-
-  Lemma mymod_own: forall s m, MyMod s (Own m) ⊣⊢ Own (EndoFun.morph s m).
+  Lemma wrap_own: forall s m, 𝑊_{s} (Own m) ⊣⊢ Own (𝑤_{s} m).
   Proof.
     ii. eapply equiv_entails. split.
-    - econs; ii. rr in H. cbn. des. rr in H0. des. setoid_subst. rewrite <- EndoFun.morph_add in H.
+    - econs; ii. rr in H. cbn. des. rr in H0. des. setoid_subst.
+      rewrite <- WA.morph_oplus in H.
       etrans; et. r; et.
     - econs; ii. rr in H. cbn. des. subst. esplits; try refl. r; et.
   Qed.
 
-  Lemma mymod_exists_commute: forall s X P, MyMod s (∃ (x: X), P x) ⊣⊢ ∃ x, (MyMod s (P x)).
+  Lemma wrap_exists_commute: forall s X P, 𝑊_{s} (∃ (x: X), P x) ⊣⊢ ∃ x, (𝑊_{s} (P x)).
   Proof.
-    unfold MyMod, bi_persistently, bi_exist. ii; ss. unfold Ex. eapply equiv_entails.
+    unfold Wrap, bi_persistently, bi_exist. ii; ss. unfold Ex. eapply equiv_entails.
     ss. splits; econs; ii; ss; des; et.
   Qed.
 
-  Lemma mymod_unit: ∀ P, MyMod ε P ⊣⊢ P.
+  Lemma wrap_unit: ∀ P, 𝑊_{ε} P ⊣⊢ P.
   Proof.
     ii. rr. eapply mProp_eta. extensionalities sm. ss. eapply Axioms.prop_ext. split; i.
-    { des. rewrite EndoFun.morph_unit in H. eapply mProp_mono; et. }
-    { esplits; et. rewrite EndoFun.morph_unit. refl. }
+    { des. rewrite WA.morph_unit in H. eapply mProp_mono; et. }
+    { esplits; et. rewrite WA.morph_unit. refl. }
   Qed.
 
-  Corollary mymod_wand: forall s P Q, (MyMod s (P -∗ Q)) ⊢ (MyMod s P -∗ MyMod s Q).
+  Corollary wrap_wand: forall s P Q, (𝑊_{s} (P -∗ Q)) ⊢ (𝑊_{s} P -∗ 𝑊_{s} Q).
   Proof.
     iIntros (???) "A B".
-    iDestruct (mymod_sep with "[A B]") as "A"; iFrame.
+    iDestruct (wrap_sep with "[A B]") as "A"; iFrame.
     iStopProof.
-    eapply mymod_mono.
+    eapply wrap_mono.
     iIntros "[A B]". iApply "B". eauto.
-    (* unfold bi_wand. cbn. ii; ss; des; subst. *)
-    (* - rr in H. des. subst. *)
-    (*   esplits; et. rewrite <- EndoFun.morph_add. *)
-    (*   eapply CM.add_extends; ss. r; et. *)
   Qed.
 
-  Program Definition MyMod2 (s0: CM.car) (P: mProp): mProp :=
-    mProp_intro (fun sm => (P: mPred) (EndoFun.morph s0 sm)) _.
+  Program Definition Wrap2 (s0: CM.car) (P: mProp): mProp :=
+    mProp_intro (fun sm => (P: mPred) (𝑤_{s0} sm)) _.
   Next Obligation.
-    ii. rr in H. des. setoid_subst. rewrite <- EndoFun.morph_add. eapply mProp_mono; et. r; et.
+    ii. rr in H. des. setoid_subst. rewrite <- WA.morph_oplus. eapply mProp_mono; et. r; et.
   Qed.
 
-  Lemma mymod_emp s : (emp ⊢ MyMod s emp)%I.
+  Notation "𝑀_{ a } b" := (Wrap2 a b) (at level 50).
+
+  Lemma wrap_emp s : (emp ⊢ Wrap s emp)%I.
   Proof.
-    unfold MyMod. econs; ii; ss. rr in H. exists ε. esplits; et. rewrite EndoFun.morph_unit2.
+    unfold Wrap. econs; ii; ss. rr in H. exists ε. esplits; et. rewrite WA.morph_unit2.
     exists sm0. rewrite oplus_comm. rewrite eps_r. ss.
   Qed.
 
-  Lemma mymod2_emp s : (emp ⊢ MyMod2 s emp)%I.
+  Lemma wrap2_emp s : (emp ⊢ 𝑀_{s} emp)%I.
   Proof.
-    unfold MyMod2. econs; ii; ss.
+    unfold Wrap2. econs; ii; ss.
   Qed.
 
-  Theorem mymod2_adj0: ∀ s P Q, (P ⊢ MyMod2 s Q) -> (MyMod s P ⊢ Q).
+  Theorem wrap2_adj0: ∀ s P Q, (P ⊢ 𝑀_{s} Q) -> (𝑊_{s} P ⊢ Q).
   Proof.
-    unfold MyMod, MyMod2, bi_entails. ss. econs; ii; inv H; ss; des.
+    unfold Wrap, Wrap2, bi_entails. ss. econs; ii; inv H; ss; des.
     - exploit H1; et. intro T. eapply mProp_mono; et.
   Qed.
 
-  Theorem mymod2_adj1: ∀ s P Q, (MyMod s P ⊢ Q) -> (P ⊢ MyMod2 s Q).
+  Theorem wrap2_adj1: ∀ s P Q, (𝑊_{s} P ⊢ Q) -> (P ⊢ 𝑀_{s} Q).
   Proof.
-    unfold MyMod, MyMod2, bi_entails. ss. econs; ii; inv H; ss; des.
+    unfold Wrap, Wrap2, bi_entails. ss. econs; ii; inv H; ss; des.
     - exploit H1; et. esplits; et. refl.
   Qed.
 
-  Corollary mymod_mymod2: ∀ s P, MyMod s (MyMod2 s P) ⊢ P.
+  Corollary wrap_wrap2: ∀ s P, 𝑊_{s} (𝑀_{s} P) ⊢ P.
   Proof.
-    i. iIntros "H". iApply mymod2_adj0; [|et]. ss.
+    i. iIntros "H". iApply wrap2_adj0; [|et]. ss.
   Qed.
 
-  Corollary mymod2_mymod: ∀ s P, P ⊢ MyMod2 s (MyMod s P).
+  Corollary wrap2_wrap: ∀ s P, P ⊢ 𝑀_{s} (𝑊_{s} P).
   Proof.
-    i. iIntros "H". iApply mymod2_adj1; [|iAssumption]. ss.
+    i. iIntros "H". iApply wrap2_adj1; [|iAssumption]. ss.
   Qed.
 
-  Program Definition RevPers (P: mProp): mProp :=
-    mProp_intro (fun r => ∃ r', Mod.core r' ≼ r ∧ (P: mPred) r') _
-  .
-  Next Obligation.
-    ii. des. esplits; et. etrans; et.
-  Qed.
-
-  Goal ∀ (P Q: mProp), (P ⊢ Pers Q) -> RevPers P ⊢ Q.
+  Lemma wrap2_mono: ∀ s P Q, (P ⊢ Q) -> (𝑀_{s} P ⊢ 𝑀_{s} Q).
   Proof.
-    unfold Pers, RevPers in *. econs. ss. inv H. ss.
-    ii. des. exploit H0; et. i. eapply mProp_mono; et.
-  Qed.
-
-  Lemma mymod2_mono: ∀ s P Q, (P ⊢ Q) -> (MyMod2 s P ⊢ MyMod2 s Q).
-  Proof.
-    unfold MyMod2. i. econs; ii; ss.
+    unfold Wrap2. i. econs; ii; ss.
     { eapply H; et. }
   Qed.
 
-  Lemma mymod2_unit: ∀ P, MyMod2 ε P ⊣⊢ P.
+  Lemma wrap2_unit: ∀ P, 𝑀_{ε} P ⊣⊢ P.
   Proof.
     i. iIntros. iSplit; iIntros "H".
     - iStopProof.
-      unfold MyMod2. econs; ii; ss. eapply mProp_mono; et. rewrite EndoFun.morph_unit. refl.
-    - iApply mymod2_adj1; [|iAssumption]. iIntros "H". iApply mymod_unit; ss.
+      unfold Wrap2. econs; ii; ss. eapply mProp_mono; et. rewrite WA.morph_unit. refl.
+    - iApply wrap2_adj1; [|iAssumption]. iIntros "H". iApply wrap_unit; ss.
   Qed.
 
-  Class MyModAction s (P Q : mProp) := maybe_into_laterN : P ⊢ MyMod s Q.
-  Global Instance MyModAction_default s (P : mProp): MyModAction s (MyMod s P) P.
+  Class WrapAction s (P Q : mProp) := maybe_into_laterN : P ⊢ Wrap s Q.
+  Global Instance WrapAction_default s (P : mProp): WrapAction s (Wrap s P) P.
     econs. ii. ss.
   Defined.
-  (* Global Arguments MaybeIntoLaterN {_} _ _%nat_scope _%I _%I. *)
-  (* Global Arguments maybe_into_laterN {_} _ _%nat_scope _%I _%I {_}. *)
-  (* Global Hint Mode MaybeIntoLaterN + + + - - : typeclass_instances. *)
 
-  Lemma modality_mymod_mixin s :
-    modality_mixin (MyMod s) (MIEnvClear) (MIEnvTransform (MyModAction s)).
+  Lemma modality_wrap_mixin s :
+    modality_mixin (Wrap s) (MIEnvClear) (MIEnvTransform (WrapAction s)).
   Proof.
     econs; ss.
     (* - i. iIntros "H". iApply H. ss. *)
-    - eapply mymod_emp.
-    - i. eapply mymod_mono; et.
-    - i. iIntros "[A B]". iApply mymod_sep; et. iFrame.
+    - eapply wrap_emp.
+    - i. eapply wrap_mono; et.
+    - i. iIntros "[A B]". iApply wrap_sep; et. iFrame.
   Qed.
 
-  Global Program Instance mymod_into_sep s P Q: IntoSep (MyMod s (P ∗ Q)%I) (MyMod s P) (MyMod s Q).
+  Global Program Instance wrap_into_sep s P Q: IntoSep (𝑊_{s} (P ∗ Q)%I) (𝑊_{s} P) (𝑊_{s} Q).
   Next Obligation.
-    i. iIntros "H". iApply mymod_sep; ss.
+    i. iIntros "H". iApply wrap_sep; ss.
   Qed.
 
-  Global Program Instance mymod_from_sep s P Q: FromSep (MyMod s (P ∗ Q)%I) (MyMod s P) (MyMod s Q).
+  Global Program Instance wrap_from_sep s P Q: FromSep (𝑊_{s} (P ∗ Q)%I) (𝑊_{s} P) (𝑊_{s} Q).
   Next Obligation.
-    i. iIntros "H". iApply mymod_sep; ss.
+    i. iIntros "H". iApply wrap_sep; ss.
   Qed.
 
-  Lemma modality_mymod2_mixin s :
-    modality_mixin (MyMod2 s) (MIEnvClear) (MIEnvTransform (λ P Q, MyMod s P ≡ Q)).
+  Lemma modality_wrap2_mixin s :
+    modality_mixin (Wrap2 s) (MIEnvClear) (MIEnvTransform (λ P Q, Wrap s P ≡ Q)).
   Proof.
     econs; ss.
-    - i. iIntros "H". iApply mymod2_adj1; [|iAssumption]. iIntros "H". iApply H. ss.
-    - i. eapply mymod2_mono; et.
-    - i. iIntros "[A B]". iApply mymod2_adj1; [|et].
+    - i. iIntros "H". iApply wrap2_adj1; [|iAssumption]. iIntros "H". iApply H. ss.
+    - i. eapply wrap2_mono; et.
+    - i. iIntros "[A B]". iApply wrap2_adj1; [|et].
       2: { instantiate (1:=(_ ∗ _)%I). iSplitL "A"; iAssumption. }
-      iIntros "[A B]". iDestruct (mymod_mymod2 with "A") as "A". iDestruct (mymod_mymod2 with "B") as "B". iFrame.
+      iIntros "[A B]". iDestruct (wrap_wrap2 with "A") as "A". iDestruct (wrap_wrap2 with "B") as "B". iFrame.
   Qed.
 
-  Definition modality_mymod s := Modality _ (modality_mymod_mixin s).
-  Definition modality_mymod2 s := Modality _ (modality_mymod2_mixin s).
+  Definition modality_wrap s := Modality _ (modality_wrap_mixin s).
+  Definition modality_wrap2 s := Modality _ (modality_wrap2_mixin s).
 
-  Definition Refines2 (P: mProp): mProp := (∀ s, MyMod2 s (bupd (MyMod s P)))%I.
+  Definition Refines2 (P: mProp): mProp := (∀ s, 𝑀_{s} (|==> (𝑊_{s} P)))%I.
 
-  Theorem Refines2_spec: ∀ P Q, (P ⊢ Refines2 Q) <-> (∀ s, MyMod s P ⊢ Refines (MyMod s Q)).
+  Theorem Refines2_spec: ∀ P Q, (P ⊢ Refines2 Q) <-> (∀ s, Wrap s P ⊢ Refines (Wrap s Q)).
   Proof.
     unfold Refines2. i. split; i.
     - iIntros "H".
-      assert(T: ∀ s, P -∗ MyMod2 s (Refines (MyMod s Q))).
+      assert(T: ∀ s, P -∗ Wrap2 s (Refines (Wrap s Q))).
       { i. iIntros "A". iDestruct (H with "A") as "A". eauto. }
       clear H.
-      iDestruct (@mymod2_adj0) as "T".
+      iDestruct (@wrap2_adj0) as "T".
       { eauto. }
       iApply "T". eauto.
-    - iIntros "A". iIntros (s). iApply mymod2_adj1; eauto.
+    - iIntros "A". iIntros (s). iApply wrap2_adj1; eauto.
   Qed.
 
   Lemma ref2_mono: forall P Q, Entails P Q -> Entails (Refines2 P) (Refines2 Q).
   Proof.
     unfold Refines2. ii; ss.
-    iIntros "H". iIntros (s). iApply mymod2_mono; [|et].
-    iIntros. iApply ref_mono; [|et]. eapply mymod_mono; et.
+    iIntros "H". iIntros (s). iApply wrap2_mono; [|et].
+    iIntros. iApply ref_mono; [|et]. eapply wrap_mono; et.
   Qed.
 
   Lemma ref2_intro: forall P, Entails P (Refines2 P).
@@ -578,7 +630,7 @@ Section LOGIC.
     unfold Refines2.
     ii; ss.
     iIntros "H". iIntros (s).
-    iApply mymod2_adj1; [|iAssumption].
+    iApply wrap2_adj1; [|iAssumption].
     iIntros "H". iApply ref_intro. ss.
   Qed.
 
@@ -588,8 +640,8 @@ Section LOGIC.
     ii; ss. iIntros "H". iIntros (s).
     {
       iSpecialize ("H" $! s).
-      iApply mymod2_mono; [|iAssumption].
-      iIntros "H". iMod "H". iApply mymod2_adj0; [|et].
+      iApply wrap2_mono; [|iAssumption].
+      iIntros "H". iMod "H". iApply wrap2_adj0; [|et].
       iIntros "H". eauto.
     }
     (* M |=> W M |=> W P *)
@@ -603,31 +655,23 @@ Section LOGIC.
     ii; ss. iIntros "[A B]". iIntros (s).
     {
       iSpecialize ("A" $! s).
-      iApply mymod2_adj1.
+      iApply wrap2_adj1.
       2: { instantiate (1:= (_ ∗ _)%I). iSplitL "A"; iAssumption. }
       iIntros "[A B]".
-      iDestruct (mymod_mymod2 with "A") as "A".
+      iDestruct (wrap_wrap2 with "A") as "A".
       iMod "A". iModIntro. iSplitL "A"; et.
     }
   Qed.
 
-  Lemma mymod_idem2: forall s0 s1 P, (MyMod2 s1 (MyMod2 s0 P)) ⊣⊢ (MyMod2 (s0 ⋅ s1) P).
-  Proof.
-    ii. unfold equiv. unfold mPred_Equiv. eapply mProp_eta. extensionalities sm. eapply Axioms.prop_ext.
-    split; ii; ss; des.
-    - rewrite EndoFun.morph_idem in H. rewrite oplus_comm. ss.
-    - rewrite EndoFun.morph_idem. rewrite oplus_comm. ss.
-  Qed.
-
-  Lemma mymod_ref2_commute: forall s P, MyMod s (Refines2 P) ⊢ Refines2 (MyMod s P).
+  Lemma wrap_ref2_commute: forall `{!WA.Idem} s P, 𝑊_{s} (Refines2 P) ⊢ Refines2 (𝑊_{s} P).
   Proof.
     i. unfold Refines2. iIntros "H". iIntros (s').
-    - iApply mymod2_adj1; [|iAssumption]. iIntros "H".
-      iDestruct (mymod_idem with "H") as "H".
-      iDestruct (mymod_mono with "H") as "H".
-      { iIntros "H". iSpecialize ("H" $! (s ⋅ s')). iAssumption. }
-      iDestruct (mymod_mymod2 with "H") as "H".
-      iMod "H". iModIntro. iApply mymod_idem. ss.
+    - iApply wrap2_adj1; [|iAssumption]. iIntros "H".
+      iDestruct (wrap_idem with "H") as "H".
+      iDestruct (wrap_mono with "H") as "H".
+      { iIntros "H". iSpecialize ("H" $! (s ⊕ s')). iAssumption. }
+      iDestruct (wrap_wrap2 with "H") as "H".
+      iMod "H". iModIntro. iApply wrap_idem. ss.
 (*
 W M |=> W P
 --------------
@@ -638,40 +682,40 @@ M |=> W M P
   Corollary Refines_Refines2_sub: ∀ P, (Refines2 P ⊢ |==> P)%I.
   Proof.
     unfold Refines2. i. iIntros "H". iSpecialize ("H" $! ε).
-    iApply mymod2_unit. iApply mymod2_mono; [|et]. iIntros "H".
+    iApply wrap2_unit. iApply wrap2_mono; [|et]. iIntros "H".
     iMod "H". iModIntro.
-    iApply mymod_unit. ss.
+    iApply wrap_unit. ss.
   Qed.
 
-  Definition CondRefines (s: S) (P Q: mProp): mProp := (∀ b, MyMod b P ==∗ (MyMod (s ⋅ b) Q))%I.
+  Definition CondRefines s (P Q: mProp): mProp := (∀ b, 𝑊_{b} P ==∗ (𝑊_{s ⊕ b} Q))%I.
   Theorem CondRefines_tcomp: ∀ s P0 Q0 P1 Q1, CondRefines s P0 Q0 -∗ CondRefines s P1 Q1 -∗ CondRefines s (P0 ∗ P1) (Q0 ∗ Q1).
   Proof.
     i. unfold CondRefines.
     iIntros "A B" (b) "C".
-    iDestruct (mymod_sep with "C") as "[C D]".
+    iDestruct (wrap_sep with "C") as "[C D]".
     iSpecialize ("A" with "C"). iMod "A".
     iSpecialize ("B" with "D"). iMod "B".
-    iModIntro. iApply mymod_sep; iFrame.
+    iModIntro. iApply wrap_sep; iFrame.
   Qed.
 
-  Lemma mymod_equiv: forall s0 s1 P, s0 ≡ s1 -> ((MyMod s0 P) ⊢ (MyMod s1 P)).
+  Lemma wrap_equiv: forall s0 s1 P, s0 ≡ s1 -> (𝑊_{s0} P ⊢ 𝑊_{s1} P).
   Proof.
     ii. econs; ii; ss. des. esplits; et. rewrite <- H. ss.
   Qed.
 
-  Theorem CondRefines_vcomp: ∀ s0 s1 P Q R, CondRefines s0 P Q -∗ CondRefines s1 Q R -∗ CondRefines (s0 ⋅ s1) P R.
+  Theorem CondRefines_vcomp: ∀ s0 s1 P Q R, CondRefines s0 P Q -∗ CondRefines s1 Q R -∗ CondRefines (s0 ⊕ s1) P R.
   Proof.
     i. unfold CondRefines.
     iIntros "A B" (b) "C".
     iSpecialize ("A" with "C"). iMod "A".
     iSpecialize ("B" with "A"). iMod "B".
-    iModIntro. iApply mymod_equiv.
-    2: { iApply mymod_mono; et. }
+    iModIntro. iApply wrap_equiv.
+    2: { iApply wrap_mono; et. }
     rewrite oplus_comm. rewrite <- ! oplus_assoc. f_equiv. rewrite oplus_comm. refl.
   Qed.
 
-  Definition LCondRefines (s: S) (S0 T0 S1: mProp): mProp := (T0 -∗ CondRefines s S0 S1)%I.
-  Lemma LCondRefines_vs: ∀ s S0 T0 S1, (LCondRefines s S0 T0 S1 ⊣⊢ (∀ b, (MyMod b S0 ∗ T0) ==∗ (MyMod (s ⋅ b) S1))).
+  Definition LCondRefines s (S0 T0 S1: mProp): mProp := (T0 -∗ CondRefines s S0 S1)%I.
+  Lemma LCondRefines_vs: ∀ s S0 T0 S1, (LCondRefines s S0 T0 S1 ⊣⊢ (∀ b, (Wrap b S0 ∗ T0) ==∗ (Wrap (s ⊕ b) S1))).
   Proof.
     i. iSplit; iIntros "A".
     - iIntros (b) "[B C]". iSpecialize ("A" with "C"). iSpecialize ("A" $! b with "B"). ss.
@@ -687,7 +731,7 @@ M |=> W M P
   Qed.
 
   Theorem LCondRefines_hcomp: ∀ s0 s1 T0 T1 S0 S1 S2,
-      LCondRefines s0 S0 T0 S1 -∗ LCondRefines s1 S1 T1 S2 -∗ LCondRefines (s0 ⋅ s1) S0 (T0 ∗ T1) S2.
+      LCondRefines s0 S0 T0 S1 -∗ LCondRefines s1 S1 T1 S2 -∗ LCondRefines (s0 ⊕ s1) S0 (T0 ∗ T1) S2.
   Proof.
     i. unfold LCondRefines.
     iIntros "A B [C D]". iSpecialize ("A" with "C"). iSpecialize ("B" with "D").
@@ -704,8 +748,8 @@ M |=> W M P
     iDestruct (CondRefines_vcomp with "[A] [B]") as "B"; eauto.
     iIntros (b) "A". iSpecialize ("B" $! (b) with "A").
     iMod "B". iModIntro.
-    iApply mymod_equiv; [|iAssumption].
-    rewrite eps_r. rewrite eps_rl. refl.
+    iApply wrap_equiv; [|iAssumption].
+    r_solve.
   Qed.
 
   Theorem mProp_bupd_mixin2: BiBUpdMixin mPropp Refines2.
