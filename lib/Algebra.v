@@ -539,8 +539,12 @@ Section FUNCTOR.
       morph_oplus: forall s a b, (𝑤_{s} a) ⊕ (𝑤_{s} b) ≡ (𝑤_{s} (a ⊕ b));
       morph_unit: ∀ a, 𝑤_{ε} a ≡ a;
       morph_unit2: ∀ a, 𝑤_{a} ε ≡ ε;
-      morph_Proper:> Proper ((≡) ==> (≡) ==> (≡)) (𝑤);
+      morph_Proper1:> Proper ((eq) ==> (≡) ==> (≡)) (𝑤);
+      morph_Proper2:> Proper ((≡) ==> (eq) ==> (≡)) (𝑤);
   }.
+
+  Global Program Instance morph_Proper `{t}: Proper ((≡) ==> (eq) ==> (≡)) (𝑤).
+  Next Obligation. ii. rewrite H0. rewrite H1. refl. Qed.
 
   Class Idem `{W: t} :=
     morph_idem: ∀ s0 s1 a, 𝑤_{s1} (𝑤_{s0} a) ≡ 𝑤_{s0 ⊕ s1} a.

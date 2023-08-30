@@ -3,102 +3,29 @@ From stdpp Require Import base gmap.
 
 Set Implicit Arguments.
 
-Record cond: Type := mk_cond {
+Record _cond: Type := mk_cond {
     meta: Type;
     precond: meta -> Any.t -> Prop;
     postcond: meta -> Any.t -> Prop;
 }.
 
-Global Instance cond_eps: Eps cond := @mk_cond unit top2 top2.
+Definition cond := pointed _cond.
 
-Global Instance cond_ops: OPlus cond :=
+Global Instance cond_ops: OPlus _cond :=
   fun c0 c1 =>
     mk_cond
       (fun m => c0.(precond) m.1 /1\ c1.(precond) m.2)
       (fun m => c0.(postcond) m.1 /1\ c1.(postcond) m.2)
 .
 
-Record path (A B: Type): Type := mk_path {
-  to:> A -> B;
-  from: B -> A;
-  (* correct1: from ∘ to = id; *)
-  (* correct2: to ∘ from = id; *)
-  correct1: ∀ x, from (to x) = x;
-  correct2: ∀ x, to (from x) = x;
-}.
-
-Definition path_id: ∀ A, path A A.
-Proof.
-  i. eapply (@mk_path _ _ id id); ss.
-Defined.
-
-Definition path_sym: ∀ A B, path A B -> path B A.
-Proof.
-  i. eapply (@mk_path _ _ X.(from) X.(to)); ss.
-  - destruct X. ss.
-  - destruct X. ss.
-Defined.
-
-Definition path_comm: ∀ A B, path (A * B) (B * A).
-Proof.
-  i. eapply (@mk_path _ _ (fun ab => (ab.2, ab.1)) (fun ab => (ab.2, ab.1))); ss.
-  - i. destruct x; ss.
-  - i. destruct x; ss.
-Defined.
-
-Definition path_assoc: ∀ A B C, path (A * (B * C)) ((A * B) * C).
-Proof.
-  i. eapply (@mk_path _ _ (fun abc => ((abc.1, abc.2.1), abc.2.2))
-               (fun abc => (abc.1.1, (abc.1.2, abc.2)))); ss.
-  - i. destruct x; ss. destruct p; ss.
-  - i. destruct x; ss. destruct p; ss.
-Defined.
-
-Definition path_trans: ∀ A B C, path A B -> path B C -> path A C.
-Proof.
-  (* i. destruct X, X0; ss. *)
-  (* eapply (@mk_path _ _ (to1 ∘ to0) (from0 ∘ from1)); ss. *)
-  (* - change (from0 ∘ from1 ∘ (to1 ∘ to0)) with (from0 ∘ (from1 ∘ to1) ∘ to0). *)
-  (*   i. rewrite correct5. rewrite <- correct3. reflexivity. *)
-  (* - change (to1 ∘ to0 ∘ (from0 ∘ from1)) with (to1 ∘ (to0 ∘ from0) ∘ from1). *)
-  (*   i. rewrite correct4. rewrite <- correct6. reflexivity. *)
-  i.
-  eapply (@mk_path _ _ (X0.(to) ∘ X.(to)) (X.(from) ∘ X0.(from))); ss.
-  - i. rewrite correct1. rewrite correct1. reflexivity.
-  - i. rewrite correct2. rewrite correct2. reflexivity.
-Defined.
-
-Definition path_unitl: ∀ A, path (unit * A) A.
-Proof.
-  i. eapply (@mk_path _ _ (fun ta => ta.2) (fun a => (tt, a))); ss.
-  - i. destruct x; ss. des_u; ss.
-Defined.
-
-Definition path_unitr: ∀ A, path (A * unit) A.
-Proof.
-  i. eapply (@mk_path _ _ (fun ta => ta.1) (fun a => (a, tt))); ss.
-  - i. destruct x; ss. des_u; ss.
-Defined.
-
-Definition path_combine: ∀ A0 A1 B0 B1,
-    path A0 B0 -> path A1 B1 -> path (A0 * A1) (B0 * B1).
-Proof.
-  i. eapply (@mk_path _ _ (fun a => (X a.1, X0 a.2))
-               (fun b => (X.(from) b.1, X0.(from) b.2))); ss.
-  - i. destruct x; ss. rewrite ! correct1; refl.
-  - i. destruct x; ss. rewrite ! correct2; refl.
-Defined.
-
-
-
-Global Instance cond_equiv: Equiv cond :=
+Global Instance cond_equiv: Equiv _cond :=
   fun c0 c1 =>
     exists (p: path c0.(meta) c1.(meta)),
       <<PRE: ∀ m0 z, c0.(precond) m0 z <-> c1.(precond) (p.(to) m0) z>> ∧
       <<POST: ∀ m0 z, c0.(postcond) m0 z <-> c1.(postcond) (p.(to) m0) z>>
 .
 
-Global Program Instance cond_EquivFacts: EquivFacts (T:=cond).
+Global Program Instance _cond_EquivFacts: EquivFacts (T:=_cond).
 Next Obligation.
   econs.
   - ii. rr. exists (path_id _). ss.
@@ -110,7 +37,15 @@ Next Obligation.
     + i. rewrite POST. rewrite POST0. ss.
 Qed.
 
-Global Program Instance cond_OPlusFacts: OPlusFacts (T:=cond).
+Global Program Instance cond_EquivFacts: EquivFacts (T:=cond).
+Next Obligation.
+  econs.
+  - ii. upt. des_ifs; refl.
+  - ii. upt. des_ifs; sym.
+  - ii. upt. des_ifs; etrans; et.
+Qed.
+
+Global Program Instance _cond_OPlusFacts: OPlusFacts (T:=_cond).
 Next Obligation.
   i. rr. destruct a, b; ss.
   exists (path_comm _ _). ss. esplits; i; ss; split; i; des; ss.
@@ -125,18 +60,31 @@ Next Obligation.
     esplits; ss; et; try apply PRE0; try apply PRE; try apply POST0; try apply POST; ss.
 Qed.
 
-Global Program Instance cond_EpsFacts: EpsFacts (T:=cond).
+Global Program Instance cond_OPlusFacts: OPlusFacts (T:=cond).
 Next Obligation.
-  ii. rr. ss. eexists (path_unitr _); ss.
-  split; ii; ss.
-  - destruct m0; des_u. ss. split; i; des; ss.
-  - destruct m0; des_u. ss. split; i; des; ss.
+  ii. upt. des_ifs; ss. eapply oplus_comm.
 Qed.
 Next Obligation.
-  ii. rr. ss. eexists (path_unitl _); ss.
-  split; ii; ss.
-  - destruct m0; des_u. ss. split; i; des; ss.
-  - destruct m0; des_u. ss. split; i; des; ss.
+  ii. upt. des_ifs; ss. eapply oplus_assoc.
+Qed.
+Next Obligation.
+  ii. upt. des_ifs; ss. setoid_subst. refl.
+Qed.
+
+Global Program Instance cond_EpsFacts: EpsFacts (T:=cond).
+Next Obligation.
+  ii. rr. des_ifs; ss.
+  (* eexists (path_unitr _); ss. *)
+  (* split; ii; ss. *)
+  (* - destruct m0; des_u. ss. split; i; des; ss. *)
+  (* - destruct m0; des_u. ss. split; i; des; ss. *)
+Qed.
+Next Obligation.
+  ii. rr. des_ifs; ss.
+  (* eexists (path_unitl _); ss. *)
+  (* split; ii; ss. *)
+  (* - destruct m0; des_u. ss. split; i; des; ss. *)
+  (* - destruct m0; des_u. ss. split; i; des; ss. *)
 Qed.
 
 (* Variant triopt (T: Type): Type := *)
@@ -158,7 +106,7 @@ Global Instance conds_equiv: Equiv conds := fun c0 c1 => ∀ fn, c0 fn ≡ c1 fn
 Global Program Instance conds_EquivFacts: EquivFacts (T:=conds).
 Next Obligation.
   econs.
-  - ii. rr. exists (path_id _). ss.
+  - ii. refl.
   - ii. sym; et.
   - ii. etrans; et.
 Qed.
@@ -184,11 +132,14 @@ Section WRAP.
       match ce with
       | Call fn arg =>
           let c := (cs fn) in
-          m <- trigger (Choose (c.(meta)));;
-          guarantee(c.(precond) m arg);;;
-          ret <- trigger (Call fn arg);;
-          assume(c.(postcond) m ret);;;
-          Ret ret
+          match c with
+          | mytt => trigger (Call fn arg)
+          | just c => m <- trigger (Choose (c.(meta)));;
+                      guarantee(c.(precond) m arg);;;
+                      ret <- trigger (Call fn arg);;
+                      assume(c.(postcond) m ret);;;
+                      Ret ret
+          end
       end
   .
 
@@ -200,11 +151,15 @@ Section WRAP.
     fun cs nf =>
       (nf.1, fun arg =>
                let c := (cs nf.1) in
-               m <- trigger (Choose (c.(meta)));;
-               assume(c.(precond) m arg);;;
-               ret <- 𝑤_{cs} (nf.2 arg);;
-               guarantee(c.(postcond) m ret);;;
-               Ret ret)
+               match c with
+               | mytt => nf.2 arg
+               | just c =>
+                   m <- trigger (Choose (c.(meta)));;
+                   assume(c.(precond) m arg);;;
+                   ret <- 𝑤_{cs} (nf.2 arg);;
+                   guarantee(c.(postcond) m ret);;;
+                   Ret ret
+               end)
   .
 
   Global Instance wrap_fnsems: Wrap conds (alist string (Any.t -> itree Es Any.t)) :=
@@ -398,6 +353,8 @@ Proof.
   eapply eutt_interp; try refl.
   ii. unfold trivial_Handler. destruct a; my_steps.
   { destruct c; ss.
+    destruct (cs fn) eqn:T; cycle 1.
+    { my_steps. }
     my_steps.
     { unfold assume, guarantee. my_steps. }
     { unfold assume, guarantee. my_steps. }
@@ -418,6 +375,8 @@ Proof.
   eapply eutt_interp; try refl.
   ii. unfold trivial_Handler. destruct a; my_steps.
   { destruct c; ss.
+    destruct (cs fn) eqn:T; cycle 1.
+    { my_steps. }
     my_steps.
     { unfold assume, guarantee. my_steps. }
     { unfold assume, guarantee. my_steps. }
@@ -454,10 +413,16 @@ Next Obligation.
   eapply Forall2_app.
   - rewrite ! map_map. eapply Forall2_fmap_2.
     eapply Reflexive_instance_0. rr. i; ss. destruct x; ss.
-    splits; ss. i. my_steps. eapply focus_left_wrap_commute.
+    splits; ss. i.
+    destruct (s s0) eqn:T; cycle 1.
+    { refl. }
+    my_steps. eapply focus_left_wrap_commute.
   - rewrite ! map_map. eapply Forall2_fmap_2.
     eapply Reflexive_instance_0. rr. i; ss. destruct x; ss.
-    splits; ss. i. my_steps. eapply focus_right_wrap_commute.
+    splits; ss. i.
+    destruct (s s0) eqn:T; cycle 1.
+    { refl. }
+    my_steps. eapply focus_right_wrap_commute.
 Qed.
 Next Obligation.
   i; ss.
@@ -466,8 +431,15 @@ Next Obligation.
   rr. ss. esplits; ss. unfold wrap, wrap_fnsems.
   eapply Forall2_fmap_l.
   eapply Reflexive_instance_0. rr. i; ss. destruct x; ss.
-  splits; ss. i. my_steps. eapply focus_left_wrap_commute.
-  - rewrite ! map_map. eapply Forall2_fmap_2.
-    eapply Reflexive_instance_0. rr. i; ss. destruct x; ss.
-    splits; ss. i. my_steps. eapply focus_right_wrap_commute.
+  splits; ss. i. refl.
+Qed.
+Next Obligation.
+  i; ss.
+Qed.
+Next Obligation.
+  assert(T: Proper ((≡) ==> (≡@{ModSem_MRA}) ==> (≡)) (𝑤)).
+  {
+    ii. rr in H. rr in H0. rr. des_ifs. setoid_subst.
+  }
+  ii; ss. unfold wrap.
 Qed.
