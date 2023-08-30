@@ -97,24 +97,30 @@ Section PROOFSIM.
   Definition mem_less_defined (m0 m1: Mem.t) :=
     forall b ofs, (Mem.cnts m0 b ofs = None) -> (Mem.cnts m1 b ofs = None).
 
+  Definition mem_cnt_eq (m0 m1: Mem.t) :=
+    forall b ofs v1 v2,
+      (Mem.cnts m0 b ofs = Some v1) -> (Mem.cnts m1 b ofs = Some v2) -> v1 = v2.
+
   Definition var_sim_inv : nat -> (Any.t * Any.t) -> Prop :=
     fun n '(s, t) =>
       match n with
       | O =>
           exists (m: Mem.t),
           (<<SRC: s = Any.pair (m↑) ((@None val)↑)>>) /\
-            (<<TGT: t = Any.pair (m↑) (Vnullptr↑)>>) /\
-            (<<WFM: Mem.wf m>>)
+            (<<TGT: t = Any.pair (m↑) (Vnullptr↑)>>)
+            (* (<<WFM: Mem.wf m>>) *)
       | S _ =>
           exists (v: val) (ms mt: Mem.t) (b: nat) (ofs: Z),
           (<<SRC: s = Any.pair (ms↑) ((Some v)↑)>>) /\
             (<<TGT: t = Any.pair (mt↑) ((Vptr (inl b) ofs)↑)>>) /\
+            (<<VARNB: b < Mem.nb mt>>) /\
             (<<VART: Mem.load mt (inl b) ofs = Some v>>) /\
             (<<VARS: forall ofs0, Mem.cnts ms (inl b) ofs0 = None>>) /\
-            (<<WFMS: Mem.wf ms>>) /\
-            (<<WFMT: Mem.wf mt>>) /\
+            (* (<<WFMS: Mem.wf ms>>) /\ *)
+            (* (<<WFMT: Mem.wf mt>>) /\ *)
             (<<NBLK: exists nbd, (Mem.nb mt) = (Mem.nb ms) + nbd>>) /\
-            (<<MLD: mem_less_defined mt ms>>)
+            (<<MLD: mem_less_defined mt ms>>) /\
+            (<<MCE: mem_cnt_eq mt ms>>)
       end.
 
   Ltac unfold_goal H :=
@@ -148,6 +154,70 @@ Section PROOFSIM.
         unfold_goal @allocF. unfold_goal @cfunU.
         destruct w; ss.
         { des. hide_tgt. steps. subst hide_tgt. steps.
+          rewrite _UNWRAPU0. steps. des_ifs.
+          { hide_tgt. steps. subst hide_tgt. steps. hide_src. force_r. intros pad.
+            steps. subst hide_src. force_l. exists pad. steps.
+            unfold lift_rel. exists 0. splits; auto. ss. esplits; eauto.
+          }
+          steps.
+        }
+        des. hide_tgt. steps. subst hide_tgt. steps. rewrite _UNWRAPU0. steps.
+        des_ifs.
+        { steps. force_r. intros pad. force_l. exists (nbd + pad). steps.
+          unfold lift_rel. exists (S w).
+          replace (Mem.nb ms + (nbd + pad)) with (Mem.nb mt + pad). 2: lia.
+          splits; auto.
+          - ss. exists v. do 2 eexists. exists b, ofs. splits. eauto. eauto. all: ss.
+            + lia.
+            + unfold update. des_ifs; try lia.
+            + i. unfold update. des_ifs; try lia.
+            + exists 0. lia.
+            + ii. ss. unfold update in *. des_ifs. eapply MLD; eauto.
+            + ii. ss. unfold update in *. des_ifs. eapply MCE; eauto.
+        }
+        steps.
+      - exists (focus_left (T:=Any.t) ∘ cfunU freeF). split. auto. ii. subst y.
+        ginit.
+        unfold_goal @freeF. unfold_goal @cfunU.
+        destruct w; ss.
+        { des. hide_tgt. steps.
+          (* match goal with *)
+          (* | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, unleftU ?ox >>= _) (_, _)) ] => *)
+          (*     let tvar := fresh "tmp" in *)
+          (*     let thyp := fresh "TMP" in *)
+          (*     remember (unleftU ox) as tvar eqn:thyp; unfold unleftU in thyp; subst tvar; *)
+          (*     let name := fresh "_UNLEFTU" in *)
+          (*     destruct (ox) eqn:name; [|unfold triggerUB; ired_both; _force_l; ss; fail] *)
+          (* end. *)
+          (* TODO *)
+
+          unfold unleftU. steps.
+          rewrite _UNWRAPU0. steps. des_ifs.
+          { hide_tgt. steps. subst hide_tgt. steps. hide_src. force_r. intros pad.
+            steps. subst hide_src. force_l. exists pad. steps.
+            unfold lift_rel. exists 0. splits; auto. ss. esplits; eauto.
+          }
+          steps.
+        }
+        des. hide_tgt. steps. subst hide_tgt. steps. rewrite _UNWRAPU0. steps.
+        des_ifs.
+        { steps. force_r. intros pad. force_l. exists (nbd + pad). steps.
+          unfold lift_rel. exists (S w).
+          replace (Mem.nb ms + (nbd + pad)) with (Mem.nb mt + pad). 2: lia.
+          splits; auto.
+          - ss. exists v. do 2 eexists. exists b, ofs. splits. eauto. eauto. all: ss.
+            + lia.
+            + unfold update. des_ifs; try lia.
+            + i. unfold update. des_ifs; try lia.
+            + exists 0. lia.
+            + ii. ss. unfold update in *. des_ifs. eapply MLD; eauto.
+            + ii. ss. unfold update in *. des_ifs. eapply MCE; eauto.
+        }
+        steps.
+      -
+        
+              
+
           (* TODO *)
 
         

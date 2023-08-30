@@ -110,6 +110,10 @@ Class red_database (interp: Box) := mk_rdb {
   rdb_NB: Box;
   rdb_unwrapU: Box;
   rdb_unwrapN: Box;
+  rdb_unleftU: Box;
+  rdb_unleftN: Box;
+  rdb_unrightU: Box;
+  rdb_unrightN: Box;
   rdb_assume: Box;
   rdb_guarantee: Box;
   rdb_ext: Box;
@@ -128,6 +132,10 @@ Arguments rdb_UB [interp].
 Arguments rdb_NB [interp].
 Arguments rdb_unwrapU [interp].
 Arguments rdb_unwrapN [interp].
+Arguments rdb_unleftU [interp].
+Arguments rdb_unleftN [interp].
+Arguments rdb_unrightU [interp].
+Arguments rdb_unrightN [interp].
 Arguments rdb_assume [interp].
 Arguments rdb_guarantee [interp].
 Arguments rdb_ext [interp].
@@ -230,6 +238,18 @@ Ltac __red_interp f term :=
     match goal with | name := mk_box ?lemma |- _ => apply lemma; fail 2 end
   | unwrapN _ =>
     instantiate (f:=_continue); pose (rdb_unwrapN tc) as name; cbn in name;
+    match goal with | name := mk_box ?lemma |- _ => apply lemma; fail 2 end
+  | unleftU _ =>
+    instantiate (f:=_continue); pose (rdb_unleftU tc) as name; cbn in name;
+    match goal with | name := mk_box ?lemma |- _ => apply lemma; fail 2 end
+  | unleftN _ =>
+    instantiate (f:=_continue); pose (rdb_unleftN tc) as name; cbn in name;
+    match goal with | name := mk_box ?lemma |- _ => apply lemma; fail 2 end
+  | unrightU _ =>
+    instantiate (f:=_continue); pose (rdb_unrightU tc) as name; cbn in name;
+    match goal with | name := mk_box ?lemma |- _ => apply lemma; fail 2 end
+  | unrightN _ =>
+    instantiate (f:=_continue); pose (rdb_unrightN tc) as name; cbn in name;
     match goal with | name := mk_box ?lemma |- _ => apply lemma; fail 2 end
   | assume _ =>
     instantiate (f:=_continue); pose (rdb_assume tc) as name; cbn in name;
@@ -380,6 +400,50 @@ Section RESUM.
     unfold resum_itr. unfold unwrapN. des_ifs; grind. eapply resum_itr_triggerNB.
   Qed.
 
+  Lemma resum_itr_unleftU
+        (L R: Type)
+        (i: L + R)
+    :
+      (resum_itr (E:=E) (F:=F) (unleftU i))
+      =
+      (unleftU i).
+  Proof.
+    unfold resum_itr. unfold unleftU. des_ifs; grind. eapply resum_itr_triggerUB.
+  Qed.
+
+  Lemma resum_itr_unleftN
+        (L R: Type)
+        (i: L + R)
+    :
+      (resum_itr (E:=E) (F:=F) (unleftN i))
+      =
+      (unleftN i).
+  Proof.
+    unfold resum_itr. unfold unleftN. des_ifs; grind. eapply resum_itr_triggerNB.
+  Qed.
+
+  Lemma resum_itr_unrightU
+        (L R: Type)
+        (i: L + R)
+    :
+      (resum_itr (E:=E) (F:=F) (unrightU i))
+      =
+      (unrightU i).
+  Proof.
+    unfold resum_itr. unfold unrightU. des_ifs; grind. eapply resum_itr_triggerUB.
+  Qed.
+
+  Lemma resum_itr_unrightN
+        (L R: Type)
+        (i: L + R)
+    :
+      (resum_itr (E:=E) (F:=F) (unrightN i))
+      =
+      (unrightN i).
+  Proof.
+    unfold resum_itr. unfold unrightN. des_ifs; grind. eapply resum_itr_triggerNB.
+  Qed.
+
   Lemma resum_itr_assume
         P
     :
@@ -425,6 +489,10 @@ Section RESUM.
       (mk_box resum_itr_triggerNB)
       (mk_box resum_itr_unwrapU)
       (mk_box resum_itr_unwrapN)
+      (mk_box resum_itr_unleftU)
+      (mk_box resum_itr_unleftN)
+      (mk_box resum_itr_unrightU)
+      (mk_box resum_itr_unrightN)
       (mk_box resum_itr_assume)
       (mk_box resum_itr_guarantee)
       (mk_box resum_itr_ext)
@@ -471,6 +539,10 @@ Section TEST.
   Hypothesis x_NB: forall R, (x triggerNB) = (triggerNB: itree _ R).
   Hypothesis x_unwrapU: forall R (i: option R), (x (unwrapU i)) = (unwrapU i).
   Hypothesis x_unwrapN: forall R (i: option R), (x (unwrapN i)) = (unwrapN i).
+  Hypothesis x_unleftU: forall L R (i: L + R), (x (unleftU i)) = (unleftU i).
+  Hypothesis x_unleftN: forall L R (i: L + R), (x (unleftN i)) = (unleftN i).
+  Hypothesis x_unrightU: forall L R (i: L + R), (x (unrightU i)) = (unrightU i).
+  Hypothesis x_unrightN: forall L R (i: L + R), (x (unrightN i)) = (unrightN i).
   Hypothesis x_assume: forall P, (x (assume P)) = assume P >>= (fun _ => tau;; Ret tt).
   Hypothesis x_guarantee: forall P, (x (guarantee P)) = guarantee P >>= (fun _ => tau;; Ret tt).
   Hypothesis x_ext: forall R (i0 i1: itree _ R), i0 = i1 -> (x i0) = (x i1).
@@ -489,6 +561,10 @@ Section TEST.
       (mk_box (x_NB))
       (mk_box (x_unwrapU))
       (mk_box (x_unwrapN))
+      (mk_box (x_unleftU))
+      (mk_box (x_unleftN))
+      (mk_box (x_unrightU))
+      (mk_box (x_unrightN))
       (mk_box (x_assume))
       (mk_box (x_guarantee))
       (mk_box (x_ext))
@@ -502,6 +578,10 @@ Section TEST.
   Hypothesis y_NB: forall R, (y triggerNB) = (triggerNB: itree _ R).
   Hypothesis y_unwrapU: forall R (i: option R), (y (unwrapU i)) = (unwrapU i).
   Hypothesis y_unwrapN: forall R (i: option R), (y (unwrapN i)) = (unwrapN i).
+  Hypothesis y_unleftU: forall L R (i: L + R), (y (unleftU i)) = (unleftU i).
+  Hypothesis y_unleftN: forall L R (i: L + R), (y (unleftN i)) = (unleftN i).
+  Hypothesis y_unrightU: forall L R (i: L + R), (y (unrightU i)) = (unrightU i).
+  Hypothesis y_unrightN: forall L R (i: L + R), (y (unrightN i)) = (unrightN i).
   Hypothesis y_assume: forall P, (y (assume P)) = assume P >>= (fun _ => tau;; Ret tt).
   Hypothesis y_guarantee: forall P, (y (guarantee P)) = guarantee P >>= (fun _ => tau;; Ret tt).
   Hypothesis y_ext: forall R (i0 i1: itree _ R), i0 = i1 -> (y i0) = (y i1).
@@ -520,6 +600,10 @@ Section TEST.
       (mk_box (y_NB))
       (mk_box (y_unwrapU))
       (mk_box (y_unwrapN))
+      (mk_box (y_unleftU))
+      (mk_box (y_unleftN))
+      (mk_box (y_unrightU))
+      (mk_box (y_unrightN))
       (mk_box (y_assume))
       (mk_box (y_guarantee))
       (mk_box (y_ext))
@@ -533,6 +617,10 @@ Section TEST.
   Hypothesis z_NB: forall R, (z triggerNB) = (triggerNB: itree _ R).
   Hypothesis z_unwrapU: forall R (i: option R), (z (unwrapU i)) = (unwrapU i).
   Hypothesis z_unwrapN: forall R (i: option R), (z (unwrapN i)) = (unwrapN i).
+  Hypothesis z_unleftU: forall L R (i: L + R), (z (unleftU i)) = (unleftU i).
+  Hypothesis z_unleftN: forall L R (i: L + R), (z (unleftN i)) = (unleftN i).
+  Hypothesis z_unrightU: forall L R (i: L + R), (z (unrightU i)) = (unrightU i).
+  Hypothesis z_unrightN: forall L R (i: L + R), (z (unrightN i)) = (unrightN i).
   Hypothesis z_assume: forall P, (z (assume P)) = assume P >>= (fun _ => tau;; Ret tt).
   Hypothesis z_guarantee: forall P, (z (guarantee P)) = guarantee P >>= (fun _ => tau;; Ret tt).
   Hypothesis z_ext: forall R (i0 i1: itree _ R), i0 = i1 -> (z i0) = (z i1).
@@ -551,6 +639,10 @@ Section TEST.
       (mk_box (z_NB))
       (mk_box (z_unwrapU))
       (mk_box (z_unwrapN))
+      (mk_box (z_unleftU))
+      (mk_box (z_unleftN))
+      (mk_box (z_unrightU))
+      (mk_box (z_unrightN))
       (mk_box (z_assume))
       (mk_box (z_guarantee))
       (mk_box (z_ext))
@@ -600,6 +692,10 @@ Section TEST.
   Hypothesis xx_NB: forall R p q, (xx p triggerNB q) = (triggerNB: itree _ R).
   Hypothesis xx_unwrapU: forall R p q (i: option R), (xx p (unwrapU i) q) = (unwrapU i).
   Hypothesis xx_unwrapN: forall R p q (i: option R), (xx p (unwrapN i) q) = (unwrapN i).
+  Hypothesis xx_unleftU: forall L R p q (i: L + R), (xx p (unleftU i) q) = (unleftU i).
+  Hypothesis xx_unleftN: forall L R p q (i: L + R), (xx p (unleftN i) q) = (unleftN i).
+  Hypothesis xx_unrightU: forall L R p q (i: L + R), (xx p (unrightU i) q) = (unrightU i).
+  Hypothesis xx_unrightN: forall L R p q (i: L + R), (xx p (unrightN i) q) = (unrightN i).
   Hypothesis xx_assume: forall P p q, (xx p (assume P) q) = assume P >>= (fun _ => tau;; Ret tt).
   Hypothesis xx_guarantee: forall P p q, (xx p (guarantee P) q) = guarantee P >>= (fun _ => tau;; Ret tt).
   Hypothesis xx_exxt: forall R p q (i0 i1: itree _ R), i0 = i1 -> (xx p i0 q) = (xx p i1 q).
@@ -618,6 +714,10 @@ Section TEST.
       (mk_box (xx_NB))
       (mk_box (xx_unwrapU))
       (mk_box (xx_unwrapN))
+      (mk_box (xx_unleftU))
+      (mk_box (xx_unleftN))
+      (mk_box (xx_unrightU))
+      (mk_box (xx_unrightN))
       (mk_box (xx_assume))
       (mk_box (xx_guarantee))
       (mk_box (xx_exxt))

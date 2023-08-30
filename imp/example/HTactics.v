@@ -678,6 +678,18 @@ Ltac _force_l :=
     remember (unwrapN ox) as tvar eqn:thyp; unfold unwrapN in thyp; subst tvar;
     let name := fresh "_UNWRAPN" in
     destruct (ox) eqn:name; [|exfalso]; cycle 1
+  | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, unleftN ?ox >>= _) (_, _)) ] =>
+    let tvar := fresh "tmp" in
+    let thyp := fresh "TMP" in
+    remember (unleftN ox) as tvar eqn:thyp; unfold unleftN in thyp; subst tvar;
+    let name := fresh "_UNLEFTN" in
+    destruct (ox) eqn:name; [|exfalso]; cycle 1
+  | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, unrightN ?ox >>= _) (_, _)) ] =>
+    let tvar := fresh "tmp" in
+    let thyp := fresh "TMP" in
+    remember (unrightN ox) as tvar eqn:thyp; unfold unrightN in thyp; subst tvar;
+    let name := fresh "_UNRIGHTN" in
+    destruct (ox) eqn:name; [|exfalso]; cycle 1
   | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, guarantee ?P >>= _) (_, _)) ] =>
     let tvar := fresh "tmp" in
     let thyp := fresh "TMP" in
@@ -714,6 +726,30 @@ Ltac _force_r :=
     remember (unwrapU ox) as tvar eqn:thyp; unfold unwrapU in thyp; subst tvar;
     let name := fresh "_UNWRAPU" in
     destruct (ox) eqn:name; [|exfalso]; cycle 1
+  | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, _) (_, unleftU ?ox >>= _)) ] =>
+    let tvar := fresh "tmp" in
+    let thyp := fresh "TMP" in
+    remember (unleftU ox) as tvar eqn:thyp; unfold unleftU in thyp; subst tvar;
+    let name := fresh "_UNLEFTU" in
+    destruct (ox) eqn:name; [|exfalso]; cycle 1
+  | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, _) (_, unrightU ?ox >>= _)) ] =>
+    let tvar := fresh "tmp" in
+    let thyp := fresh "TMP" in
+    remember (unrightU ox) as tvar eqn:thyp; unfold unrightU in thyp; subst tvar;
+    let name := fresh "_UNRIGHTU" in
+    destruct (ox) eqn:name; [|exfalso]; cycle 1
+  | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, _) (_, unleftU ?ox >>= _)) ] =>
+    let tvar := fresh "tmp" in
+    let thyp := fresh "TMP" in
+    remember (unleftU ox) as tvar eqn:thyp; unfold unleftU in thyp; subst tvar;
+    let name := fresh "_UNLEFTU" in
+    destruct (ox) eqn:name; [|exfalso]; cycle 1
+  | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, _) (_, unrightU ?ox >>= _)) ] =>
+    let tvar := fresh "tmp" in
+    let thyp := fresh "TMP" in
+    remember (unrightU ox) as tvar eqn:thyp; unfold unrightU in thyp; subst tvar;
+    let name := fresh "_UNRIGHTU" in
+    destruct (ox) eqn:name; [|exfalso]; cycle 1
   | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, _) (_, assume ?P >>= _)) ] =>
     let tvar := fresh "tmp" in
     let thyp := fresh "TMP" in
@@ -738,6 +774,18 @@ Ltac _step :=
     remember (unwrapU ox) as tvar eqn:thyp; unfold unwrapU in thyp; subst tvar;
     let name := fresh "_UNWRAPU" in
     destruct (ox) eqn:name; [|unfold triggerUB; ired_both; _force_l; ss; fail]
+  | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, unleftU ?ox >>= _) (_, _)) ] =>
+    let tvar := fresh "tmp" in
+    let thyp := fresh "TMP" in
+    remember (unleftU ox) as tvar eqn:thyp; unfold unleftU in thyp; subst tvar;
+    let name := fresh "_UNLEFTU" in
+    destruct (ox) eqn:name; [|unfold triggerUB; ired_both; _force_l; ss; fail]
+  | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, unrightU ?ox >>= _) (_, _)) ] =>
+    let tvar := fresh "tmp" in
+    let thyp := fresh "TMP" in
+    remember (unrightU ox) as tvar eqn:thyp; unfold unrightU in thyp; subst tvar;
+    let name := fresh "_UNRIGHTU" in
+    destruct (ox) eqn:name; [|unfold triggerUB; ired_both; _force_l; ss; fail]
   | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, assume ?P >>= _) (_, _)) ] =>
     let tvar := fresh "tmp" in
     let thyp := fresh "TMP" in
@@ -754,6 +802,18 @@ Ltac _step :=
     let thyp := fresh "TMP" in
     remember (unwrapN ox) as tvar eqn:thyp; unfold unwrapN in thyp; subst tvar;
     let name := fresh "_UNWRAPN" in
+    destruct (ox) eqn:name; [|unfold triggerNB; ired_both; _force_r; ss; fail]
+  | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, _) (_, unleftN ?ox >>= _)) ] =>
+    let tvar := fresh "tmp" in
+    let thyp := fresh "TMP" in
+    remember (unleftN ox) as tvar eqn:thyp; unfold unleftN in thyp; subst tvar;
+    let name := fresh "_UNLEFTN" in
+    destruct (ox) eqn:name; [|unfold triggerNB; ired_both; _force_r; ss; fail]
+  | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, _) (_, unrightN ?ox >>= _)) ] =>
+    let tvar := fresh "tmp" in
+    let thyp := fresh "TMP" in
+    remember (unrightN ox) as tvar eqn:thyp; unfold unrightN in thyp; subst tvar;
+    let name := fresh "_UNRIGHTN" in
     destruct (ox) eqn:name; [|unfold triggerNB; ired_both; _force_r; ss; fail]
   | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, _) (_, guarantee ?P >>= _)) ] =>
     let tvar := fresh "tmp" in

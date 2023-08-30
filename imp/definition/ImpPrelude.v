@@ -132,7 +132,7 @@ Module Mem.
   }
   .
 
-  Definition wf (m0: t): Prop := forall blk ofs (LT: (blk < m0.(nb))%nat), m0.(cnts) (inl blk) ofs = None.
+  Definition wf (m0: t): Prop := forall blk ofs (LT: (m0.(nb)) <= blk), m0.(cnts) (inl blk) ofs = None.
 
   Definition alloc (m0: Mem.t) (sz: Z): (mblock * Mem.t) :=
     ((m0.(nb)),

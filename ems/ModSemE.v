@@ -318,6 +318,50 @@ Section EVENTS.
     - rewrite interp_Es_triggerNB. unfold triggerNB. grind.
   Qed.
 
+  Lemma interp_Es_unleftU
+    prog L R st0 (r: L + R)
+    :
+    interp_Es prog (unleftU r) st0 = r <- unleftU r;; Ret (st0, r)
+  .
+  Proof.
+    unfold unleftU. des_ifs.
+    - rewrite interp_Es_ret. grind.
+    - rewrite interp_Es_triggerUB. unfold triggerUB. grind.
+  Qed.
+
+  Lemma interp_Es_unleftN
+    prog L R st0 (r: L + R)
+    :
+    interp_Es prog (unleftN r) st0 = r <- unleftN r;; Ret (st0, r)
+  .
+  Proof.
+    unfold unleftN. des_ifs.
+    - rewrite interp_Es_ret. grind.
+    - rewrite interp_Es_triggerNB. unfold triggerNB. grind.
+  Qed.
+
+  Lemma interp_Es_unrightU
+    prog L R st0 (r: L + R)
+    :
+    interp_Es prog (unrightU r) st0 = r <- unrightU r;; Ret (st0, r)
+  .
+  Proof.
+    unfold unrightU. des_ifs.
+    - rewrite interp_Es_triggerUB. unfold triggerUB. grind.
+    - rewrite interp_Es_ret. grind.
+  Qed.
+
+  Lemma interp_Es_unrightN
+    prog L R st0 (r: L + R)
+    :
+    interp_Es prog (unrightN r) st0 = r <- unrightN r;; Ret (st0, r)
+  .
+  Proof.
+    unfold unrightN. des_ifs.
+    - rewrite interp_Es_triggerNB. unfold triggerNB. grind.
+    - rewrite interp_Es_ret. grind.
+  Qed.
+
   Lemma interp_Es_assume
     prog st0 (P: Prop)
     :
@@ -439,6 +483,50 @@ Section EVENTS.
     unfold unwrapN. des_ifs.
     - rewrite focus_left_ret. grind.
     - rewrite focus_left_triggerNB. unfold triggerNB. grind.
+  Qed.
+
+  Lemma focus_left_unleftU
+        L R (r: L + R)
+    :
+      focus_left (unleftU r) = unleftU r
+  .
+  Proof.
+    unfold unleftU. des_ifs.
+    - rewrite focus_left_ret. grind.
+    - rewrite focus_left_triggerUB. unfold triggerUB. grind.
+  Qed.
+
+  Lemma focus_left_unleftN
+        L R (r: L + R)
+    :
+      focus_left (unleftN r) = unleftN r
+  .
+  Proof.
+    unfold unleftN. des_ifs.
+    - rewrite focus_left_ret. grind.
+    - rewrite focus_left_triggerNB. unfold triggerNB. grind.
+  Qed.
+
+  Lemma focus_left_unrightU
+        L R (r: L + R)
+    :
+      focus_left (unrightU r) = unrightU r
+  .
+  Proof.
+    unfold unrightU. des_ifs.
+    - rewrite focus_left_triggerUB. unfold triggerUB. grind.
+    - rewrite focus_left_ret. grind.
+  Qed.
+
+  Lemma focus_left_unrightN
+        L R (r: L + R)
+    :
+      focus_left (unrightN r) = unrightN r
+  .
+  Proof.
+    unfold unrightN. des_ifs.
+    - rewrite focus_left_triggerNB. unfold triggerNB. grind.
+    - rewrite focus_left_ret. grind.
   Qed.
 
   Lemma focus_left_assume
@@ -564,6 +652,50 @@ Section EVENTS.
     - rewrite focus_right_triggerNB. unfold triggerNB. grind.
   Qed.
 
+  Lemma focus_right_unleftU
+        L R (r: L + R)
+    :
+      focus_right (unleftU r) = unleftU r
+  .
+  Proof.
+    unfold unleftU. des_ifs.
+    - rewrite focus_right_ret. grind.
+    - rewrite focus_right_triggerUB. unfold triggerUB. grind.
+  Qed.
+
+  Lemma focus_right_unleftN
+        L R (r: L + R)
+    :
+      focus_right (unleftN r) = unleftN r
+  .
+  Proof.
+    unfold unleftN. des_ifs.
+    - rewrite focus_right_ret. grind.
+    - rewrite focus_right_triggerNB. unfold triggerNB. grind.
+  Qed.
+
+  Lemma focus_right_unrightU
+        L R (r: L + R)
+    :
+      focus_right (unrightU r) = unrightU r
+  .
+  Proof.
+    unfold unrightU. des_ifs.
+    - rewrite focus_right_triggerUB. unfold triggerUB. grind.
+    - rewrite focus_right_ret. grind.
+  Qed.
+
+  Lemma focus_right_unrightN
+        L R (r: L + R)
+    :
+      focus_right (unrightN r) = unrightN r
+  .
+  Proof.
+    unfold unrightN. des_ifs.
+    - rewrite focus_right_triggerNB. unfold triggerNB. grind.
+    - rewrite focus_right_ret. grind.
+  Qed.
+
   Lemma focus_right_assume
         (P: Prop)
     :
@@ -685,6 +817,50 @@ Section EVENTS.
     unfold unwrapN. des_ifs.
     - rewrite bar_ret. grind.
     - rewrite bar_triggerNB. unfold triggerNB. grind.
+  Qed.
+
+  Lemma bar_unleftU
+        L R (r: L + R)
+    :
+      bar (unleftU r) = unleftU r
+  .
+  Proof.
+    unfold unleftU. des_ifs.
+    - rewrite bar_ret. grind.
+    - rewrite bar_triggerUB. unfold triggerUB. grind.
+  Qed.
+
+  Lemma bar_unleftN
+        L R (r: L + R)
+    :
+      bar (unleftN r) = unleftN r
+  .
+  Proof.
+    unfold unleftN. des_ifs.
+    - rewrite bar_ret. grind.
+    - rewrite bar_triggerNB. unfold triggerNB. grind.
+  Qed.
+
+  Lemma bar_unrightU
+        L R (r: L + R)
+    :
+      bar (unrightU r) = unrightU r
+  .
+  Proof.
+    unfold unrightU. des_ifs.
+    - rewrite bar_triggerUB. unfold triggerUB. grind.
+    - rewrite bar_ret. grind.
+  Qed.
+
+  Lemma bar_unrightN
+        L R (r: L + R)
+    :
+      bar (unrightN r) = unrightN r
+  .
+  Proof.
+    unfold unrightN. des_ifs.
+    - rewrite bar_triggerNB. unfold triggerNB. grind.
+    - rewrite bar_ret. grind.
   Qed.
 
   Lemma bar_assume
