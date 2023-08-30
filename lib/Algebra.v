@@ -41,6 +41,11 @@ Qed.
 Class Eps (T: Type) := eps : T.
 Notation "'ε'" := eps.
 
+Class Wrap (S T: Type) := wrap: S -> T -> T.
+Notation "'𝑤'" := (wrap) (at level 50).
+Notation "𝑤_{ s }" := (wrap s) (at level 50).
+Notation "𝑤_{ s } t" := (wrap s t) (at level 50).
+
 Class EquivFacts `{Equiv T} := equiv_facts:> Equivalence ((≡)).
 
 Class RefFacts `{Equiv T, Ref T, OPlus T} := {
@@ -482,3 +487,79 @@ End INCLUDEDFACTS.
 
 
 
+
+Ltac r_first rs :=
+  match rs with
+  | (?rs0 ⊕ ?rs1) =>
+    let tmp0 := r_first rs0 in
+    constr:(tmp0)
+  | ?r => constr:(r)
+  end
+.
+
+Ltac r_solve :=
+  repeat rewrite oplus_assoc;
+  repeat (try rewrite eps_r; try rewrite eps_l);
+  match goal with
+  | [|- ?lhs ≡ (_ ⊕ _) ] =>
+    let a := r_first lhs in
+    try rewrite <- (oplus_comm a);
+    try rewrite <- ! oplus_assoc;
+    try (f_equiv; r_solve)
+  | _ => try reflexivity
+  end
+.
+
+Module CM.
+
+  Class t: Type := {
+    car:> Type;
+    equiv:> Equiv car;
+    oplus:> OPlus car;
+    eps:> Eps car;
+    equiv_facts:> EquivFacts (T:=car);
+    oplus_facts:> OPlusFacts (T:=car);
+    eps_facts:> EpsFacts (T:=car);
+  }.
+
+End CM.
+Coercion MRA.car: MRA.t >-> Sortclass.
+Coercion MRAS.car: MRAS.t >-> Sortclass.
+Coercion CM.car: CM.t >-> Sortclass.
+
+
+
+Module WA.
+Section FUNCTOR.
+  Context {A: MRAS.t}.
+  Context {S: CM.t}.
+
+  Class t := {
+      morph:> Wrap S A;
+      morph_oplus: forall s a b, (𝑤_{s} a) ⊕ (𝑤_{s} b) ≡ (𝑤_{s} (a ⊕ b));
+      morph_unit: ∀ a, 𝑤_{ε} a ≡ a;
+      morph_unit2: ∀ a, 𝑤_{a} ε ≡ ε;
+      morph_Proper:> Proper ((≡) ==> (≡) ==> (≡)) (𝑤);
+  }.
+
+  Class Idem `{W: t} :=
+    morph_idem: ∀ s0 s1 a, 𝑤_{s1} (𝑤_{s0} a) ≡ 𝑤_{s0 ⊕ s1} a.
+
+  Section THEORIES.
+
+    Context `{t}.
+
+    Lemma morph_mono: forall s a b, a ≼ b -> 𝑤_{s} a ≼ 𝑤_{s} b.
+    Proof.
+      ii. rr in H0. des; setoid_subst. rr. esplits; et. rewrite morph_oplus; ss.
+    Qed.
+
+    Global Program Instance morph_included: Proper (eq ==> (≼) ==> (≼)) (𝑤).
+    Next Obligation.
+      ii. subst. eapply morph_mono; et.
+    Qed.
+
+  End THEORIES.
+
+End FUNCTOR.
+End WA.
