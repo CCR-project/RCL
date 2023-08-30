@@ -3,88 +3,48 @@ From stdpp Require Import base gmap.
 
 Set Implicit Arguments.
 
-Record _cond: Type := mk_cond {
-    meta: Type;
-    precond: meta -> Any.t -> Prop;
-    postcond: meta -> Any.t -> Prop;
+Record cond: Type := mk_cond {
+    precond: Any.t -> Prop;
+    postcond: Any.t -> Any.t -> Prop;
 }.
 
-Definition cond := pointed _cond.
+Global Instance cond_eps: Eps cond := mk_cond top1 top2.
 
-Global Instance cond_ops: OPlus _cond :=
+Global Instance cond_ops: OPlus cond :=
   fun c0 c1 =>
     mk_cond
-      (fun m => c0.(precond) m.1 /1\ c1.(precond) m.2)
-      (fun m => c0.(postcond) m.1 /1\ c1.(postcond) m.2)
+      (c0.(precond) /1\ c1.(precond))
+      (c0.(postcond) /2\ c1.(postcond))
 .
 
-Global Instance cond_equiv: Equiv _cond :=
-  fun c0 c1 =>
-    exists (p: path c0.(meta) c1.(meta)),
-      <<PRE: ∀ m0 z, c0.(precond) m0 z <-> c1.(precond) (p.(to) m0) z>> ∧
-      <<POST: ∀ m0 z, c0.(postcond) m0 z <-> c1.(postcond) (p.(to) m0) z>>
-.
-
-Global Program Instance _cond_EquivFacts: EquivFacts (T:=_cond).
-Next Obligation.
-  econs.
-  - ii. rr. exists (path_id _). ss.
-  - ii. rr. rr in H. des. exists (path_sym p). ss. esplits; ss.
-    + i. rewrite PRE. rewrite correct2. ss.
-    + i. rewrite POST. rewrite correct2. ss.
-  - ii. rr. rr in H. des. rr in H0. des. exists (path_trans p p0). ss. esplits; ss.
-    + i. rewrite PRE. rewrite PRE0. ss.
-    + i. rewrite POST. rewrite POST0. ss.
-Qed.
-
-Global Program Instance cond_EquivFacts: EquivFacts (T:=cond).
-Next Obligation.
-  econs.
-  - ii. upt. des_ifs; refl.
-  - ii. upt. des_ifs; sym.
-  - ii. upt. des_ifs; etrans; et.
-Qed.
-
-Global Program Instance _cond_OPlusFacts: OPlusFacts (T:=_cond).
-Next Obligation.
-  i. rr. destruct a, b; ss.
-  exists (path_comm _ _). ss. esplits; i; ss; split; i; des; ss.
-Qed.
-Next Obligation.
-  i. rr. destruct a, b; ss.
-  exists (path_assoc _ _ _). ss. esplits; i; ss; split; i; des; ss.
-Qed.
-Next Obligation.
-  ii. rr in H. rr in H0. des.
-  rr. exists (path_combine p0 p). ss. esplits; i; ss; split; i; des; ss;
-    esplits; ss; et; try apply PRE0; try apply PRE; try apply POST0; try apply POST; ss.
-Qed.
+Global Instance cond_equiv: Equiv cond := eq.
 
 Global Program Instance cond_OPlusFacts: OPlusFacts (T:=cond).
 Next Obligation.
-  ii. upt. des_ifs; ss. eapply oplus_comm.
+  i. rr. destruct a, b; ss.
+  compute. f_equal.
+  - extensionalities x. eapply prop_ext. tauto.
+  - extensionalities x y. eapply prop_ext. tauto.
 Qed.
 Next Obligation.
-  ii. upt. des_ifs; ss. eapply oplus_assoc.
-Qed.
-Next Obligation.
-  ii. upt. des_ifs; ss. setoid_subst. refl.
+  i. rr. destruct a, b; ss.
+  compute. f_equal.
+  - extensionalities x. eapply prop_ext. tauto.
+  - extensionalities x y. eapply prop_ext. tauto.
 Qed.
 
 Global Program Instance cond_EpsFacts: EpsFacts (T:=cond).
 Next Obligation.
-  ii. rr. des_ifs; ss.
-  (* eexists (path_unitr _); ss. *)
-  (* split; ii; ss. *)
-  (* - destruct m0; des_u. ss. split; i; des; ss. *)
-  (* - destruct m0; des_u. ss. split; i; des; ss. *)
+  ii. destruct a; ss.
+  compute. f_equal.
+  - extensionalities x. eapply prop_ext. tauto.
+  - extensionalities x y. eapply prop_ext. tauto.
 Qed.
 Next Obligation.
-  ii. rr. des_ifs; ss.
-  (* eexists (path_unitl _); ss. *)
-  (* split; ii; ss. *)
-  (* - destruct m0; des_u. ss. split; i; des; ss. *)
-  (* - destruct m0; des_u. ss. split; i; des; ss. *)
+  ii. destruct a; ss.
+  compute. f_equal.
+  - extensionalities x. eapply prop_ext. tauto.
+  - extensionalities x y. eapply prop_ext. tauto.
 Qed.
 
 (* Variant triopt (T: Type): Type := *)
@@ -101,26 +61,16 @@ Global Instance conds_eps: Eps conds := fun _ => ε.
 Global Instance conds_oplus: OPlus conds :=
   fun c0 c1 fn => (c0 fn) ⊕ (c1 fn).
 
-Global Instance conds_equiv: Equiv conds := fun c0 c1 => ∀ fn, c0 fn ≡ c1 fn.
-
-Global Program Instance conds_EquivFacts: EquivFacts (T:=conds).
-Next Obligation.
-  econs.
-  - ii. refl.
-  - ii. sym; et.
-  - ii. etrans; et.
-Qed.
+Global Instance conds_equiv: Equiv conds := eq.
 
 Global Program Instance conds_OPlusFacts: OPlusFacts (T:=conds).
 Next Obligation.
-  ii. unfold oplus, conds_oplus. rewrite oplus_comm. ss.
+  ii. unfold oplus, conds_oplus.
+  rr. extensionalities x. rewrite oplus_comm. ss.
 Qed.
 Next Obligation.
-  ii. unfold oplus, conds_oplus. rewrite oplus_assoc. ss.
-Qed.
-Next Obligation.
-  ii. unfold oplus, conds_oplus. do 2 r in H. do 2 r in H0.
-  rewrite H. rewrite H0. ss.
+  ii. unfold oplus, conds_oplus.
+  rr. extensionalities x. rewrite oplus_assoc. ss.
 Qed.
 
 
@@ -132,14 +82,10 @@ Section WRAP.
       match ce with
       | Call fn arg =>
           let c := (cs fn) in
-          match c with
-          | mytt => trigger (Call fn arg)
-          | just c => m <- trigger (Choose (c.(meta)));;
-                      guarantee(c.(precond) m arg);;;
-                      ret <- trigger (Call fn arg);;
-                      assume(c.(postcond) m ret);;;
-                      Ret ret
-          end
+          guarantee(c.(precond) arg);;;
+          ret <- trigger (Call fn arg);;
+          assume(c.(postcond) arg ret);;;
+          Ret ret
       end
   .
 
@@ -151,15 +97,11 @@ Section WRAP.
     fun cs nf =>
       (nf.1, fun arg =>
                let c := (cs nf.1) in
-               match c with
-               | mytt => nf.2 arg
-               | just c =>
-                   m <- trigger (Choose (c.(meta)));;
-                   assume(c.(precond) m arg);;;
-                   ret <- 𝑤_{cs} (nf.2 arg);;
-                   guarantee(c.(postcond) m ret);;;
-                   Ret ret
-               end)
+               assume(c.(precond) arg);;;
+               ret <- 𝑤_{cs} (nf.2 arg);;
+               guarantee(c.(postcond) arg ret);;;
+               Ret ret
+      )
   .
 
   Global Instance wrap_fnsems: Wrap conds (alist string (Any.t -> itree Es Any.t)) :=
@@ -285,29 +227,29 @@ Section WRAPFACTS.
   Lemma wrap_assume
         (P: Prop)
     :
-      𝑤_{cs} (assume P) = assume P;;; tau;; Ret (tt)
+      𝑤_{cs} (assume P) = assume P;;; Ret (tt)
   .
   Proof.
-    unfold assume.
-    repeat (try rewrite wrap_bind; try rewrite bind_bind). grind.
-    rewrite wrap_eventE.
-    repeat (try rewrite wrap_bind; try rewrite bind_bind). grind.
-    rewrite wrap_ret.
-    refl.
+    unfold assume, guarantee.
+    repeat (try rewrite interp_Es_bind; try rewrite bind_bind). grind.
+    des_ifs.
+    - rewrite wrap_ret. grind.
+    - unfold triggerUB, triggerNB. grind.
+      rewrite wrap_bind. rewrite wrap_eventE. grind.
   Qed.
 
   Lemma wrap_guarantee
         (P: Prop)
     :
-      𝑤_{cs} (guarantee P) = guarantee P;;; tau;; Ret (tt)
+      𝑤_{cs} (guarantee P) = guarantee P;;; Ret (tt)
   .
   Proof.
-    unfold guarantee.
-    repeat (try rewrite wrap_bind; try rewrite bind_bind). grind.
-    rewrite wrap_eventE.
-    repeat (try rewrite wrap_bind; try rewrite bind_bind). grind.
-    rewrite wrap_ret.
-    refl.
+    unfold assume, guarantee.
+    repeat (try rewrite interp_Es_bind; try rewrite bind_bind). grind.
+    des_ifs.
+    - rewrite wrap_ret. grind.
+    - unfold triggerUB, triggerNB. grind.
+      rewrite wrap_bind. rewrite wrap_eventE. grind.
   Qed.
 
   Lemma wrap_ext
@@ -353,11 +295,9 @@ Proof.
   eapply eutt_interp; try refl.
   ii. unfold trivial_Handler. destruct a; my_steps.
   { destruct c; ss.
-    destruct (cs fn) eqn:T; cycle 1.
-    { my_steps. }
     my_steps.
-    { unfold assume, guarantee. my_steps. }
-    { unfold assume, guarantee. my_steps. }
+    { unfold assume, guarantee, triggerUB, triggerNB. des_ifs; my_steps. }
+    { unfold assume, guarantee, triggerUB, triggerNB. des_ifs; my_steps. }
   }
   destruct s; ss.
   { resub. my_steps.
@@ -375,11 +315,9 @@ Proof.
   eapply eutt_interp; try refl.
   ii. unfold trivial_Handler. destruct a; my_steps.
   { destruct c; ss.
-    destruct (cs fn) eqn:T; cycle 1.
-    { my_steps. }
     my_steps.
-    { unfold assume, guarantee. my_steps. }
-    { unfold assume, guarantee. my_steps. }
+    { unfold assume, guarantee, triggerUB, triggerNB. des_ifs; my_steps. }
+    { unfold assume, guarantee, triggerUB, triggerNB. des_ifs; my_steps. }
   }
   destruct s; ss.
   { resub. my_steps.
@@ -393,9 +331,13 @@ Global Program Instance conds_CM: CM.t := {
    car := conds;
 }.
 Next Obligation.
+  econs; ss.
+  - unfold equiv, conds_equiv. ii; ss. etrans; et.
+Qed.
+Next Obligation.
   econs.
-  - ii; ss. unfold oplus, conds_oplus. unfold eps, conds_eps. rewrite eps_r. refl.
-  - ii; ss. unfold oplus, conds_oplus. unfold eps, conds_eps. rewrite eps_l. refl.
+  - ii. rr. extensionalities x. unfold oplus, conds_oplus. eapply eps_r.
+  - ii. rr. extensionalities x. unfold oplus, conds_oplus. eapply eps_l.
 Qed.
 
 (* Opaque MRAS.equiv. *)
@@ -414,14 +356,10 @@ Next Obligation.
   - rewrite ! map_map. eapply Forall2_fmap_2.
     eapply Reflexive_instance_0. rr. i; ss. destruct x; ss.
     splits; ss. i.
-    destruct (s s0) eqn:T; cycle 1.
-    { refl. }
     my_steps. eapply focus_left_wrap_commute.
   - rewrite ! map_map. eapply Forall2_fmap_2.
     eapply Reflexive_instance_0. rr. i; ss. destruct x; ss.
     splits; ss. i.
-    destruct (s s0) eqn:T; cycle 1.
-    { refl. }
     my_steps. eapply focus_right_wrap_commute.
 Qed.
 Next Obligation.
@@ -431,15 +369,22 @@ Next Obligation.
   rr. ss. esplits; ss. unfold wrap, wrap_fnsems.
   eapply Forall2_fmap_l.
   eapply Reflexive_instance_0. rr. i; ss. destruct x; ss.
-  splits; ss. i. refl.
+  splits; ss. i. unfold assume, guarantee. grind.
+  admit "ez".
 Qed.
 Next Obligation.
   i; ss.
 Qed.
 Next Obligation.
-  assert(T: Proper ((≡) ==> (≡@{ModSem_MRA}) ==> (≡)) (𝑤)).
-  {
-    ii. rr in H. rr in H0. rr. des_ifs. setoid_subst.
-  }
-  ii; ss. unfold wrap.
+  assert(T: Proper ((eq) ==> (≡@{ModSem_MRA}) ==> (≡@{ModSem_MRA})) (𝑤)).
+  { admit "somehow". }
+  admit "somehow".
+  (* ii. subst. rr in H0. rr. des. esplits; et. *)
+  (* - rewrite T. *)
+  (* ii. subst. rr in H0. *)
+  (* assert(T: Proper ((≡) ==> (≡@{ModSem_MRA}) ==> (≡)) (𝑤)). *)
+  (* { *)
+  (*   ii. rr in H. rr in H0. rr. des_ifs. setoid_subst. *)
+  (* } *)
+  (* ii; ss. unfold wrap. *)
 Qed.

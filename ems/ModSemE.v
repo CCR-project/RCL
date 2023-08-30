@@ -40,8 +40,12 @@ Section EVENTSCOMMON.
     | None => triggerUB
     end.
 
-  Definition assume {E} `{eventE -< E} (P: Prop): itree E unit := trigger (Take P) ;;; Ret tt.
-  Definition guarantee {E} `{eventE -< E} (P: Prop): itree E unit := trigger (Choose P) ;;; Ret tt.
+  Definition assume {E} `{eventE -< E} (P: Prop): itree E unit :=
+    if excluded_middle_informative P then Ret tt else triggerUB.
+    (* trigger (Take P) ;;; Ret tt. *)
+  Definition guarantee {E} `{eventE -< E} (P: Prop): itree E unit :=
+    if excluded_middle_informative P then Ret tt else triggerNB.
+    (* trigger (Choose P) ;;; Ret tt. *)
 
   (* Notation "'unint?'" := (unwrapA <*> unint) (at level 57, only parsing). *)
   (* Notation "'unint﹗'" := (unwrapG <*> unint) (at level 57, only parsing). *)
@@ -321,29 +325,31 @@ Section EVENTS.
   Lemma interp_Es_assume
     prog st0 (P: Prop)
     :
-    interp_Es prog (assume P) st0 = assume P;;; tau;; tau;; Ret (st0, tt)
+    interp_Es prog (assume P) st0 = assume P;;; Ret (st0, tt)
   .
   Proof.
     unfold assume.
     repeat (try rewrite interp_Es_bind; try rewrite bind_bind). grind.
-    rewrite interp_Es_eventE.
-    repeat (try rewrite interp_Es_bind; try rewrite bind_bind). grind.
-    rewrite interp_Es_ret.
-    refl.
+    des_ifs.
+    - rewrite interp_Es_ret. grind.
+    - unfold triggerUB. grind.
+      repeat (try rewrite interp_Es_bind; try rewrite bind_bind).
+      rewrite interp_Es_eventE. grind.
   Qed.
 
   Lemma interp_Es_guarantee
     prog st0 (P: Prop)
     :
-    interp_Es prog (guarantee P) st0 = guarantee P;;; tau;; tau;; Ret (st0, tt)
+    interp_Es prog (guarantee P) st0 = guarantee P;;; Ret (st0, tt)
   .
   Proof.
     unfold guarantee.
     repeat (try rewrite interp_Es_bind; try rewrite bind_bind). grind.
-    rewrite interp_Es_eventE.
-    repeat (try rewrite interp_Es_bind; try rewrite bind_bind). grind.
-    rewrite interp_Es_ret.
-    refl.
+    des_ifs.
+    - rewrite interp_Es_ret. grind.
+    - unfold triggerNB. grind.
+      repeat (try rewrite interp_Es_bind; try rewrite bind_bind).
+      rewrite interp_Es_eventE. grind.
   Qed.
 
   Lemma interp_Es_ext
@@ -444,29 +450,29 @@ Section EVENTS.
   Lemma focus_left_assume
         (P: Prop)
     :
-      focus_left (assume P) = assume P;;; tau;; Ret (tt)
+      focus_left (assume P) = assume P;;; Ret (tt)
   .
   Proof.
     unfold assume.
-    repeat (try rewrite focus_left_bind; try rewrite bind_bind). grind.
-    rewrite focus_left_eventE.
-    repeat (try rewrite focus_left_bind; try rewrite bind_bind). grind.
-    rewrite focus_left_ret.
-    refl.
+    repeat (try rewrite interp_Es_bind; try rewrite bind_bind). grind.
+    des_ifs.
+    - rewrite focus_left_ret. grind.
+    - unfold triggerUB. grind.
+      rewrite focus_left_bind. rewrite focus_left_eventE. grind.
   Qed.
 
   Lemma focus_left_guarantee
         (P: Prop)
     :
-      focus_left (guarantee P) = guarantee P;;; tau;; Ret (tt)
+      focus_left (guarantee P) = guarantee P;;; Ret (tt)
   .
   Proof.
     unfold guarantee.
-    repeat (try rewrite focus_left_bind; try rewrite bind_bind). grind.
-    rewrite focus_left_eventE.
-    repeat (try rewrite focus_left_bind; try rewrite bind_bind). grind.
-    rewrite focus_left_ret.
-    refl.
+    repeat (try rewrite interp_Es_bind; try rewrite bind_bind). grind.
+    des_ifs.
+    - rewrite focus_left_ret. grind.
+    - unfold triggerNB. grind.
+      rewrite focus_left_bind. rewrite focus_left_eventE. grind.
   Qed.
 
   Lemma focus_left_ext
@@ -567,29 +573,29 @@ Section EVENTS.
   Lemma focus_right_assume
         (P: Prop)
     :
-      focus_right (assume P) = assume P;;; tau;; Ret (tt)
+      focus_right (assume P) = assume P;;; Ret (tt)
   .
   Proof.
     unfold assume.
-    repeat (try rewrite focus_right_bind; try rewrite bind_bind). grind.
-    rewrite focus_right_eventE.
-    repeat (try rewrite focus_right_bind; try rewrite bind_bind). grind.
-    rewrite focus_right_ret.
-    refl.
+    repeat (try rewrite interp_Es_bind; try rewrite bind_bind). grind.
+    des_ifs.
+    - rewrite focus_right_ret. grind.
+    - unfold triggerUB. grind.
+      rewrite focus_right_bind. rewrite focus_right_eventE. grind.
   Qed.
 
   Lemma focus_right_guarantee
         (P: Prop)
     :
-      focus_right (guarantee P) = guarantee P;;; tau;; Ret (tt)
+      focus_right (guarantee P) = guarantee P;;; Ret (tt)
   .
   Proof.
-    unfold guarantee.
-    repeat (try rewrite focus_right_bind; try rewrite bind_bind). grind.
-    rewrite focus_right_eventE.
-    repeat (try rewrite focus_right_bind; try rewrite bind_bind). grind.
-    rewrite focus_right_ret.
-    refl.
+    unfold guarantee, assume.
+    repeat (try rewrite interp_Es_bind; try rewrite bind_bind). grind.
+    des_ifs.
+    - rewrite focus_right_ret. grind.
+    - unfold triggerNB, triggerUB. grind.
+      rewrite focus_right_bind. rewrite focus_right_eventE. grind.
   Qed.
 
   Lemma focus_right_ext
@@ -690,29 +696,29 @@ Section EVENTS.
   Lemma bar_assume
         (P: Prop)
     :
-      bar (assume P) = assume P;;; tau;; Ret (tt)
+      bar (assume P) = assume P;;; Ret (tt)
   .
   Proof.
-    unfold assume.
-    repeat (try rewrite bar_bind; try rewrite bind_bind). grind.
-    rewrite bar_eventE.
-    repeat (try rewrite bar_bind; try rewrite bind_bind). grind.
-    rewrite bar_ret.
-    refl.
+    unfold guarantee, assume.
+    repeat (try rewrite interp_Es_bind; try rewrite bind_bind). grind.
+    des_ifs.
+    - rewrite bar_ret. grind.
+    - unfold triggerNB, triggerUB. grind.
+      rewrite bar_bind. rewrite bar_eventE. grind.
   Qed.
 
   Lemma bar_guarantee
         (P: Prop)
     :
-      bar (guarantee P) = guarantee P;;; tau;; Ret (tt)
+      bar (guarantee P) = guarantee P;;; Ret (tt)
   .
   Proof.
-    unfold guarantee.
-    repeat (try rewrite bar_bind; try rewrite bind_bind). grind.
-    rewrite bar_eventE.
-    repeat (try rewrite bar_bind; try rewrite bind_bind). grind.
-    rewrite bar_ret.
-    refl.
+    unfold guarantee, assume.
+    repeat (try rewrite interp_Es_bind; try rewrite bind_bind). grind.
+    des_ifs.
+    - rewrite bar_ret. grind.
+    - unfold triggerNB, triggerUB. grind.
+      rewrite bar_bind. rewrite bar_eventE. grind.
   Qed.
 
   Lemma bar_ext
