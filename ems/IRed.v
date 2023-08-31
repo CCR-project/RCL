@@ -449,10 +449,11 @@ Section RESUM.
     :
       (resum_itr (E:=E) (F:=F) (assume P))
       =
-      (assume P;;; tau;; Ret tt)
+      (assume P;;; Ret tt)
   .
   Proof.
-    unfold resum_itr, assume. grind. rewrite unfold_interp; cbn. grind.
+    unfold resum_itr, assume. grind. rewrite unfold_interp; cbn.
+    unfold triggerUB. des_ifs; grind.
   Qed.
 
   Lemma resum_itr_guarantee
@@ -460,9 +461,10 @@ Section RESUM.
     :
       (resum_itr (E:=E) (F:=F) (guarantee P))
       =
-      (guarantee P;;; tau;; Ret tt).
+      (guarantee P;;; Ret tt).
   Proof.
-    unfold resum_itr, guarantee. grind. rewrite unfold_interp; cbn. grind.
+    unfold resum_itr, guarantee. grind. rewrite unfold_interp; cbn.
+    unfold triggerNB. des_ifs; grind.
   Qed.
 
   Lemma resum_itr_ext

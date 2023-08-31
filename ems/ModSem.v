@@ -14,6 +14,7 @@ Set Implicit Arguments.
 
 
 
+Global Instance fmap_itree {E}: FMap (@itree E) := fun _ _ f => ITree.map f.
 
 Require Import Red IRed.
 Section AUX.
@@ -122,7 +123,7 @@ Proof.
   destruct a; ss.
   { cbn. unfold trivial_Handler. rewrite interp_trigger. grind. resub. setoid_rewrite tau_eutt. grind. refl. }
   destruct s; ss.
-  { cbn. unfold trivial_Handler. unfold core_h. unfold triggerUB. grind. rewrite ! interp_trigger. grind. f_equiv; ss. refl. }
+  { cbn. unfold trivial_Handler. unfold core_h. unfold triggerUB. grind. rewrite ! interp_trigger. grind. f_equiv; ss. }
   { cbn. unfold trivial_Handler. rewrite interp_trigger. grind. resub. setoid_rewrite tau_eutt. grind. refl. }
 Qed.
 
@@ -400,11 +401,11 @@ Section MODSEM.
         STS.state_sort := state_sort;
       |}
   .
-  Next Obligation. inv STEP; inv STEP0; ss; csc. Qed.
-  Next Obligation. inv STEP; ss. Qed.
-  Next Obligation. inv STEP; ss. Qed.
-  Next Obligation. inv STEP; ss. Qed.
-  Next Obligation. inv STEP; ss. Qed.
+  Next Obligation. i. inv STEP; inv STEP0; ss; csc. Qed.
+  Next Obligation. i. inv STEP; ss. Qed.
+  Next Obligation. i. inv STEP; ss. Qed.
+  Next Obligation. i. inv STEP; ss. Qed.
+  Next Obligation. i. inv STEP; ss. Qed.
 
   Definition compile: semantics := compile_itree (initial_itr).
 
@@ -465,7 +466,7 @@ Section MODSEM.
       eapply Forall2_apply_Forall2.
       { refl. }
       ii; ss. subst. des_ifs. destruct b; ss. clarify. esplits; ss.
-      i. unfold focus_left, Algebra.bar, ktree_Bar, Algebra.bar, itree_Bar.
+      i. unfold focus_left, Algebra.bar, ktree_Bar, Algebra.bar, itree_Bar. cbn.
       rewrite ! interp_interp. eapply eutt_interp; try refl. ii. ss.
       unfold trivial_Handler.
       destruct a.
@@ -474,16 +475,16 @@ Section MODSEM.
       { ired.  unfold focus_left_h, core_h.
         des_ifs.
         - ired. rewrite ! interp_trigger. ired. unfold triggerUB. grind. rewrite ! interp_trigger. grind.
-          f_equiv; ss. refl.
+          f_equiv; ss.
         - ired. rewrite ! interp_trigger. ired. unfold triggerUB. grind. rewrite ! interp_trigger. grind.
-          f_equiv; ss. refl.
+          f_equiv; ss.
       }
       ired. rewrite ! interp_trigger. grind. refl.
     - rewrite ! List.map_map.
       eapply Forall2_apply_Forall2.
       { refl. }
       ii; ss. subst. des_ifs. destruct b; ss. clarify. esplits; ss.
-      i. unfold focus_right, Algebra.bar, ktree_Bar, Algebra.bar, itree_Bar.
+      i. unfold focus_right, Algebra.bar, ktree_Bar, Algebra.bar, itree_Bar. cbn.
       rewrite ! interp_interp. eapply eutt_interp; try refl. ii. ss.
       unfold trivial_Handler.
       destruct a.
@@ -492,9 +493,9 @@ Section MODSEM.
       { ired.  unfold focus_right_h, core_h.
         des_ifs.
         - ired. rewrite ! interp_trigger. ired. unfold triggerUB. grind. rewrite ! interp_trigger. grind.
-          f_equiv; ss. refl.
+          f_equiv; ss.
         - ired. rewrite ! interp_trigger. ired. unfold triggerUB. grind. rewrite ! interp_trigger. grind.
-          f_equiv; ss. refl.
+          f_equiv; ss.
       }
       ired. rewrite ! interp_trigger. grind. refl.
   Qed.

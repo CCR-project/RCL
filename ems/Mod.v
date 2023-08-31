@@ -32,17 +32,18 @@ Section MOD.
 
   Global Program Instance bar: Bar t := fun (md: t) => mk (fun sk => |(md.(get_modsem) sk)| ) Sk.unit _ _ _.
   Next Obligation.
-    erewrite get_modsem_Proper; et.
+    i; cbn. erewrite get_modsem_Proper; et.
   Qed.
   Next Obligation.
-    rewrite get_modsem_affine_core; et. refl.
+    i; cbn. rewrite get_modsem_affine_core; et.
   Qed.
   Next Obligation.
+    i; cbn.
     erewrite (@bar_idemp_weak).
     2: { eapply ModSem_MRA. }
-    erewrite (@bar_idemp_weak).
-    2: { eapply ModSem_MRA. }
-    rewrite get_modsem_affine_core; et. refl.
+    rewrite get_modsem_affine_core; et.
+    eapply (@bar_idemp_weak).
+    { eapply ModSem_MRA. }
   Qed.
 
   Section BEH.
@@ -67,21 +68,21 @@ Section MOD.
   |}
   .
   Next Obligation.
-    ii. rewrite ! (@get_modsem_Proper _ _ _ EQV); et.
+    ii. cbn. rewrite ! (@get_modsem_Proper _ _ _ EQV); et.
   Qed.
   Next Obligation.
+    i; cbn.
     rewrite (get_modsem_affine _ EQV); et.
     rewrite (get_modsem_affine _ EQV); et.
-    refl.
   Qed.
   Next Obligation.
+    i; cbn.
     erewrite (@bar_oplus_weak).
     2: { eapply ModSem_MRA. }
-    erewrite (@bar_oplus_weak).
-    2: { eapply ModSem_MRA. }
+    etrans.
+    2: {eapply (@bar_oplus_weak). eapply ModSem_MRA. }
     rewrite (get_modsem_affine_core _ EQV); et.
     rewrite (get_modsem_affine_core _ EQV); et.
-    refl.
   Qed.
 
   Global Program Instance eps: Eps t := {|
@@ -97,8 +98,11 @@ Section MOD.
 
   Global Program Instance equiv_Equiv: EquivFacts.
   Next Obligation.
+    i; cbn. refl.
+  Qed.
+  Next Obligation.
     econs.
-    - ii; ss. rr. esplits; refl.
+    - ii; ss.
     - ii; ss. rr in H0; des. rr. esplits; sym; try apply H0; et.
     - ii; ss. rr in H0; rr in H1; des. rr. esplits; (etrans; [try apply H0|try apply H1]; et).
   Qed.

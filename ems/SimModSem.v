@@ -1572,12 +1572,15 @@ Proof.
     revert st_src itr_src st_tgt itr_tgt Heqp Heqp0 Heqw.
     punfold SIMF. induction SIMF using _sim_itree_ind2; ss; i; clarify.
     - rr in RET. des. step. r. esplits; et.
-    - steps. rename x into n. unfold assume. steps. des. rename x into T.
+    - steps. rename x into n. unfold assume, triggerUB. des_ifs; steps; ss. des. rename e into T.
       exploit SIM; et.
       { eapply nth_error_In; et. }
       intro U; des.
       eapply In_nth_error in FINDT. des. rename n0 into m.
-      force. exists m. steps. force. esplits; et. steps. rewrite T, FINDT. ss. steps.
+      force. exists m. steps. des_ifs; steps.
+      2: { contradict n0. esplits; et. }
+      clear e.
+      steps. rewrite T, FINDT. ss. steps.
       apply simg_progress_flag.
       guclo bindC_spec. econs.
       { gbase. eapply CIH. { instantiate (1:=w1). eauto. } }
@@ -1590,7 +1593,10 @@ Proof.
       hexploit (K x_tgt). i. des. pclearbot.
       steps. gbase. eapply CIH; et.
     - ired_both. steps. eapply In_nth_error in FINDT. des.
-      force. exists n. steps. unfold assume. force. esplits; et. steps. rewrite FINDT; ss. steps.
+      force. exists n. steps. unfold assume, triggerUB. des_ifs; steps; ss.
+      2: { contradict n0. esplits; et. }
+      clear e.
+      steps. rewrite FINDT. ss. steps.
       exploit IHSIMF; et. intro T. rp; et. ired_both. grind. ired_both. ss.
     - ired_both. steps.
     - des. force. exists x. steps. eapply IH; eauto.
@@ -1606,7 +1612,6 @@ Proof.
       pclearbot. eauto.
   }
 Unshelve.
-  esplits; et.
 Qed.
 
 Theorem _adequacy_whole
@@ -1622,11 +1627,14 @@ Proof.
   inv SIM.
   des. ginit.
   unfold ModSem.initial_itr, guarantee.
-  unfold snd, fmap; ss. unfold ITree.map. steps. unfold assume. steps. des.
+  unfold snd, base.fmap; ss. unfold fmap_itree, ITree.map. steps. unfold assume, triggerUB. des_ifs; steps; ss. des.
   exploit sim_fnsems; et.
   { eapply nth_error_In; et. }
   intro U; des. eapply In_nth_error in FINDT. des. force. esplits; et. steps.
-  force. unshelve esplits; et. steps. rewrite x0, FINDT. ss. steps.
+  des_ifs; steps; ss.
+  2: { contradict n0. unshelve esplits; et. }
+  clear e0.
+  rewrite e, FINDT. ss. steps.
   guclo bindC_spec. econs.
   { eapply simg_progress_flag. gfinal. right. eapply adequacy_aux; et. }
   { i. des_ifs. r in SIM0. des; clarify. steps. }
