@@ -224,6 +224,50 @@ Section WRAPFACTS.
     - rewrite wrap_triggerNB. unfold triggerNB. grind.
   Qed.
 
+  Lemma wrap_unleftU
+        L R (r: L + R)
+    :
+      𝑤_{cs} (unleftU r) = unleftU r
+  .
+  Proof.
+    unfold unleftU. des_ifs.
+    - rewrite wrap_ret. grind.
+    - rewrite wrap_triggerUB. unfold triggerUB. grind.
+  Qed.
+
+  Lemma wrap_unleftN
+        L R (r: L + R)
+    :
+      𝑤_{cs} (unleftN r) = unleftN r
+  .
+  Proof.
+    unfold unleftN. des_ifs.
+    - rewrite wrap_ret. grind.
+    - rewrite wrap_triggerNB. unfold triggerNB. grind.
+  Qed.
+
+  Lemma wrap_unrightU
+        L R (r: L + R)
+    :
+      𝑤_{cs} (unrightU r) = unrightU r
+  .
+  Proof.
+    unfold unrightU. des_ifs.
+    - rewrite wrap_triggerUB. unfold triggerUB. grind.
+    - rewrite wrap_ret. grind.
+  Qed.
+
+  Lemma wrap_unrightN
+        L R (r: L + R)
+    :
+      𝑤_{cs} (unrightN r) = unrightN r
+  .
+  Proof.
+    unfold unrightN. des_ifs.
+    - rewrite wrap_triggerNB. unfold triggerNB. grind.
+    - rewrite wrap_ret. grind.
+  Qed.
+
   Lemma wrap_assume
         (P: Prop)
     :
@@ -276,6 +320,10 @@ Global Program Instance wrap_rdb: red_database (mk_box (@wrap_itree)) :=
     (mk_box wrap_triggerNB)
     (mk_box wrap_unwrapU)
     (mk_box wrap_unwrapN)
+    (mk_box wrap_unleftU)
+    (mk_box wrap_unleftN)
+    (mk_box wrap_unrightU)
+    (mk_box wrap_unrightN)
     (mk_box wrap_assume)
     (mk_box wrap_guarantee)
     (mk_box wrap_ext)

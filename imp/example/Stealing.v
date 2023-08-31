@@ -51,6 +51,15 @@ Module VAR0.
 
   Definition varMS : ModSem.t := Algebra.just varMS_.
 
+  Program Definition varM : Mod.t :=
+    {|
+      Mod.get_modsem := fun _ => varMS;
+      Mod.sk := Sk.unit;
+    |}.
+  Next Obligation. ss. Qed.
+  Next Obligation. ss. Qed.
+  Next Obligation. ss. Qed.
+
 End VAR0.
 
 Module VAR1.
@@ -90,6 +99,15 @@ Module VAR1.
     |}.
 
   Definition varMS : ModSem.t := Algebra.just varMS_.
+
+  Program Definition varM : Mod.t :=
+    {|
+      Mod.get_modsem := fun _ => varMS;
+      Mod.sk := Sk.unit;
+    |}.
+  Next Obligation. ss. Qed.
+  Next Obligation. ss. Qed.
+  Next Obligation. ss. Qed.
 
 End VAR1.
 
@@ -249,11 +267,13 @@ Section PROOFSIM.
   Qed.
 
   Lemma var_sim:
-    ModSemPair.sim ((MemSem Sk.unit) ⊕ VAR1.varMS) ((MemSem Sk.unit) ⊕ VAR0.varMS).
+    forall sk, ModSemPair.sim ((MemSem sk) ⊕ VAR1.varMS) ((MemSem sk) ⊕ VAR0.varMS).
   Proof.
-    Local Opaque String.eqb.
+    Local Opaque String.eqb. i.
     ss. eapply (@mk _ _ _ var_sim_inv _ Nat.le_preorder).
     { i. ss. des; clarify.
+
+      (* Mem module *)
       - exists (focus_left (T:=Any.t) ∘ cfunU allocF). split. auto. ii. subst y.
         ginit.
         unfold_goal @allocF. unfold_goal @cfunU.
@@ -478,5 +498,10 @@ Section PROOFSIM.
   Qed.
 
   (* FIX: Qed takes too long *)
+
+  Theorem var_ref: (Mem ⊕ VAR0.varM) ⊑ (Mem ⊕ VAR1.varM).
+  Proof.
+    eapply LSimMod. ss. ss. i. eapply ModSemPair.adequacy. apply var_sim.
+  Qed.
 
 End PROOFSIM.

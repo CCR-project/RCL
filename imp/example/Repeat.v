@@ -33,6 +33,15 @@ Module SUCC.
 
   Definition succMS : ModSem.t := Algebra.just succMS_.
 
+  Program Definition succM : Mod.t :=
+    {|
+      Mod.get_modsem := fun _ => succMS;
+      Mod.sk := Sk.unit;
+    |}.
+  Next Obligation. ss. Qed.
+  Next Obligation. ss. Qed.
+  Next Obligation. ss. Qed.
+
   Lemma red_succF v: succF [Vint v] = Ret (Vint (v + 1)).
   Proof. unfold succF. grind. Qed.
 
@@ -53,6 +62,15 @@ Module PUT.
     |}.
 
   Definition putMS : ModSem.t := Algebra.just putMS_.
+
+  Program Definition putM : Mod.t :=
+    {|
+      Mod.get_modsem := fun _ => putMS;
+      Mod.sk := Sk.unit;
+    |}.
+  Next Obligation. ss. Qed.
+  Next Obligation. ss. Qed.
+  Next Obligation. ss. Qed.
 
 End PUT.
 
@@ -76,6 +94,15 @@ Module RPT0.
     |}.
 
   Definition rptMS : ModSem.t := Algebra.just rptMS_.
+
+  Program Definition rptM : Mod.t :=
+    {|
+      Mod.get_modsem := fun _ => rptMS;
+      Mod.sk := Sk.unit;
+    |}.
+  Next Obligation. ss. Qed.
+  Next Obligation. ss. Qed.
+  Next Obligation. ss. Qed.
 
 End RPT0.
 
@@ -110,6 +137,15 @@ Module RPT1.
   Definition rptMS (fn: string) (f: Any.t -> itree Es Any.t): ModSem.t :=
     Algebra.just (rptMS_ fn f).
 
+  Program Definition rptM fn f : Mod.t :=
+    {|
+      Mod.get_modsem := fun _ => rptMS fn f;
+      Mod.sk := Sk.unit;
+    |}.
+  Next Obligation. ss. Qed.
+  Next Obligation. ss. Qed.
+  Next Obligation. ss. Qed.
+
 End RPT1.
 
 
@@ -142,8 +178,9 @@ Section PROOFSIM.
       destruct (eqb_spec "succ" s).
       2:{ steps. }
       clarify.
-      steps. force_r. eexists; auto.
-      steps. rename z0 into v.
+      steps.
+      (* force_r. eexists; auto. steps. *)
+      rename z0 into v.
       remember (Z.to_nat z) as n.
       revert x z v _UNWRAPU _ASSUME Heqn. induction n; intros.
       { hexploit Z_to_nat_le_zero; eauto. intros. des_ifs.
@@ -159,7 +196,7 @@ Section PROOFSIM.
         { left. instantiate (1:= focus_left (T:=Any.t) ∘ cfunU RPT0.rptF). auto. }
         unfold cfunU at 5. steps. unfold RPT0.rptF at 3. steps.
         force_r.
-        { clear - _ASSUME ZRANGE. unfold_intrange_64.
+        { exfalso. apply _ASSUME0. clear - _ASSUME ZRANGE. unfold_intrange_64.
           des_ifs. apply sumbool_to_bool_true in _ASSUME, H.
           apply andb_true_intro. split; apply sumbool_to_bool_is_true; lia.
         }
@@ -209,8 +246,9 @@ Section PROOFSIM.
       destruct (eqb_spec "putOnce" s).
       2:{ steps. }
       clarify.
-      steps. force_r. eexists; auto.
-      steps. rename z0 into v.
+      steps.
+      (* force_r. eexists; auto. steps. *)
+      rename z0 into v.
       remember (Z.to_nat z) as n.
       revert x z v _UNWRAPU _ASSUME Heqn. induction n; intros.
       { hexploit Z_to_nat_le_zero; eauto. intros. des_ifs.
@@ -226,7 +264,7 @@ Section PROOFSIM.
         { left. instantiate (1:= focus_left (T:=Any.t) ∘ cfunU RPT0.rptF). auto. }
         unfold cfunU at 5. steps. unfold RPT0.rptF at 3. steps.
         force_r.
-        { clear - _ASSUME ZRANGE. unfold_intrange_64.
+        { exfalso. apply _ASSUME0. clear - _ASSUME ZRANGE. unfold_intrange_64.
           des_ifs. apply sumbool_to_bool_true in _ASSUME, H.
           apply andb_true_intro. split; apply sumbool_to_bool_is_true; lia.
         }
@@ -259,6 +297,16 @@ Section PROOFSIM.
       }
     }
     { ss. exists O. auto. }
+  Qed.
+
+  Theorem succ_rpt_ref: (RPT0.rptM ⊕ SUCC.succM) ⊑ (RPT1.rptM "succ" (cfunU SUCC.succF)).
+  Proof.
+    eapply LSimMod. ss. ss. i. eapply ModSemPair.adequacy. apply succ_rpt_sim.
+  Qed.
+
+  Theorem putOnce_rpt_ref: (RPT0.rptM ⊕ PUT.putM) ⊑ (RPT1.rptM "putOnce" (cfunU PUT.putOnceF)).
+  Proof.
+    eapply LSimMod. ss. ss. i. eapply ModSemPair.adequacy. apply putOnce_rpt_sim.
   Qed.
 
 End PROOFSIM.
