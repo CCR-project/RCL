@@ -7,8 +7,8 @@ Require Export sflib.
 Require Export ITreelib.
 Require Export AList.
 Require Import Skeleton.
-Require Import ModSem Mod ModSemFacts ModFacts.
 Require Import Algebra.
+Require Import ModSem Mod ModSemFacts ModFacts.
 Require Import SimModSem.
 Require Import ImpPrelude.
 Require Import Mem0.
@@ -549,3 +549,30 @@ Section PROOFSIM.
   Qed.
 
 End PROOFSIM.
+
+Section PROOF.
+
+  Definition OwnM (m: Mod.t) : (@mProp (MRA_to_MRAS (Mod_MRA))) :=
+    Own ((m: Mod_MRA.(MRA.car)) : (MRA_to_MRAS Mod_MRA).(MRAS.car)).
+
+  (* Theorem var_fancy: (OwnM VAR0.varM) ⊢ (OwnM Mem) -∗ (Refines ((OwnM Mem) ∗ (OwnM VAR1.varM))). *)
+  Theorem var_fancy: (OwnM (VAR0.varM ⊕ Mem)) ⊢ (Refines ((OwnM (Mem ⊕ VAR1.varM)))).
+  Proof.
+    apply IPM.adequacy. etrans. rewrite oplus_comm_weak. refl. apply var_ref.
+  Qed.
+  
+
+    
+    Print Instances OPlusFacts. eapply 
+
+    
+    iIntros "VAR0 MEM".
+    iAssert (OwnM (Mem ⊕ VAR1.varM) -∗ |==> OwnM Mem ∗ OwnM VAR1.varM)%I as "CUT".
+    { iIntros "A". iDestruct "A" as "[A B]".
+    pose proof var_ref as REF. rewrite <- IPM.adequacy in REF.
+
+    
+
+    iModIntro. iCombine "VAR0 MEM" as "LHS". i iApply var_ref.
+
+End PROOF.
