@@ -24,6 +24,8 @@ Makefile.coq: Makefile $(COQTHEORIES)
          echo "-R ems $(COQMODULE)"; \
          echo "-R imp $(COQMODULE)"; \
          echo "-R mem $(COQMODULE)"; \
+         echo "-R iris $(COQMODULE)"; \
+         echo "-R CCRlite $(COQMODULE)"; \
    echo $(COQTHEORIES)) > _CoqProject
 	coq_makefile -f _CoqProject -o Makefile.coq
 

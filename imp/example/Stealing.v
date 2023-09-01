@@ -14,6 +14,8 @@ Require Import ImpPrelude.
 Require Import Mem0.
 Require Import HTactics.
 
+Require Import IPM.
+
 Set Implicit Arguments.
 
 Local Open Scope nat_scope.
@@ -443,9 +445,9 @@ Section PROOFSIM.
           - ii. subst mt'. ss. des_ifs. unfold update in H. des_ifs. apply WFM. lia.
           - ii. subst mt'. ss. des_ifs.
             + simpl_bool. des. apply sumbool_to_bool_true in Heq0, Heq1. clarify.
-              specialize (WFM (Mem.nb m + x0) 0%Z). rewrite WFM in H0 by lia; clarify.
+              specialize (WFM (Mem.nb m + x0) 0%Z). rewrite WFM in H0. clarify. lia.
             + unfold update in H. des_ifs.
-              specialize (WFM (Mem.nb m + x0) ofs). rewrite WFM in H0 by lia; clarify.
+              specialize (WFM (Mem.nb m + x0) ofs). rewrite WFM in H0. clarify. lia.
         }
         { des. steps.
           unfold ccallU. steps.
@@ -490,9 +492,9 @@ Section PROOFSIM.
             apply WFMS. lia. apply MLD; auto.
           - ii. subst mt'. ss. des_ifs.
             + simpl_bool. des. apply sumbool_to_bool_true in Heq0, Heq1. clarify.
-              specialize (WFMS (Mem.nb mt + x0) 0%Z). rewrite WFMS in H0 by lia; clarify.
+              specialize (WFMS (Mem.nb mt + x0) 0%Z). rewrite WFMS in H0. clarify. lia.
             + unfold update in H. des_ifs.
-              specialize (WFMS (Mem.nb mt + x0) ofs0). rewrite WFMS in H0 by lia. clarify.
+              specialize (WFMS (Mem.nb mt + x0) ofs0). rewrite WFMS in H0. clarify. lia.
               eapply MCE; eauto.
         }
       - exists (focus_right (T:=Any.t) ∘ cfunU VAR0.getF). split. do 3 right. auto. ii. subst y.

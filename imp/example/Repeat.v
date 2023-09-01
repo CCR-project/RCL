@@ -13,6 +13,8 @@ Require Import SimModSem.
 Require Import ImpPrelude.
 Require Import HTactics.
 
+Require Import IPM.
+
 
 Set Implicit Arguments.
 
@@ -175,7 +177,7 @@ Section PROOFSIM.
       ginit.
       unfold cfunU at 5. steps.
       destruct p0. unfold unptr, unint, unr in *. des_ifs_safe. ss; clarify.
-      destruct (eqb_spec "succ" s).
+      destruct (String.eqb_spec "succ" s).
       2:{ steps. }
       clarify.
       steps.
@@ -243,7 +245,7 @@ Section PROOFSIM.
       ginit.
       unfold cfunU at 5. steps.
       destruct p0. unfold unptr, unint, unr in *. des_ifs_safe. ss; clarify.
-      destruct (eqb_spec "putOnce" s).
+      destruct (String.eqb_spec "putOnce" s).
       2:{ steps. }
       clarify.
       steps.
