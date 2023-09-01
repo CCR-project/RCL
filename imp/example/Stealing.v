@@ -64,16 +64,11 @@ End VAR0.
 
 Module VAR1.
 
-  (* If init is called more than two times, it is UB. *)
   Definition initF : list val -> itree Es val :=
     fun varg =>
       _ <- ((pargs [] varg)?);;
-      v0 <- trigger PGet;;
-      ` v1: (option val) <- (v0↓)?;;
-      if (is_some v1)
-      then triggerUB
-      else _ <- trigger (PPut (Some (Vint 0%Z))↑);;
-           Ret (Vint 0).
+      _ <- trigger (PPut (Some (Vint 0%Z))↑);;
+      Ret (Vint 0).
 
   Definition getF : list val -> itree Es val :=
     fun varg =>
@@ -452,7 +447,54 @@ Section PROOFSIM.
             + unfold update in H. des_ifs.
               specialize (WFM (Mem.nb m + x0) ofs). rewrite WFM in H0 by lia; clarify.
         }
-        { des. steps. }
+        { des. steps.
+          unfold ccallU. steps.
+          instantiate (1:=focus_left (T:=Any.t) ∘ cfunU allocF). auto.
+          unfold_goal @allocF. unfold_goal @cfunU. steps.
+          instantiate (1:=focus_left (T:=Any.t) ∘ cfunU storeF). auto.
+          unfold_goal @storeF. unfold_goal @cfunU. steps.
+          unfold Mem.store. ss.
+          replace 
+            (update (Mem.cnts mt) (inl (Mem.nb mt + x0))
+                    (fun ofs : Z => if (0 <=? ofs)%Z && (ofs <? 1)%Z then Some Vundef else None)
+                    (inl (Mem.nb mt + x0)) 0%Z)
+            with
+            (Some Vundef).
+          2:{ unfold update. des_ifs. }
+          set ({|
+                  Mem.cnts :=
+                  fun (_b : nat + string) (_ofs : Z) =>
+                    if dec (inl (Mem.nb mt + x0)) _b && dec 0%Z _ofs
+                    then Some (Vint 0)
+                    else
+                      update (Mem.cnts mt) (inl (Mem.nb mt + x0))
+                             (fun ofs : Z => if (0 <=? ofs)%Z && (ofs <? 1)%Z then Some Vundef else None) _b _ofs;
+                  Mem.nb := S (Mem.nb mt + x0)
+                |}) as mt'.
+          steps. unfold lift_rel. exists (S w). splits; auto. ss.
+          exists (Vint 0). do 2 eexists. exists (Mem.nb mt + x0), 0%Z. splits. 1,2: eauto. all: ss; auto.
+          - simpl_bool. des_ifs. apply sumbool_to_bool_false in Heq0. ss.
+          - i. eapply WFMS. lia.
+          - subst mt'. eapply mem_wf_store. eapply mem_wf_alloc. eapply mem_wf_pad.
+            eapply WFMT. instantiate (2:=x0). ss. instantiate (3:=1%Z). ss.
+            instantiate (3:=inl (Mem.nb mt + x0)). instantiate (2:=0%Z). instantiate (1:=Vint 0).
+            unfold Mem.store. ss.
+            replace (
+    update (Mem.cnts mt) (inl (Mem.nb mt + x0))
+      (fun ofs : Z => if (0 <=? ofs)%Z && (ofs <? 1)%Z then Some Vundef else None)
+      (inl (Mem.nb mt + x0)) 0%Z) with (Some Vundef).
+            2:{ unfold update. des_ifs. }
+            ss.
+          - exists (S x0 + nbd). lia.
+          - ii. subst mt'. ss. des_ifs. unfold update in H. des_ifs.
+            apply WFMS. lia. apply MLD; auto.
+          - ii. subst mt'. ss. des_ifs.
+            + simpl_bool. des. apply sumbool_to_bool_true in Heq0, Heq1. clarify.
+              specialize (WFMS (Mem.nb mt + x0) 0%Z). rewrite WFMS in H0 by lia; clarify.
+            + unfold update in H. des_ifs.
+              specialize (WFMS (Mem.nb mt + x0) ofs0). rewrite WFMS in H0 by lia. clarify.
+              eapply MCE; eauto.
+        }
       - exists (focus_right (T:=Any.t) ∘ cfunU VAR0.getF). split. do 3 right. auto. ii. subst y.
         ginit.
         unfold_goal @VAR0.getF. unfold_goal @VAR1.getF. unfold_goal @cfunU.
