@@ -13,7 +13,7 @@ Require Import SimModSem.
 Require Import ImpPrelude.
 Require Import HTactics.
 
-Require Import IPM.
+Require Import IPM IPMAux.
 
 
 Set Implicit Arguments.
@@ -155,9 +155,6 @@ End RPT1.
 Section PROOFSIM.
 
   Import ModSemPair.
-
-  Ltac ired_eq_l := (Red.prw IRed._red_gen 2 0).
-  Ltac ired_eq_r := (Red.prw IRed._red_gen 1 0).
 
   Lemma Z_to_nat_le_zero z: 0 = Z.to_nat z -> (z <= 0)%Z.
   Proof. intros. unfold Z.to_nat in H. des_ifs. pose proof (Pos2Nat.is_pos p). lia. Qed.
@@ -312,3 +309,133 @@ Section PROOFSIM.
   Qed.
 
 End PROOFSIM.
+
+Section PROOF.
+
+  Lemma own_persistent (M: MRAS.t) (m: M)
+    :
+    (Own m) -∗ (□ Own ( | m | )).
+  Proof.
+    rr. econs. ii. rr. split.
+    { rr. auto. }
+    rr. rr in H. des. exists ( | ctx | ). rewrite <- bar_oplus. rewrite H. auto.
+  Qed.
+
+  Lemma ownm_persistent
+        (m: Mod.t)
+    :
+    (OwnM m) -∗ (□ OwnM ( | m | )).
+  Proof. eapply own_persistent. Qed.
+
+  Lemma rpt0_core
+    :
+    RPT0.rptM ≡ | RPT0.rptM |.
+  Proof.
+    rr. ss. split; auto. ii.
+    unfold bar, ktree_Bar.
+    unfold cfunU, RPT0.rptF.
+    unfold equiv, Mod.equiv. splits; ss. ii.
+    unfold equiv, ModSem.equiv, RPT0.rptMS, RPT0.rptMS_. ss.
+    unfold equiv. ss. split; auto. econs; auto.
+    split; auto.
+    ii.
+    unfold bar, ktree_Bar.
+    unfold cfunU, RPT0.rptF.
+    ired_eq_r. grind. apply eutt_eq_bind; [refl | ii].
+    ired_eq_r. grind. apply eutt_eq_bind; [refl | ii].
+    grind. ired_eq_r. grind. apply eutt_eq_bind; [refl | ii].
+    grind. des_ifs.
+    { ired_eq_r. grind. refl. }
+    { grind. ired_eq_r. apply eutt_eq_bind; [refl | ii].
+      unfold ccallU.
+      grind. ired_eq_r. apply eutt_eq_bind; [refl | ii].
+      grind. symmetry. etrans. apply tau_eutt.
+      grind. symmetry. ired_eq_r. grind. apply eutt_eq_bind; [refl | ii].
+      grind. ired_eq_r. apply eutt_eq_bind; [refl | ii].
+      grind. symmetry. etrans. apply tau_eutt.
+      grind. symmetry. ired_eq_r. grind. apply eutt_eq_bind; [refl | ii].
+      grind. ired_eq_r. refl.
+    }
+    { grind. ired_eq_r. apply eutt_eq_bind; [refl | ii].
+      unfold ccallU.
+      grind. ired_eq_r. apply eutt_eq_bind; [refl | ii].
+      grind. symmetry. etrans. apply tau_eutt.
+      grind. symmetry. ired_eq_r. grind. apply eutt_eq_bind; [refl | ii].
+      grind. ired_eq_r. apply eutt_eq_bind; [refl | ii].
+      grind. symmetry. etrans. apply tau_eutt.
+      grind. symmetry. ired_eq_r. grind. apply eutt_eq_bind; [refl | ii].
+      grind. ired_eq_r. refl.
+    }
+  Qed.
+
+  Lemma rpt0_core_mras
+    :
+    @equiv (@MRAS.car (MRA_to_MRAS (@Mod_MRA _)))
+           (@MRAS.equiv (MRA_to_MRAS (@Mod_MRA _)))
+           RPT0.rptM ( | RPT0.rptM | ).
+  Proof.
+    rr. unfold ref_both. splits.
+    rewrite <- rpt0_core. auto.
+    rewrite <- rpt0_core. auto.
+    rewrite <- rpt0_core. auto.
+    rewrite <- rpt0_core. auto.
+  Qed.
+
+  Lemma rpt0_persistent0
+    :
+    OwnM ( | RPT0.rptM | ) -∗ OwnM RPT0.rptM.
+  Proof.
+    econs. ii. rr in H. des. rr. exists ctx. etrans. 2: eapply H.
+    eapply oplus_Proper; auto. eapply rpt0_core_mras.
+  Qed.
+
+  Lemma rpt0_persistent
+    :
+    (OwnM RPT0.rptM) -∗ (□ (OwnM RPT0.rptM)).
+  Proof.
+    iIntros "H". iPoseProof (ownm_persistent with "H") as "H".
+    iStopProof. apply bi.intuitionistically_mono'. apply rpt0_persistent0.
+  Qed.
+
+  Global Program Instance Persistent_rpt0: Persistent (OwnM RPT0.rptM).
+  Next Obligation.
+  Proof.
+    iIntros "H". iPoseProof (rpt0_persistent with "H") as "H". auto.
+  Qed.
+
+  Lemma succ_rpt_ref_iprop:
+    OwnM RPT0.rptM ∗ OwnM SUCC.succM ⊢ |==> OwnM (RPT1.rptM "succ" (cfunU SUCC.succF)).
+  Proof.
+    iIntros "[RPT0 SUCC]". iPoseProof (own_sep with "[SUCC RPT0]") as "OWN". iFrame.
+    iStopProof. apply IPM.adequacy. apply succ_rpt_ref.
+  Qed.
+
+  Lemma putOnce_rpt_ref_iprop:
+    OwnM RPT0.rptM ∗ OwnM PUT.putM ⊢ |==> OwnM (RPT1.rptM "putOnce" (cfunU PUT.putOnceF)).
+  Proof.
+    iIntros "[RPT0 PUT]". iPoseProof (own_sep with "[PUT RPT0]") as "OWN". iFrame.
+    iStopProof. apply IPM.adequacy. apply putOnce_rpt_ref.
+  Qed.
+
+  Theorem rpts_ref_iprop:
+    OwnM RPT0.rptM ∗ OwnM SUCC.succM ∗ OwnM PUT.putM
+      ⊢
+      |==> ((OwnM (RPT1.rptM "succ" (cfunU SUCC.succF)))
+              ∗ (OwnM (RPT1.rptM "putOnce" (cfunU PUT.putOnceF)))).
+  Proof.
+    iIntros "[#RPT0 [SUCC PUT]]".
+    iPoseProof (succ_rpt_ref_iprop with "[SUCC]") as "SUCCREF". iFrame. auto.
+    iPoseProof (putOnce_rpt_ref_iprop with "[PUT]") as "PUTREF". iFrame. auto.
+    iMod "SUCCREF". iMod "PUTREF". iModIntro. iFrame.
+  Qed.
+
+  Theorem rpts_ref:
+    (RPT0.rptM ⊕ SUCC.succM ⊕ PUT.putM)
+      ⊑
+      (RPT1.rptM "succ" (cfunU SUCC.succF)) ⊕ (RPT1.rptM "putOnce" (cfunU PUT.putOnceF)).
+  Proof.
+    pose proof rpts_ref_iprop. do 2 setoid_rewrite <- own_sep in H.
+    eapply IPM.adequacy in H. rewrite oplus_assoc in H. eapply H.
+  Qed.
+
+End PROOF.
