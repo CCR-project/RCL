@@ -686,3 +686,20 @@ M |=> W M P
 
 
 End LOGIC.
+
+Section AUX.
+
+  Lemma own_sep (M: MRAS.t) (m1 m2: M) :
+    Own (m1 ⊕ m2) ⊣⊢ (Own m1 ∗ Own m2).
+  Proof.
+    ii. eapply equiv_entails. split.
+    - econs; ii. rr in H. des. setoid_subst.
+      econs. instantiate (1:=m1). exists (m2 ⊕ ctx). ss. splits.
+      + rewrite oplus_assoc. auto.
+      + exists ε. apply eps_r.
+      + exists ctx. auto.
+    - econs; ii. rr in H. des. rewrite H. clear sm0 H. unfold Own. ss.
+      eapply oplus_included; auto.
+  Qed.
+
+End AUX.

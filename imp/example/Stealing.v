@@ -14,7 +14,7 @@ Require Import ImpPrelude.
 Require Import Mem0.
 Require Import HTactics.
 
-Require Import IPM.
+Require Import IPM IPMAux.
 
 Set Implicit Arguments.
 
@@ -112,9 +112,6 @@ Section PROOFSIM.
 
   Import ModSemPair.
 
-  Ltac ired_eq_l := (Red.prw IRed._red_gen 2 0).
-  Ltac ired_eq_r := (Red.prw IRed._red_gen 1 0).
-
   Definition mem_less_defined (m0 m1: Mem.t) :=
     forall b ofs, (Mem.cnts m0 b ofs = None) -> (Mem.cnts m1 b ofs = None).
 
@@ -143,26 +140,6 @@ Section PROOFSIM.
             (<<MLD: mem_less_defined mt ms>>) /\
             (<<MCE: mem_cnt_eq mt ms>>)
       end.
-
-  Ltac unfold_goal H :=
-    match goal with
-    | [|- gpaco8 (_sim_itree ?_temp1 _ _) (cpn8 (_sim_itree ?_temp2 _ _)) _ _ _ _ _ _ _ _ _ _] =>
-        let tvar1 := fresh "temp1" in
-        let tvar2 := fresh "temp2" in
-        remember _temp1 as tvar1; remember _temp2 as tvar2; unfold H; subst tvar1 tvar2
-    end.
-
-  Ltac hide_src :=
-    match goal with
-    | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, ?i_src) (_, _)) ] =>
-        let hsrc := fresh "hide_src" in set i_src as hsrc at 1
-    end.
-
-  Ltac hide_tgt :=
-    match goal with
-    | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, _) (_, ?i_tgt)) ] =>
-        let htgt := fresh "hide_tgt" in set i_tgt as htgt at 2
-    end.
 
   Lemma mem_less_defined_free
         m0 m1
@@ -552,27 +529,14 @@ End PROOFSIM.
 
 Section PROOF.
 
-  Definition OwnM (m: Mod.t) : (@mProp (MRA_to_MRAS (Mod_MRA))) :=
-    Own ((m: Mod_MRA.(MRA.car)) : (MRA_to_MRAS Mod_MRA).(MRAS.car)).
-
-  (* Theorem var_fancy: (OwnM VAR0.varM) ⊢ (OwnM Mem) -∗ (Refines ((OwnM Mem) ∗ (OwnM VAR1.varM))). *)
-  Theorem var_fancy: (OwnM (VAR0.varM ⊕ Mem)) ⊢ (Refines ((OwnM (Mem ⊕ VAR1.varM)))).
+  Lemma var_iprop: (OwnM (VAR0.varM ⊕ Mem)) ⊢ ( |==> ((OwnM (Mem ⊕ VAR1.varM)))).
   Proof.
     apply IPM.adequacy. etrans. rewrite oplus_comm_weak. refl. apply var_ref.
   Qed.
-  
 
-    
-    Print Instances OPlusFacts. eapply 
-
-    
-    iIntros "VAR0 MEM".
-    iAssert (OwnM (Mem ⊕ VAR1.varM) -∗ |==> OwnM Mem ∗ OwnM VAR1.varM)%I as "CUT".
-    { iIntros "A". iDestruct "A" as "[A B]".
-    pose proof var_ref as REF. rewrite <- IPM.adequacy in REF.
-
-    
-
-    iModIntro. iCombine "VAR0 MEM" as "LHS". i iApply var_ref.
+  Theorem var_fancy: (OwnM VAR0.varM) ⊢ (OwnM Mem) ==∗ ((OwnM Mem) ∗ (OwnM VAR1.varM)).
+  Proof.
+    iIntros "VAR0 MEM". iApply own_sep. iApply var_iprop. iApply own_sep. iFrame.
+  Qed.
 
 End PROOF.

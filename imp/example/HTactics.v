@@ -576,3 +576,26 @@ Ltac deflag :=
     eapply sim_itree_flag_down
   | _ => fail
   end.
+
+Ltac ired_eq_l := (Red.prw IRed._red_gen 2 0).
+Ltac ired_eq_r := (Red.prw IRed._red_gen 1 0).
+
+Ltac unfold_goal H :=
+  match goal with
+  | [|- gpaco8 (_sim_itree ?_temp1 _ _) (cpn8 (_sim_itree ?_temp2 _ _)) _ _ _ _ _ _ _ _ _ _] =>
+      let tvar1 := fresh "temp1" in
+      let tvar2 := fresh "temp2" in
+      remember _temp1 as tvar1; remember _temp2 as tvar2; unfold H; subst tvar1 tvar2
+  end.
+
+Ltac hide_src :=
+  match goal with
+  | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, ?i_src) (_, _)) ] =>
+      let hsrc := fresh "hide_src" in set i_src as hsrc at 1
+  end.
+
+Ltac hide_tgt :=
+  match goal with
+  | [ |- (gpaco8 (_sim_itree _ _ _) _ _ _ _ _ _ _ _ _ (_, _) (_, ?i_tgt)) ] =>
+      let htgt := fresh "hide_tgt" in set i_tgt as htgt at 2
+  end.
