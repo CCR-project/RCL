@@ -702,4 +702,13 @@ Section AUX.
       eapply oplus_included; auto.
   Qed.
 
+  Lemma own_persistent (M: MRAS.t) (m: M)
+    :
+    (Own m) -∗ (□ Own ( | m | )).
+  Proof.
+    rr. econs. ii. rr. split.
+    { rr. auto. }
+    rr. rr in H. des. exists ( | ctx | ). rewrite <- bar_oplus. rewrite H. auto.
+  Qed.
+
 End AUX.

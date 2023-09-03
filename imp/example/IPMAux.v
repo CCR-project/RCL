@@ -17,4 +17,10 @@ Section AUX.
   Definition OwnM (m: Mod.t) : (@mProp (MRA_to_MRAS (Mod_MRA))) :=
     Own ((m: Mod_MRA.(MRA.car)) : (MRA_to_MRAS Mod_MRA).(MRAS.car)).
 
+  Lemma ownm_persistent
+        (m: Mod.t)
+    :
+    (OwnM m) -∗ (□ OwnM ( | m | )).
+  Proof. eapply own_persistent. Qed.
+
 End AUX.
