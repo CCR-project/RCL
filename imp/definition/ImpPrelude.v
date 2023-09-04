@@ -59,7 +59,7 @@ Definition min_64 := (- modulus_64_half)%Z.
 
 (* Definition intrange_64 : Z -> Prop := fun z => (min_64 <= z <= max_64)%Z. *)
 (* Definition modrange_64 : Z -> Prop := fun z => (- 1 < z < modulus_64)%Z. *)
-Definition intrange_64 : Z -> bool := fun z => (Z_le_gt_dec min_64 z) && (Z_le_gt_dec z max_64).
+Definition intrange_64 : Z -> bool := fun z => (Z_le_dec min_64 z) && (Z_le_dec z max_64).
 Definition modrange_64 : Z -> bool := fun z => (Z_le_gt_dec 0 z) && (Z_lt_ge_dec z modulus_64).
 
 
@@ -132,7 +132,7 @@ Module Mem.
   }
   .
 
-  Definition wf (m0: t): Prop := forall blk ofs (LT: (blk < m0.(nb))%nat), m0.(cnts) (inl blk) ofs = None.
+  Definition wf (m0: t): Prop := forall blk ofs (LT: (m0.(nb)) <= blk), m0.(cnts) (inl blk) ofs = None.
 
   Definition alloc (m0: Mem.t) (sz: Z): (mblock * Mem.t) :=
     ((m0.(nb)),
