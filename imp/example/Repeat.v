@@ -13,7 +13,7 @@ Require Import SimModSem.
 Require Import ImpPrelude.
 Require Import HTactics.
 
-Require Import IPM IPMAux.
+Require Import IPM IPMAux Hoare.
 
 
 Set Implicit Arguments.
@@ -368,3 +368,73 @@ Section PROOF.
   Qed.
 
 End PROOF.
+
+Section CCR.
+
+  (* Definition α_conds (fn: string) (f: list val -> itree Es Z) : conds := *)
+  Definition α (fn: string) (f: list val -> itree Es Z) : conds :=
+    fun fn' => if (String.eqb fn fn') then
+              mk_cond (fun args => exists (n: Z), args = ([Vint n])↑)
+                      (fun args ret =>
+                         exists (n r: Z), (args = ([Vint n])↑) /\ (ret = (Vint r)↑) /\
+                                       (Ret ret ≈ (cfunU_int f) args))
+            else ε.
+
+  (* Definition α (fn: string) (f: list val -> itree Es Z) : conds_CM := *)
+  (*   (α_conds fn f: conds_CM). *)
+
+  (* Definition β_conds (fn: string) (f: list val -> itree Es Z) : conds := *)
+  Definition β (fn: string) (f: list val -> itree Es Z) : conds :=
+    fun fn' => if (String.eqb fn fn') then
+              mk_cond (fun args =>
+                         exists (fb: ((nat + string) * Z)%type) (n x: Z),
+                           args = ([Vptr (fst fb) (snd fb); Vint n; Vint x])↑)
+                      (fun args ret =>
+                         exists (fb: ((nat + string) * Z)%type) (n x r: Z),
+                           (args = ([Vptr (fst fb) (snd fb); Vint n; Vint x])↑) /\
+                             (ret = (Vint r)↑) /\
+                             (Ret ret ≈ (RPT1.fun_iter (cfunU_int f) (Z.to_nat n) (Ret (Vint x)↑))))
+            else ε.
+
+  (* Definition β (fn: string) (f: list val -> itree Es Z) : conds_CM := *)
+  (*   β_conds fn f. *)
+
+  (* TODO : notation *)
+
+  (* Lemma rpt0_ccr_spec: *)
+  (*   OwnM (RPT0.rptM) ⊢ *)
+  (*        □ (∀ fn f, *)
+  (*              (∀ c, (𝑤_{c} (𝑤_{α fn f} (OwnM (ONE.oneM fn f)))) *)
+  (*                      ==∗ *)
+  (*                      (𝑤_{((α fn f) ⊕ (β fn f)) ⊕ c} (OwnM (RPT1.rptM fn (cfunU_int f)))))). *)
+
+  (*** TODO : help **)
+  Let wrap := Wrap (W:=Hoare_WA).
+
+  Lemma rpt0_ccr_spec:
+    OwnM (RPT0.rptM) ⊢
+         □ (∀ fn f,
+               (∀ c, (wrap c (wrap (α fn f) (OwnM (ONE.oneM fn f))))
+                       ==∗
+                       (Wrap (((α fn f) ⊕ (β fn f)) ⊕ c) (OwnM (RPT1.rptM fn (cfunU_int f)))))).
+  Proof.
+    iIntros "#RPT0". iModIntro. iIntros (fn f) "ONE".
+    iPoseProof (own_sep with "[ONE RPT0]") as "OWN". iSplitL "RPT0". auto. iApply "ONE".
+    iClear "RPT0".
+    iStopProof. apply IPM.adequacy. apply one_rpt_ref.
+  Qed.
+
+  Definition rptF (fn: string) (f: Any.t -> itree Es Any.t) : list val -> itree Es val :=
+    fun varg =>
+      '(fb, (n, x)) <- (pargs [Tptr; Tint; Tint] varg)?;;
+      fn0 <- ((unname (Vptr (fst fb) (snd fb)))?);;
+      if (String.eqb fn fn0)
+      then
+        assume(intrange_64 n);;;
+        vret <- (fun_iter f (Z.to_nat n) (Ret (Vint x)↑));;
+        vret0 <- (vret↓)?;;
+        Ret vret0
+      else
+        triggerUB.
+
+End CCR.
