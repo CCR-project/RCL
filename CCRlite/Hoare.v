@@ -390,8 +390,8 @@ Qed.
 
 (* Opaque MRAS.equiv. *)
 Opaque MRAS.car.
-Let M := (MRA_to_MRAS ModSem_MRA).
-Global Program Instance Hoare_WA: @WA.t M conds_CM := {
+Let MS := (MRA_to_MRAS ModSem_MRA).
+Global Program Instance Hoare_WA_ModSem: @WA.t MS conds_CM | 150 := {
   morph := (𝑤);
 }.
 Next Obligation.
@@ -436,3 +436,77 @@ Next Obligation.
   (* } *)
   (* ii; ss. unfold wrap. *)
 Qed.
+
+Require Import ModFacts.
+
+Section MOD.
+Context `{Sk.ld}.
+
+Theorem LEquivMod
+  md0 md1
+  (SIMSK: md0.(Mod.sk) ≡ md1.(Mod.sk))
+  (SEM: forall sk, @equiv_relaxed (ModSem_MRA) (md0.(Mod.get_modsem) sk) (md1.(Mod.get_modsem) sk))
+  :
+  @equiv_relaxed (Mod_MRA) md0 md1
+.
+Proof.
+  rr. rr in SEM.
+  esplits; ss.
+  - rr. esplits; ss.
+    + eapply LSimMod; ss. i. specialize (SEM sk). des. eapply SEM.
+    + eapply LSimMod; ss. i. specialize (SEM sk). des. eapply SEM.
+  - rr. esplits; ss.
+    + eapply LSimMod; ss. i. specialize (SEM sk). des. eapply SEM0.
+    + eapply LSimMod; ss. i. specialize (SEM sk). des. eapply SEM0.
+Qed.
+
+Lemma wrap_get_modsem_commute: ∀ m s sk, (Mod.get_modsem (𝑤_{s} m) sk) = 𝑤_{s} (Mod.get_modsem m sk).
+Proof.
+  i. ss.
+Qed.
+
+(* Let M := (MRA_to_MRAS Mod_MRA). *)
+
+Obligation Tactic := idtac.
+Global Program Instance Hoare_WA: @WA.t (MRA_to_MRAS Mod_MRA) conds_CM | 50 := {
+  morph := wrap_mod;
+}.
+Next Obligation.
+  (* { *)
+  (*   ********** TODO: FIXME ********** *)
+  (* ii. ss. *)
+  (* eapply hat_Proper. rr. esplits; ss. *)
+  (* ii. assert (G:=@WA.morph_oplus _ _ Hoare_WA_ModSem s (Mod.get_modsem a sk0) (Mod.get_modsem b sk0)). *)
+  (* rr in G. rr. *)
+  (* } *)
+  ii. rr. esplits; ss.
+  - eapply LEquivMod; ss. ii.
+    assert (G:=@WA.morph_oplus _ _ Hoare_WA_ModSem s (Mod.get_modsem a sk) (Mod.get_modsem b sk)).
+    ss.
+  - eapply LEquivMod; ss. ii.
+    assert (G:=@WA.morph_oplus _ _ Hoare_WA_ModSem s (Mod.get_modsem a sk) (Mod.get_modsem b sk)).
+    ss.
+Qed.
+Next Obligation.
+  ii. rr. esplits; ss.
+  - eapply LEquivMod; ss. ii.
+    assert (G:=@WA.morph_unit _ _ Hoare_WA_ModSem (Mod.get_modsem a sk)).
+    ss.
+  - eapply LEquivMod; ss. ii.
+    assert (G:=@WA.morph_unit _ _ Hoare_WA_ModSem (Mod.get_modsem a sk)).
+    ss.
+Qed.
+Next Obligation.
+  ii. rr. esplits; ss.
+  - eapply LEquivMod; ss.
+  - eapply LEquivMod; ss.
+Qed.
+Next Obligation.
+  ii. subst. eapply LEquivMod; ss.
+  - admit "check: add sk in equiv_relaxed".
+  - ii; ss. assert(G:=WA.morph_Proper1 y y eq_refl (Mod.get_modsem x0 sk) (Mod.get_modsem y0 sk)).
+    hexploit1 G.
+    { admit" check: add sk in equiv_relaxed". }
+    ss.
+Qed.
+End MOD.

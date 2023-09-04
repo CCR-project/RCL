@@ -321,8 +321,8 @@ Section PROOF.
     :
     (OwnM RPT0.rptM) -∗ (□ (OwnM RPT0.rptM)).
   Proof.
-    iIntros "H". iPoseProof (ownm_persistent with "H") as "H".
-    iStopProof. apply bi.intuitionistically_mono'. apply rpt0_persistent0.
+    iIntros "H". iPoseProof (OwnM_persistent with "H") as "[_ #B]". iModIntro.
+    iApply rpt0_persistent0; ss.
   Qed.
 
   Global Program Instance Persistent_rpt0: Persistent (OwnM RPT0.rptM).
@@ -409,14 +409,17 @@ Section CCR.
   (*                      (𝑤_{((α fn f) ⊕ (β fn f)) ⊕ c} (OwnM (RPT1.rptM fn (cfunU_int f)))))). *)
 
   (*** TODO : help **)
-  Let wrap := Wrap (W:=Hoare_WA).
+
+  (* Let wrap := Wrap (W:=Hoare_WA). *)
+
+  Notation "𝑊_{ a } b" := (Wrap (M:=(MRA_to_MRAS (@Mod_MRA Sk.gdefs))) a b) (at level 50).
 
   Lemma rpt0_ccr_spec:
     OwnM (RPT0.rptM) ⊢
          □ (∀ fn f,
-               (∀ c, (wrap c (wrap (α fn f) (OwnM (ONE.oneM fn f))))
+               (∀ c, (𝑊_{c} (𝑊_{α fn f} (OwnM (ONE.oneM fn f))))
                        ==∗
-                       (Wrap (((α fn f) ⊕ (β fn f)) ⊕ c) (OwnM (RPT1.rptM fn (cfunU_int f)))))).
+                       (𝑊_{((α fn f) ⊕ (β fn f)) ⊕ c} (OwnM (RPT1.rptM fn (cfunU_int f)))))).
   Proof.
     iIntros "#RPT0". iModIntro. iIntros (fn f) "ONE".
     iPoseProof (own_sep with "[ONE RPT0]") as "OWN". iSplitL "RPT0". auto. iApply "ONE".
