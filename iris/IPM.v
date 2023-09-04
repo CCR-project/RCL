@@ -686,3 +686,238 @@ M |=> W M P
 
 
 End LOGIC.
+
+
+
+Notation "#=> P" := (bupd P) (at level 50).
+
+Section IUPD.
+
+  Context `{M: MRAS.t}.
+
+  Definition IUpd (I: mProp): mProp -> mProp :=
+    fun P => (I ==∗ (I ∗ P))%I.
+
+  Lemma IUpd_intro I: forall P, P ⊢ IUpd I P.
+  Proof.
+    ii. iIntros "H INV". iModIntro. iFrame.
+  Qed.
+
+  Lemma IUpd_mono I: forall P Q, (P ⊢ Q) -> (IUpd I P ⊢ IUpd I Q).
+  Proof.
+    ii. unfold IUpd. iIntros "H INV".
+    iPoseProof ("H" with "INV") as "> [H0 H1]". iModIntro.
+    iFrame. iApply H. auto.
+  Qed.
+
+  Lemma IUpd_trans I: forall P, (IUpd I (IUpd I P)) ⊢ (IUpd I P).
+  Proof.
+    ii. unfold IUpd. iIntros "H INV".
+    iPoseProof ("H" with "INV") as "> [H0 H1]".
+    iApply "H1". auto.
+  Qed.
+
+  Lemma IUpd_frame_r I: forall P R, ((IUpd I P) ∗ R) ⊢ (IUpd I (P ∗ R)).
+  Proof.
+    ii. unfold IUpd. iIntros "[H0 H1] INV".
+    iPoseProof ("H0" with "INV") as "> [H0 H2]".
+    iModIntro. iFrame.
+  Qed.
+
+  Lemma Upd_IUpd I: forall P, bupd P ⊢ (IUpd I P).
+  Proof.
+    ii. unfold IUpd. iIntros "H INV". iFrame.
+  Qed.
+
+  Lemma mProp_bupd_mixin_IUpd I: BiBUpdMixin mPropp (IUpd I).
+  Proof.
+    econs.
+    - ii. unfold bupd. unfold IUpd. rewrite H. auto.
+    - apply IUpd_intro.
+    - apply IUpd_mono.
+    - apply IUpd_trans.
+    - apply IUpd_frame_r.
+  Qed.
+  Global Instance mProp_bi_bupd_IUpd I: BiBUpd mPropp := {| bi_bupd_mixin := mProp_bupd_mixin_IUpd I |}.
+
+  Notation "#=( Q )=> P" := ((@bupd (bi_car (@mPropp _)) (@bi_bupd_bupd (@mPropp _) (@mProp_bi_bupd_IUpd Q))) P) (at level 99).
+  Notation "P =( I ) =∗ Q" := (P ⊢ #=( I )=> Q) (only parsing, at level 99) : stdpp_scope.
+  Notation "P =( I )=∗ Q" := (P -∗ #=( I )=> Q)%I (at level 99): bi_scope.
+
+  Lemma IUpd_unfold I P
+    :
+    #=(I)=> P ⊢ (I -∗ #=> (I ∗ P)).
+  Proof.
+    reflexivity.
+  Qed.
+
+  Lemma IUpd_sub_mon_alt P Q R
+    :
+    (∃ S, (Q ==∗ (P ∗ S)) ∗ ((P ∗ S) ==∗ Q))
+      -∗
+      (#=(P)=> R)
+      -∗
+      (#=(Q)=> R).
+  Proof.
+    iIntros "H0 H1 H2".
+    iDestruct "H0" as (S) "[A B]".
+    iPoseProof (IUpd_unfold with "H1") as "H1".
+    iSpecialize ("A" with "H2"). iMod "A".
+    iDestruct "A" as "[A C]".
+    iSpecialize ("H1" with "A"). iMod "H1".
+    iDestruct "H1" as "[A D]".
+    iFrame. iApply "B". iFrame.
+  Qed.
+  (* Definition SubIProp (P Q: mProp): mProp := ⌜∃ R: mProp, Q ⊣⊢ P ∗ R⌝%I. This also satisfies all laws *)
+  Definition SubIProp P Q: mProp :=
+    (Q -∗ #=> (P ∗ (P -∗ #=> Q)))%I.
+
+  Lemma SubIProp_refl P
+    :
+    ⊢ SubIProp P P.
+  Proof.
+    iIntros "H". iFrame. auto.
+  Qed.
+
+  Lemma SubIProp_trans P Q R
+    :
+    (SubIProp P Q)
+      -∗
+      (SubIProp Q R)
+      -∗
+      (SubIProp P R).
+  Proof.
+    iIntros "H0 H1 H2".
+    iPoseProof ("H1" with "H2") as "> [H1 H2]".
+    iPoseProof ("H0" with "H1") as "> [H0 H1]".
+    iFrame. iModIntro. iIntros "H".
+    iPoseProof ("H1" with "H") as "> H".
+    iPoseProof ("H2" with "H") as "H". auto.
+  Qed.
+
+  Lemma SubIProp_sep_l P Q
+    :
+    ⊢ (SubIProp P (P ∗ Q)).
+  Proof.
+    iIntros "[H0 H1]". iFrame. auto.
+  Qed.
+
+  Lemma SubIProp_sep_r P Q
+    :
+    ⊢ (SubIProp Q (P ∗ Q)).
+  Proof.
+    iIntros "[H0 H1]". iFrame. auto.
+  Qed.
+
+  Lemma IUpd_sub_mon P Q R
+    :
+    (SubIProp P Q)
+      -∗
+      (#=(P)=> R)
+      -∗
+      (#=(Q)=> R).
+  Proof.
+    iIntros "H0 H1 H2".
+    iPoseProof (IUpd_unfold with "H1") as "H1".
+    iPoseProof ("H0" with "H2") as "> [H0 H2]".
+    iPoseProof ("H1" with "H0") as "> [H0 H1]".
+    iPoseProof ("H2" with "H0") as "H0". iFrame. auto.
+  Qed.
+End IUPD.
+Notation "#=( Q )=> P" := ((@bupd (bi_car (@mProp _)) (@bi_bupd_bupd (@mProp _) (@mProp_bi_bupd_IUpd _ Q))) P) (at level 99).
+Notation "P =( I ) =∗ Q" := (P ⊢ #=( I )=> Q) (only parsing, at level 99) : stdpp_scope.
+Notation "P =( I )=∗ Q" := (P -∗ #=( I )=> Q)%I (at level 99): bi_scope.
+
+
+
+Section CAL.
+  Local Set Default Proof Using "Type*".
+
+  Context `{MRAS.t}.
+
+  Definition layering (L M R: mProp): mProp := (L ∗ M -∗ |==> R)%I.
+  Notation "L ⊨ M ; R" := (layering L M R) (at level 50).
+
+  Notation "P ==* Q" := (bi_wand P (#=> Q)) (at level 50).
+  Theorem layer_weaken: ∀ L M R L' M' R', ⊢ (L ==* L' -∗ M ==* M' -∗ R' ==* R -∗ L' ⊨ M' ; R' -∗ L ⊨ M ; R).
+  Proof.
+    i. iIntros "A B C T [D E]".
+    iSpecialize ("A" with "D").
+    iSpecialize ("B" with "E").
+    iMod "A". iMod "B".
+    iSpecialize ("T" with "[A B]").
+    { iFrame. }
+    iMod "T". iApply "C". ss.
+  Qed.
+
+  Theorem layer_minus: ∀ L M R L' M' R', ⊢ ((L' ⊨ M' ; R') -∗ (L ∗ M ==∗ L' ∗ M') -∗ (R' ==* R) -∗ L ⊨ M ; R).
+  Proof.
+    i. iIntros "A B C [D E]".
+    iSpecialize ("B" with "[D E]"); iFrame.
+    iMod "B".
+    iSpecialize ("A" with "B").
+    iMod "A".
+    iApply "C"; eauto.
+  Qed.
+
+  Theorem layer_minus': ∀ L M R L' M' R', ((L' ⊨ M' ; R') -∗ ((L ==∗ L') -∗ (M ==∗ M') -∗ (R' ==* R) -∗ L ⊨ M ; R)).
+  Proof.
+    i.
+    iIntros "A B C D".
+    (* iIntros "A [B [C D]]". *)
+    iApply (layer_minus with "[A] [B C] [D]"); iFrame.
+    iIntros "[P Q]". iSpecialize ("B" with "P"). iSpecialize ("C" with "Q"). iMod "B". iMod "C".
+    iModIntro. iFrame.
+  Qed.
+
+
+  Remark lle_ub_left: ∀ L M, ⊢ (L ⊨ M ; L).
+  Proof.
+    i. iIntros "[A B]". iModIntro. iFrame.
+  Qed.
+
+  Theorem empty: ∀ L, ⊢ L ⊨ emp%I ; L.
+  Proof.
+    i. iIntros "[A B]". iModIntro. iFrame.
+  Qed.
+
+  Theorem vcomp: ∀ (L1 M L2 N L3: mProp), (L1 ⊨ M ; L2) -∗ (L2 ⊨ N ; L3) -∗ (L1 ⊨ M ∗ N ; L3).
+  Proof.
+    i. unfold layering. iIntros "A B". iIntros "[C [D E]]".
+    iSpecialize ("A" with "[C D]"); [iFrame|].
+    iMod "A". iApply "B". iFrame.
+  Qed.
+
+  Theorem tcomp: ∀ (L1 L2 L1' M L2' N: mProp), (L1 ⊨ M ; L1') -∗ (L2 ⊨ N ; L2') -∗ ((L1 ∗ L2) ⊨ M ∗ N ; (L1' ∗ L2')).
+  Proof.
+    i. unfold layering. iIntros "A B [[C D] [E F]]".
+    iSpecialize ("A" with "[C E]"); [iFrame|].
+    iSpecialize ("B" with "[D F]"); [iFrame|].
+    iMod "A". iMod "B". iFrame. eauto.
+  Qed.
+
+  Theorem layer_transfer: ∀ L M R R', ((R' ∗ L) ⊨ M ; R ⊣⊢ L ⊨ M ; (R' ==∗ R)).
+  Proof.
+    i. iSplit.
+    - iIntros "A [B D]". iModIntro. iIntros "C". iSpecialize ("A" with "[C B D]"); iFrame.
+    - iIntros "A [[B C] D]". iSpecialize ("A" with "[C D]"); iFrame. iMod "A". iApply "A". ss.
+  Qed.
+
+  Goal ∀ L0 L1 L2 L3 C0 C1 C2, (L0 ⊨ C0 ; (L0 ∗ L1)) -∗ (L1 ⊨ C1 ; L2) -∗ (L0 ⊨ C2 ; L3) -∗ (L0 ⊨ (C0 ∗ C1 ∗ C2) ; (L2 ∗ L3)).
+  Proof.
+    i.
+    iIntros "A B C".
+    iApply layer_weaken.
+    { instantiate (1:=(L0 ∗ emp)%I). eauto. }
+    { instantiate (1:=(C0 ∗ (C1 ∗ C2))%I). eauto. }
+    { instantiate (1:=((L0 ∗ L1) ∗ ((L0 ∗ L1) ==∗ (L2 ∗ L3)))%I). iIntros "[A B]". iSpecialize ("B" with "A"). eauto. }
+    iApply (tcomp with "A").
+    iApply layer_transfer.
+    iApply layer_weaken.
+    { instantiate (1:=(L1 ∗ L0)%I). iIntros "[[A B] C]". iModIntro. iFrame. }
+    { instantiate (1:=(C1 ∗ C2)%I). eauto. }
+    { instantiate (1:=(L2 ∗ L3)%I). eauto. }
+    iApply (tcomp with "B"); eauto.
+  Qed.
+
+End CAL.
