@@ -41,6 +41,8 @@ Qed.
 Class Eps (T: Type) := eps : T.
 Notation "'ε'" := eps.
 
+Class RefAffine `{Ref T, Eps T}: Prop := ref_affine: ∀ a, a ⊑ ε.
+
 Class Wrap (S T: Type) := wrap: S -> T -> T.
 Notation "'𝑤'" := (wrap) (at level 50).
 Notation "𝑤_{ s }" := (wrap s) (at level 50).
@@ -113,7 +115,7 @@ Class OPlusFacts `{Equiv T, OPlus T} := {
 
 Class OPlusFactsWeak `{Equiv T, OPlus T, Ref T} := {
     oplus_comm_weak: forall (a b: T), a ⊕ b ⊑ b ⊕ a;
-    oplus_assoc_weak: forall a b c, a ⊕ (b ⊕ c) ⊑ (a ⊕ b) ⊕ c;
+    oplus_assoc_weakl: forall a b c, a ⊕ (b ⊕ c) ⊑ (a ⊕ b) ⊕ c;
     oplus_Proper_weak:> Proper ((≡) ==> (≡) ==> (≡)) ((⊕));
 }.
 
@@ -121,11 +123,17 @@ Global Program Instance OPlusFactsWeaken `{Equiv T, OPlus T, Ref T, !EquivFacts,
 Next Obligation. i. rewrite oplus_comm. refl. Qed.
 Next Obligation. i. rewrite oplus_assoc. refl. Qed.
 
-Lemma oplus_assoc_weak2 `{Equiv T, OPlus T, Ref T, !OPlusFactsWeak, !PreOrder ((⊑@{T}))}: forall a b c, (a ⊕ b) ⊕ c ⊑ a ⊕ (b ⊕ c).
+Lemma oplus_assoc_weakr `{Equiv T, OPlus T, Ref T, !OPlusFactsWeak, !PreOrder ((⊑@{T}))}: forall a b c, (a ⊕ b) ⊕ c ⊑ a ⊕ (b ⊕ c).
 Proof.
-  ii. rewrite oplus_comm_weak. rewrite oplus_assoc_weak. rewrite oplus_comm_weak. rewrite oplus_assoc_weak.
+  ii. rewrite oplus_comm_weak. rewrite oplus_assoc_weakl. rewrite oplus_comm_weak. rewrite oplus_assoc_weakl.
   rewrite oplus_comm_weak. refl.
 Qed.
+
+Lemma oplus_comm_weak2 `{OPlusFactsWeak}: ∀ a b, a ⊕ b ⊒⊑ b ⊕ a.
+Proof. split; i; eapply oplus_comm_weak. Qed.
+
+Lemma oplus_assoc_weak2 `{OPlusFactsWeak, !PreOrder ((⊑@{T}))}: ∀ a b c, a ⊕ (b ⊕ c) ⊒⊑ (a ⊕ b) ⊕ c.
+Proof. split; i. { eapply oplus_assoc_weakl. } { eapply oplus_assoc_weakr. } Qed.
 
 Class EpsFacts `{Equiv T, Eps T, OPlus T} := {
     eps_r: forall a, a ⊕ ε ≡ a;
@@ -244,7 +252,7 @@ Module MRA.
     oplus_facts:> OPlusFactsWeak (T:=car);
     bar_facts:> BarFactsWeak (T:=car);
     eps_facts:> EpsFacts (T:=car);
-    affinity: forall a, a ⊑ ε;
+    affinity: RefAffine;
     bar_intro: forall a, a ⊑ a ⊕ |a|;
   }.
 
@@ -314,6 +322,129 @@ Next Obligation.
   { eapply refb_equiv; et. }
 Qed.
 
+Definition included `{OPlus T, Equiv T}: T -> T -> Prop :=
+  fun a b => exists ctx, (a ⊕ ctx) ≡ b.
+Notation "≼" := (included) (at level 50).
+Notation "x ≼ y" := (included x y) (at level 50).
+
+Section INCLUDEDFACTS.
+
+  Context `{OPlus T, Equiv T, Eps T, !EquivFacts, !EpsFacts, !OPlusFacts}.
+
+  Global Program Instance included_sub :
+    subrelation ((≡)) ((≼)).
+  Next Obligation.
+    ii; ss. r. exists ε. rewrite eps_r. ss.
+  Qed.
+
+  Global Program Instance included_Proper: Proper ((≡) ==> (≡) ==> impl) ((≼)).
+  Next Obligation.
+    ii; ss. r in H7. r. des. setoid_subst. et.
+  Qed.
+
+  Global Program Instance included_PreOrder: PreOrder ((≼)).
+  Next Obligation.
+    ii. rr. esplits; et. rewrite eps_r. refl.
+  Qed.
+  Next Obligation.
+    unfold included. ii. des. esplits; et. setoid_subst. rewrite oplus_assoc. f_equal.
+  Qed.
+
+  Global Program Instance oplus_included: Proper ((≼) ==> (≼) ==> (≼)) ((⊕)).
+  Next Obligation.
+    unfold included.
+    ii. des. setoid_subst. esplits; et. rewrite <- ! oplus_assoc. f_equiv.
+    instantiate (1:=ctx0 ⊕ ctx).
+    rewrite ! oplus_assoc. f_equiv.
+    rewrite oplus_comm. f_equiv.
+  Qed.
+
+  Lemma unit_included: ∀ x, ε ≼ x.
+  Proof.
+    ii. r. esplits. rewrite eps_l. refl.
+  Qed.
+
+  Context `{Ref T, !RefFacts, !RefAffine}.
+
+  Lemma included_ref: forall a b, a ≼ b -> b ⊑ a.
+  Proof.
+    ii. rr in H8. des; setoid_subst. erewrite <- (eps_r a) at 2. eapply ref_oplus; try refl. eapply ref_affine.
+  Qed.
+
+  Global Program Instance ref_included: Proper ((≼) ==> (≼) --> impl) (⊑).
+  Next Obligation.
+    ii. etrans.
+    { eapply included_ref; et. }
+    etrans; et.
+    r in H1.
+    { eapply included_ref; et. }
+  Qed.
+
+  Context `{Bar T, !BarFacts}.
+
+  Lemma bar_mono: ∀ a b, a ≼ b -> |a| ≼ |b|.
+  Proof.
+    ii. rr in H10. des; setoid_subst. rewrite bar_oplus. r; et.
+  Qed.
+
+  Global Program Instance bar_included: Proper ((≼) ==> (≼)) (|-|).
+  Next Obligation.
+    ii. eapply bar_mono; et.
+  Qed.
+
+  Global Program Instance oplus_ref: Proper ((⊑) ==> (⊑) ==> (⊑)) ((⊕)).
+  Next Obligation.
+    ii. eapply ref_oplus; et.
+  Qed.
+
+End INCLUDEDFACTS.
+
+
+
+Module CM.
+
+  Class t: Type := {
+    car:> Type;
+    equiv:> Equiv car | 200;
+    oplus:> OPlus car | 200;
+    eps:> Eps car | 200;
+    equiv_facts:> EquivFacts (T:=car) | 200;
+    oplus_facts:> OPlusFacts (T:=car) | 200;
+    eps_facts:> EpsFacts (T:=car) | 200;
+  }.
+
+End CM.
+Coercion MRA.car: MRA.t >-> Sortclass.
+Coercion CM.car: CM.t >-> Sortclass.
+
+
+
+Module WA.
+Section FUNCTOR.
+  Context `{Equiv T, OPlus T, Eps T}.
+  Context {S: CM.t}.
+
+  Class t := {
+      morph:> Wrap S T;
+      morph_oplus: forall s a b, (𝑤_{s} (a ⊕ b)) ≡ (𝑤_{s} a) ⊕ (𝑤_{s} b);
+      morph_unit: ∀ a, 𝑤_{ε} a ≡ a;
+      morph_unit2: ∀ a, 𝑤_{a} ε ≡ ε;
+      morph_Proper1:> Proper ((eq) ==> (≡@{T}) ==> (≡@{T})) (𝑤);
+      morph_Proper2:> Proper ((≡@{S}) ==> (eq) ==> (≡@{T})) (𝑤);
+  }.
+
+  Global Program Instance morph_Proper `{t, !EquivFacts}: Proper ((≡@{S}) ==> (≡) ==> (≡)) (𝑤).
+  Next Obligation. ii. setoid_subst. refl. Qed.
+
+  Class Idem `{W: t} :=
+    morph_idem: ∀ s0 s1 a, 𝑤_{s1} (𝑤_{s0} a) ≡ 𝑤_{s0 ⊕ s1} a.
+
+  Class Bar `{W: t} `{Bar T} :=
+    morph_bar: ∀ s a, |𝑤_{s} a| ≡ 𝑤_{s} (|a|).
+
+End FUNCTOR.
+End WA.
+
 
 
 Module MRAS.
@@ -335,13 +466,26 @@ Module MRAS.
   }.
 
 End MRAS.
+Coercion MRAS.car: MRAS.t >-> Sortclass.
 
-Global Instance equiv_relaxed `{M: MRA.t}: Equiv _ | 100
+
+
+
+
+
+
+(***
+The translation from MRA into MRAS presented in the paper.
+***)
+
+Module SIMPLE.
+
+Local Instance equiv_relaxed_simple `{M: MRA.t}: Equiv _ | 200
   := fun a b => a ⊒⊑ b /\ |a| ⊒⊑ |b|.
 
-Global Program Instance MRA_to_MRAS (M: MRA.t): MRAS.t := {
+Local Program Instance MRA_to_MRAS_simple (M: MRA.t): MRAS.t | 200 := {
   car := MRA.car;
-  equiv := equiv_relaxed;
+  equiv := equiv_relaxed_simple;
 }.
 Next Obligation.
   econs.
@@ -405,86 +549,186 @@ Next Obligation.
       eapply ref_oplus; ss. eapply MRA.affinity.
 Qed.
 
-Global Program Instance hat_Proper `{MRA.t}: Proper ((≡) ==> equiv_relaxed) (fun x => x).
+Global Program Instance hat_Proper `{MRA.t}: Proper ((≡) ==> equiv_relaxed_simple) (fun x => x).
 Next Obligation.
   ii. rr. esplits.
   - rewrite H0. refl.
   - rewrite H0. refl.
 Qed.
 
-Definition included `{OPlus T, Equiv T}: T -> T -> Prop :=
-  fun a b => exists ctx, (a ⊕ ctx) ≡ b.
-Notation "(≼)" := (included) (at level 50).
-Notation "x ≼ y" := (included x y) (at level 50).
+End SIMPLE.
 
-Section INCLUDEDFACTS.
 
-  Context `{M: MRAS.t}.
 
-  Global Program Instance included_sub :
-    subrelation ((≡)) ((≼)).
+
+
+
+
+
+
+(***
+Now we consider adding WA.t to the scenario.
+It is completely possible to define WA.t for MRAS directly,
+it is much more convenient to have a metatheory that allows one to define WA.t for MRA and then translates it into MRAS.
+Doing so requires BarFacts (not BarFactsWeak) and also WA.Bar though.
+These axioms are straightforward to prove for our instances.
+***)
+
+Section RELAXED.
+  Context `{M: MRA.t, !CM.t, !WA.t}.
+  Fixpoint equiv_rel (n: nat): M -> M -> Prop :=
+    match n with
+    | 0 => λ a b, a ⊒⊑ b
+    | S n => λ a b, equiv_rel n (|a|) (|b|) ∧ ∀ s, equiv_rel n (𝑤_{s} a) (𝑤_{s} b)
+    end
+  .
+
+  Global Program Instance equiv_rel_Proper n: Proper ((≡) ==> (≡) ==> impl) (equiv_rel n).
   Next Obligation.
-    ii; ss. r. exists ε. rewrite eps_r. ss.
+    ii. gen x x0 y y0. induction n; i; ss.
+    - setoid_subst. ss.
+    - des. esplits; ss.
+      + eapply IHn; et.
+        { rewrite H1; ss. }
+        { rewrite H2; ss. }
+      + i. eapply IHn.
+        { eapply H4; et. }
+        { rewrite H1; ss. }
+        { rewrite H2; ss. }
   Qed.
 
-  Global Program Instance included_Proper: Proper ((≡) ==> (≡) ==> impl) ((≼)).
+  Global Program Instance equiv_rel_Equivalence n: Equivalence (equiv_rel n).
   Next Obligation.
-    ii; ss. r in H1. r. des. setoid_subst. et.
-  Qed.
-
-  Global Program Instance included_PreOrder: PreOrder ((≼)).
-  Next Obligation.
-    ii. rr. esplits; et. rewrite eps_r. refl.
+    ii; ss. revert x. induction n; i; ss.
   Qed.
   Next Obligation.
-    unfold included. ii. des. esplits; et. setoid_subst. rewrite oplus_assoc. f_equal.
+    ii; ss. gen x y. induction n; i; ss.
+    - sym; ss.
+    - des. esplits; ss; et.
   Qed.
-
-  Global Program Instance oplus_included: Proper ((≼) ==> (≼) ==> (≼)) ((⊕)).
   Next Obligation.
-    unfold included.
-    ii. des. setoid_subst. esplits; et. rewrite <- ! oplus_assoc. f_equiv.
-    instantiate (1:=ctx0 ⊕ ctx).
-    rewrite ! oplus_assoc. f_equiv.
-    rewrite oplus_comm. f_equiv.
+    ii; ss. gen x y z. induction n; i; ss.
+    - etrans; et.
+    - des. esplits; ss; et.
   Qed.
 
-  Lemma unit_included: ∀ x, ε ≼ x.
-  Proof.
-    ii. r. esplits. rewrite eps_l. refl.
-  Qed.
+  Definition equiv_relaxed := λ a b, ∀ n, equiv_rel n a b.
 
-  Lemma included_ref: forall a b, a ≼ b -> b ⊑ a.
-  Proof.
-    ii. rr in H. des; setoid_subst. erewrite <- (eps_r a) at 2. eapply ref_oplus; try refl. eapply MRAS.affinity.
-  Qed.
-
-  Global Program Instance ref_included: Proper ((≼) ==> (≼) --> impl) (⊑).
+  Global Program Instance equiv_relaxed_Equivalence: Equivalence (equiv_relaxed).
   Next Obligation.
-    ii. etrans.
-    { eapply included_ref; et. }
-    etrans; et.
-    r in H1.
-    { eapply included_ref; et. }
+    ii; ss. refl.
   Qed.
-
-  Lemma bar_mono: ∀ a b, a ≼ b -> |a| ≼ |b|.
-  Proof.
-    ii. rr in H. des; setoid_subst. rewrite bar_oplus. r; et.
-  Qed.
-
-  Global Program Instance bar_included: Proper ((≼) ==> (≼)) (|-|).
   Next Obligation.
-    ii. eapply bar_mono; et.
+    ii; ss. sym; ss.
   Qed.
-
-  Global Program Instance oplus_ref: Proper ((⊑) ==> (⊑) ==> (⊑)) ((⊕)).
   Next Obligation.
-    ii. eapply ref_oplus; et.
+    ii; ss. etrans; et.
   Qed.
 
-End INCLUDEDFACTS.
+  Global Program Instance equiv_relaxed_Proper: Proper ((≡) ==> (≡) ==> impl) (equiv_relaxed).
+  Next Obligation.
+    ii; ss. setoid_subst. ss.
+  Qed.
 
+  Global Program Instance equiv_equiv_relaxed: subrelation (≡) (equiv_relaxed).
+  Next Obligation.
+    ii; ss. gen x y. induction n; i; ss.
+    - setoid_subst; ss.
+    - esplits; ss.
+      + eapply IHn. setoid_subst; ss.
+      + i. eapply IHn. setoid_subst; ss.
+  Qed.
+
+  Global Program Instance equiv_relaxed_bar_Proper: Proper ((equiv_relaxed) ==> (equiv_relaxed)) (|-|).
+  Next Obligation.
+    ii; ss. specialize (H1 (S n)). ss. des; ss.
+  Qed.
+
+  Global Program Instance equiv_relaxed_wrap_Proper s: Proper ((equiv_relaxed) ==> (equiv_relaxed)) (𝑤_{s}).
+  Next Obligation.
+    ii; ss. specialize (H1 (S n)). ss. des; ss.
+  Qed.
+
+End RELAXED.
+
+Global Program Instance MRA_to_MRAS (M: MRA.t) `{!BarFacts, !CM.t, !WA.t, !WA.Bar}: MRAS.t := {
+  car := MRA.car;
+  equiv := equiv_relaxed;
+}.
+Next Obligation.
+  ii. eapply equiv_relaxed_Equivalence.
+Qed.
+Next Obligation.
+  econs; try typeclasses eauto.
+  intros x y T.
+  specialize (T 0). rr in T. des; ss.
+Qed.
+Next Obligation.
+  econs; try typeclasses eauto.
+  - ii.
+    gen a b. induction n; i; ss.
+    + eapply oplus_comm_weak2.
+    + esplits; ss.
+      * rewrite ! bar_oplus. eapply IHn.
+      * i. rewrite ! WA.morph_oplus. eapply IHn.
+  - ii. gen a b c. induction n; i; ss.
+    + eapply oplus_assoc_weak2.
+    + esplits; ss.
+      * rewrite ! bar_oplus. eapply IHn.
+      * i. rewrite ! WA.morph_oplus. eapply IHn.
+  - intros ? ? T ? ? U n. gen x y x0 y0. induction n; i; ss.
+    + specialize (T 0). specialize (U 0). ss. rewrite T. rewrite U. ss.
+    + esplits; ss.
+      * rewrite ! bar_oplus. eapply IHn; setoid_subst; ss.
+      * i. rewrite ! WA.morph_oplus. eapply IHn; setoid_subst; ss.
+Qed.
+Next Obligation.
+  econs; try typeclasses eauto.
+  - i. rewrite bar_idemp. refl.
+  - i. rewrite bar_oplus. refl.
+  - i. rewrite bar_eps. refl.
+Qed.
+Next Obligation.
+  econs; try typeclasses eauto.
+  - i. rewrite eps_r. refl.
+  - i. rewrite eps_l. refl.
+Qed.
+Next Obligation.
+  i. eapply MRA.affinity.
+Qed.
+Next Obligation.
+  ii. gen a. induction n; i; ss.
+  - rr. esplits; ss.
+    + eapply MRA.bar_intro.
+    + rewrite <- (eps_r a) at 3. eapply ref_oplus; ss. eapply MRA.affinity.
+  - esplits; ss.
+    + rewrite ! bar_oplus. eapply IHn.
+    + i. rewrite ! WA.morph_oplus. rewrite <- WA.morph_bar. eapply IHn.
+Qed.
+
+Global Program Instance WA_MRA_to_MRAS (M: MRA.t) `{!BarFacts, !CM.t, !WA.t, !WA.Bar}: WA.t (H:=equiv_relaxed) := {
+}.
+Next Obligation.
+  i; ss.
+  eapply equiv_equiv_relaxed.
+  eapply WA.morph_oplus.
+Qed.
+Next Obligation.
+  i; ss.
+  eapply equiv_equiv_relaxed.
+  eapply WA.morph_unit.
+Qed.
+Next Obligation.
+  i; ss.
+  eapply equiv_equiv_relaxed.
+  eapply WA.morph_unit2.
+Qed.
+Next Obligation.
+  i. do 3 r. i. subst. setoid_subst. refl.
+Qed.
+Next Obligation.
+  i. do 3 r. i. subst. setoid_subst. refl.
+Qed.
 
 
 
@@ -509,61 +753,3 @@ Ltac r_solve :=
   | _ => try reflexivity
   end
 .
-
-Module CM.
-
-  Class t: Type := {
-    car:> Type;
-    equiv:> Equiv car;
-    oplus:> OPlus car;
-    eps:> Eps car;
-    equiv_facts:> EquivFacts (T:=car);
-    oplus_facts:> OPlusFacts (T:=car);
-    eps_facts:> EpsFacts (T:=car);
-  }.
-
-End CM.
-Coercion MRA.car: MRA.t >-> Sortclass.
-Coercion MRAS.car: MRAS.t >-> Sortclass.
-Coercion CM.car: CM.t >-> Sortclass.
-
-
-
-Module WA.
-Section FUNCTOR.
-  Context {A: MRAS.t}.
-  Context {S: CM.t}.
-
-  Class t := {
-      morph:> Wrap S A;
-      morph_oplus: forall s a b, (𝑤_{s} a) ⊕ (𝑤_{s} b) ≡ (𝑤_{s} (a ⊕ b));
-      morph_unit: ∀ a, 𝑤_{ε} a ≡ a;
-      morph_unit2: ∀ a, 𝑤_{a} ε ≡ ε;
-      morph_Proper1:> Proper ((eq) ==> (≡) ==> (≡)) (𝑤);
-      morph_Proper2:> Proper ((≡) ==> (eq) ==> (≡)) (𝑤);
-  }.
-
-  Global Program Instance morph_Proper `{t}: Proper ((≡) ==> (eq) ==> (≡)) (𝑤).
-  Next Obligation. ii. rewrite H0. rewrite H1. refl. Qed.
-
-  Class Idem `{W: t} :=
-    morph_idem: ∀ s0 s1 a, 𝑤_{s1} (𝑤_{s0} a) ≡ 𝑤_{s0 ⊕ s1} a.
-
-  Section THEORIES.
-
-    Context `{t}.
-
-    Lemma morph_mono: forall s a b, a ≼ b -> 𝑤_{s} a ≼ 𝑤_{s} b.
-    Proof.
-      ii. rr in H0. des; setoid_subst. rr. esplits; et. rewrite morph_oplus; ss.
-    Qed.
-
-    Global Program Instance morph_included: Proper (eq ==> (≼) ==> (≼)) (𝑤).
-    Next Obligation.
-      ii. subst. eapply morph_mono; et.
-    Qed.
-
-  End THEORIES.
-
-End FUNCTOR.
-End WA.
