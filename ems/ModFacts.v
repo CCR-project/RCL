@@ -88,7 +88,7 @@ Next Obligation.
   i; cbn.
   eapply LSimMod; et.
   { ss. rewrite Sk.add_assoc; ss. }
-  i. ss. eapply oplus_assoc_weak.
+  i. ss. eapply oplus_assoc_weakl.
 Qed.
 Next Obligation.
   ii. rr in H. rr in H0. des; subst.
@@ -108,7 +108,7 @@ Next Obligation.
   i; cbn.
   eapply GSimMod.
   { ss. rewrite Sk.add_assoc; et. }
-  i. ss. rewrite oplus_assoc_weak. refl.
+  i. ss. rewrite oplus_assoc_weakl. refl.
 Qed.
 
 Global Program Instance ModSem_EpsFacts: EpsFacts.
@@ -158,10 +158,10 @@ Global Program Instance Mod_RefFacts: RefFacts (T:=Mod.t).
 Next Obligation.
   do 3 r. i.
   unfold sqsubseteq, Mod.ref in *.
-  i. rewrite oplus_assoc_weak. rewrite H0.
-  rewrite oplus_comm_weak. rewrite oplus_assoc_weak. rewrite H.
-  rewrite oplus_assoc_weak2. rewrite oplus_comm_weak.
-  rewrite oplus_assoc_weak2. refl.
+  i. rewrite oplus_assoc_weakl. rewrite H0.
+  rewrite oplus_comm_weak. rewrite oplus_assoc_weakl. rewrite H.
+  rewrite oplus_assoc_weakr. rewrite oplus_comm_weak.
+  rewrite oplus_assoc_weakr. refl.
 Qed.
 Next Obligation.
   r. i. rr in H; des.
@@ -170,20 +170,25 @@ Next Obligation.
   rewrite H0. refl.
 Qed.
 
+Global Program Instance Mod_BarFacts: BarFacts.
+Next Obligation.
+  - rr. ss. esplits; try refl. i. rewrite bar_idemp. refl.
+Qed.
+Next Obligation.
+  - rr. ss. esplits; try refl.
+    { rewrite Sk.add_unit_r; refl. }
+    i. rewrite bar_oplus. refl.
+Qed.
+Next Obligation.
+  - ii. rr in H. des. rr. esplits; ss; try refl. ii. rewrite H0; ss.
+Qed.
+Next Obligation.
+  - rr. ss.
+Qed.
+
 Global Program Instance Mod_MRA: MRA.t := {
   car := Mod.t;
 }.
-Next Obligation.
-  econs.
-  - i. eapply equiv_ref_both.
-    rr. ss. esplits; try refl. i. rewrite bar_idemp. refl.
-  - i. eapply equiv_ref_both.
-    rr. ss. esplits; try refl.
-    { rewrite Sk.add_unit_r; refl. }
-    i. rewrite bar_oplus. refl.
-  - ii. rr in H. des. rr. esplits; ss; try refl. ii. rewrite H0; ss.
-  - rr. ss.
-Qed.
 Next Obligation.
   ii. des. ss.
   destruct (classic (Sk.wf (Mod.sk ctx ⊕ Mod.sk a))).

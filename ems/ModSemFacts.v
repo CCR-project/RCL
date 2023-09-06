@@ -256,10 +256,10 @@ Global Program Instance ModSem_RefFacts: RefFacts (T:=ModSem.t).
 Next Obligation.
   do 3 r. i.
   unfold sqsubseteq, ModSem.ref in *.
-  i. rewrite oplus_assoc_weak. rewrite H0.
-  rewrite oplus_comm_weak. rewrite oplus_assoc_weak. rewrite H.
-  rewrite oplus_assoc_weak2. rewrite oplus_comm_weak.
-  rewrite oplus_assoc_weak2. refl.
+  i. rewrite oplus_assoc_weakl. rewrite H0.
+  rewrite oplus_comm_weak. rewrite oplus_assoc_weakl. rewrite H.
+  rewrite oplus_assoc_weakr. rewrite oplus_comm_weak.
+  rewrite oplus_assoc_weakr. refl.
 Qed.
 
 Global Program Instance ModSem_EquivFacts: EquivFacts (T:=ModSem.t).
@@ -300,7 +300,7 @@ Global Program Instance ModSem_MRA: MRA.t := {
   car := ModSem.t;
 }.
 Next Obligation.
-  do 2 r. i. upt. des_ifs; ss; clear_tac.
+  do 3 r. i. upt. des_ifs; ss; clear_tac.
   - eapply ModSemPair.adequacy_whole. ss.
     econs.
     { instantiate (1:=top2). ss. }

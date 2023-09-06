@@ -665,5 +665,6 @@ Ltac simpl_euttge :=
     end; des; subst
 .
 
-Notation "≈" := (eutt eq) (at level 70).
-Notation "a ≈ b" := (eutt a b) (at level 70).
+Infix "≈" := (eutt eq) (at level 70).
+Notation "≈" := (eutt eq) (at level 70, only parsing).
+Notation "a ≈ b" := (eutt eq a b) (at level 70).

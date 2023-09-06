@@ -419,6 +419,8 @@ Coercion CM.car: CM.t >-> Sortclass.
 
 
 
+Class WrapBarCommute `{Bar T, Wrap U T, Equiv T} := wrap_bar: ∀ s a, |𝑤_{s} a| ≡ 𝑤_{s} (|a|).
+
 Module WA.
 Section FUNCTOR.
   Context `{Equiv T, OPlus T, Eps T}.
@@ -439,8 +441,15 @@ Section FUNCTOR.
   Class Idem `{W: t} :=
     morph_idem: ∀ s0 s1 a, 𝑤_{s1} (𝑤_{s0} a) ≡ 𝑤_{s0 ⊕ s1} a.
 
-  Class Bar `{W: t} `{Bar T} :=
-    morph_bar: ∀ s a, |𝑤_{s} a| ≡ 𝑤_{s} (|a|).
+  Lemma morph_mono `{t, !EquivFacts, !OPlusFacts}: forall s a b, a ≼ b -> 𝑤_{s} a ≼ 𝑤_{s} b.
+  Proof.
+    ii. rr in H5. des; setoid_subst. rr. esplits; et. rewrite morph_oplus; ss.
+  Qed.
+
+  Global Program Instance morph_included `{t, !EquivFacts, !OPlusFacts}: Proper (eq ==> (≼) ==> (≼)) (𝑤).
+  Next Obligation.
+    ii. subst. eapply morph_mono; et.
+  Qed.
 
 End FUNCTOR.
 End WA.
@@ -461,7 +470,7 @@ Module MRAS.
     oplus_facts:> OPlusFacts (T:=car);
     bar_facts:> BarFacts (T:=car);
     eps_facts:> EpsFacts (T:=car);
-    affinity: forall a, a ⊑ ε;
+    affinity:> RefAffine;
     bar_intro: forall a, a ≡ a ⊕ |a|;
   }.
 
@@ -651,7 +660,7 @@ Section RELAXED.
 
 End RELAXED.
 
-Global Program Instance MRA_to_MRAS (M: MRA.t) `{!BarFacts, !CM.t, !WA.t, !WA.Bar}: MRAS.t := {
+Global Program Instance MRA_to_MRAS (M: MRA.t) `{!BarFacts, !CM.t, !WA.t, !WrapBarCommute}: MRAS.t := {
   car := MRA.car;
   equiv := equiv_relaxed;
 }.
@@ -703,10 +712,10 @@ Next Obligation.
     + rewrite <- (eps_r a) at 3. eapply ref_oplus; ss. eapply MRA.affinity.
   - esplits; ss.
     + rewrite ! bar_oplus. eapply IHn.
-    + i. rewrite ! WA.morph_oplus. rewrite <- WA.morph_bar. eapply IHn.
+    + i. rewrite ! WA.morph_oplus. rewrite <- wrap_bar. eapply IHn.
 Qed.
 
-Global Program Instance WA_MRA_to_MRAS (M: MRA.t) `{!BarFacts, !CM.t, !WA.t, !WA.Bar}: WA.t (H:=equiv_relaxed) := {
+Global Program Instance WA_MRA_to_MRAS (M: MRA.t) `{!BarFacts, !CM.t, !WA.t}: WA.t (H:=equiv_relaxed) := {
 }.
 Next Obligation.
   i; ss.

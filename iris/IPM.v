@@ -389,19 +389,19 @@ Section LOGIC.
     unfold bi_sep. cbn. split; ii; ss; des; subst.
     - rr in H. des. subst.
       eexists (𝑤_{s} a ⊕ ctx), (𝑤_{s} b). esplits.
-      { setoid_subst. rewrite <- ! WA.morph_oplus. r_solve. }
+      { setoid_subst. rewrite ! WA.morph_oplus. r_solve. }
       { r. et. }
       { ss. }
       { refl. }
       { ss. }
-    - setoid_subst. esplits; eauto. rewrite <- WA.morph_oplus. rewrite H0. rewrite H1. refl.
+    - setoid_subst. esplits; eauto. rewrite WA.morph_oplus. rewrite H0. rewrite H1. refl.
   Qed.
 
   Lemma wrap_own: forall s m, 𝑊_{s} (Own m) ⊣⊢ Own (𝑤_{s} m).
   Proof.
     ii. eapply equiv_entails. split.
     - econs; ii. rr in H. cbn. des. rr in H0. des. setoid_subst.
-      rewrite <- WA.morph_oplus in H.
+      rewrite WA.morph_oplus in H.
       etrans; et. r; et.
     - econs; ii. rr in H. cbn. des. subst. esplits; try refl. r; et.
   Qed.
@@ -431,7 +431,7 @@ Section LOGIC.
   Program Definition Wrap2 (s0: CM.car) (P: mProp): mProp :=
     mProp_intro (fun sm => (P: mPred) (𝑤_{s0} sm)) _.
   Next Obligation.
-    ii. rr in H. des. setoid_subst. rewrite <- WA.morph_oplus. eapply mProp_mono; et. r; et.
+    ii. rr in H. des. setoid_subst. rewrite WA.morph_oplus. eapply mProp_mono; et. r; et.
   Qed.
 
   Notation "𝑀_{ a } b" := (Wrap2 a b) (at level 50).

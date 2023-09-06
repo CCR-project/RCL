@@ -296,25 +296,26 @@ Section PROOF.
     }
   Qed.
 
-  Lemma rpt0_core_mras
-    :
-    @equiv (@MRAS.car (MRA_to_MRAS (@Mod_MRA _)))
-           (@MRAS.equiv (MRA_to_MRAS (@Mod_MRA _)))
-           RPT0.rptM ( | RPT0.rptM | ).
-  Proof.
-    rr. unfold ref_both. splits.
-    rewrite <- rpt0_core. auto.
-    rewrite <- rpt0_core. auto.
-    rewrite <- rpt0_core. auto.
-    rewrite <- rpt0_core. auto.
-  Qed.
+  (*** YJ: equiv_relaxed should not appear to the user. equiv should be sufficient. ***)
+  (* Lemma rpt0_core_mras *)
+  (*   : *)
+  (*   @equiv (@MRAS.car (MRA_to_MRAS (@Mod_MRA _))) *)
+  (*          (@MRAS.equiv (MRA_to_MRAS (@Mod_MRA _))) *)
+  (*          RPT0.rptM ( | RPT0.rptM | ). *)
+  (* Proof. *)
+  (*   rr. unfold ref_both. splits. *)
+  (*   rewrite <- rpt0_core. auto. *)
+  (*   rewrite <- rpt0_core. auto. *)
+  (*   rewrite <- rpt0_core. auto. *)
+  (*   rewrite <- rpt0_core. auto. *)
+  (* Qed. *)
 
   Lemma rpt0_persistent0
     :
     OwnM ( | RPT0.rptM | ) -∗ OwnM RPT0.rptM.
   Proof.
     econs. ii. rr in H. des. rr. exists ctx. etrans. 2: eapply H.
-    eapply oplus_Proper; auto. eapply rpt0_core_mras.
+    eapply oplus_Proper; auto. rewrite <- rpt0_core. refl.
   Qed.
 
   Lemma rpt0_persistent
