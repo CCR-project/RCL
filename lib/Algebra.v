@@ -741,6 +741,105 @@ Qed.
 
 
 
+Section REFSTRONG.
+
+  Context `{Ref T, Bar T, Equiv T, OPlus T, Eps T}.
+  Context `{!EquivFacts, !RefFacts, !OPlusFactsWeak, !BarFacts}.
+  Context `{C: CM.t, !WA.t (S:=C)}.
+  Fixpoint ref_str (n: nat): T -> T -> Prop :=
+    match n with
+    | 0 => λ a b, a ⊑ b
+    | S n => λ a b, ref_str n ( |a| ) ( |b| ) ∧ ∀ s, ref_str n (𝑤_{s} a) (𝑤_{s} b)
+    end
+  .
+
+  Definition ref_strong: T -> T -> Prop := λ a b, ∀ n, ref_str n a b.
+
+  Infix "⊑S" := ref_strong (at level 50).
+  Notation "⊑S" := (ref_strong) (at level 50, only parsing).
+  Notation "a ⊑S b" := (ref_strong a b) (at level 50).
+
+  Global Program Instance ref_strong_ref: subrelation (⊑S) (⊑).
+  Next Obligation.
+    intros ? ? U. specialize (U 0). ss.
+  Qed.
+
+  Lemma ref_strong_Proper_aux: ∀ n x y, x ⊑S y -> ref_str n ( |x| ) ( |y| ) ∧ ∀ s, ref_str n (𝑤_{s} x) (𝑤_{s} y).
+  Proof.
+    induction n; intros ? ? U; ss.
+    { specialize (U 1). ss. }
+    esplits; ss.
+    - eapply IHn; et. ii. specialize (U (S n0)). ss. des; ss.
+    - i. eapply IHn; et. ii. specialize (U (S n0)). ss. des; ss.
+    - i. eapply IHn; et. ii. specialize (U (S n0)). ss. des; ss.
+  Qed.
+
+  Global Program Instance ref_str_Proper n: Proper ((≡) ==> (≡) ==> impl) (ref_str n).
+  Next Obligation.
+    ii. gen x y x0 y0. induction n; intros ? ? U ? V ? W; ss.
+    { setoid_subst. ss. }
+    des. esplits; ss.
+    - eapply IHn; try apply V; et.
+      { rewrite U; ss. }
+      { rewrite W; ss. }
+    - i. eapply IHn; try apply V0; et.
+      { rewrite U; ss. }
+      { rewrite W; ss. }
+  Qed.
+
+  Global Program Instance ref_strong_Proper: Proper ((≡) ==> (≡) ==> impl) (⊑S).
+  Next Obligation.
+    ii. eapply ref_str_Proper; et.
+  Qed.
+
+  Global Program Instance ref_strong_Proper_bar: Proper ((⊑S) ==> (⊑S)) ( |-| ).
+  Next Obligation.
+    ii. eapply ref_strong_Proper_aux; ss.
+  Qed.
+
+  Global Program Instance ref_strong_Proper_wrap s: Proper ((⊑S) ==> (⊑S)) (𝑤_{s}).
+  Next Obligation.
+    ii. eapply ref_strong_Proper_aux; ss.
+  Qed.
+
+  Global Program Instance ref_str_PreOrder n: PreOrder (ref_str n).
+  Next Obligation.
+    r. induction n; i; ss.
+  Qed.
+  Next Obligation.
+    r. induction n; i; ss.
+    { etrans; et. }
+    { des. esplits.
+      - eapply IHn; et.
+      - i. eapply IHn; et.
+    }
+  Qed.
+
+  Global Program Instance ref_str_OPlus n: Proper ((ref_str n) ==> (ref_str n) ==> (ref_str n)) ((⊕)).
+  Next Obligation.
+    do 2 r. induction n; intros ? ? U ? ? V; ss.
+    { rewrite U. rewrite V. refl. }
+    { des. esplits; ss.
+      - rewrite ! bar_oplus. eapply IHn; et.
+      - i. rewrite ! WA.morph_oplus. eapply IHn; et.
+    }
+  Qed.
+
+  Global Program Instance ref_strong_OPlus: Proper ((⊑S) ==> (⊑S) ==> (⊑S)) ((⊕)).
+  Next Obligation.
+    do 2 r. intros ? ? U ? ? V. ii. specialize (U n). rewrite U. specialize (V n). rewrite V. refl.
+  Qed.
+
+  Global Program Instance ref_strong_PreOrder: PreOrder (⊑S).
+  Next Obligation. ii. refl. Qed.
+  Next Obligation. ii. etrans; et. Qed.
+
+End REFSTRONG.
+
+Infix "⊑S" := ref_strong (at level 50).
+Notation "⊑S" := (ref_strong) (at level 50, only parsing).
+Notation "a ⊑S b" := (ref_strong a b) (at level 50).
+
 Ltac r_first rs :=
   match rs with
   | (?rs0 ⊕ ?rs1) =>

@@ -202,6 +202,7 @@ Next Obligation.
   eapply T in PR. clear T.
   assert(U: (Mod.get_modsem ctx (Mod.sk ctx ⊕ Mod.sk a) ⊕ ε) ⊑B (Mod.get_modsem ctx (Mod.sk ctx ⊕ Sk.unit) ⊕ ε)).
   { rewrite ! eps_r.
+    eapply ref_refb.
     rewrite Mod.get_modsem_affine; et; try refl.
     { rewrite Sk.add_unit_r. rr. esplits; refl. }
   }

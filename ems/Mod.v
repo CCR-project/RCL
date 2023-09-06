@@ -7,7 +7,7 @@ Require Export AList.
 Require Import Skeleton.
 Require Import STS Behavior.
 Require Import Any.
-Require Import Permutation.
+Require Import Permutation WrapModSem.
 
 Set Implicit Arguments.
 
@@ -22,28 +22,20 @@ Section MOD.
     enclose: ModSem.t := (get_modsem sk);
     (* get_modsem_Proper:> Proper ((≡) ==> eq) get_modsem; *)
     get_modsem_Proper:> forall sk0 sk1 (EQV: sk0 ≡ sk1) (WF: Sk.wf sk0), get_modsem sk0 = get_modsem sk1;
-    get_modsem_affine:> forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1), get_modsem sk1 ⊑ get_modsem sk0;
-    get_modsem_affine_core:> forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1), | get_modsem sk1 | ⊑ | get_modsem sk0 |;
+    get_modsem_affine: forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1), ref_strong (get_modsem sk1) (get_modsem sk0);
+    (* get_modsem_affine_core: forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1), | get_modsem sk1 | ⊑ | get_modsem sk0 |; *)
   }
   .
 
   Definition wf (md: t): Prop := (<<SK: Sk.wf (md.(sk))>>).
   (* Definition wf (md: t): Prop := (<<WF: ModSem.wf md.(enclose)>> /\ <<SK: Sk.wf (md.(sk))>>). *)
 
-  Global Program Instance bar: Bar t := fun (md: t) => mk (fun sk => |(md.(get_modsem) sk)| ) Sk.unit _ _ _.
+  Global Program Instance bar: Bar t := fun (md: t) => mk (fun sk => |(md.(get_modsem) sk)| ) Sk.unit _ _.
   Next Obligation.
     i; cbn. erewrite get_modsem_Proper; et.
   Qed.
   Next Obligation.
-    i; cbn. rewrite get_modsem_affine_core; et.
-  Qed.
-  Next Obligation.
-    i; cbn.
-    erewrite (@bar_idemp_weak).
-    2: { eapply ModSem_MRA. }
-    rewrite get_modsem_affine_core; et.
-    eapply (@bar_idemp_weak).
-    { eapply ModSem_MRA. }
+    i; cbn. erewrite get_modsem_affine; et. refl.
   Qed.
 
   Section BEH.
@@ -74,15 +66,7 @@ Section MOD.
     i; cbn.
     rewrite (get_modsem_affine _ EQV); et.
     rewrite (get_modsem_affine _ EQV); et.
-  Qed.
-  Next Obligation.
-    i; cbn.
-    erewrite (@bar_oplus_weak).
-    2: { eapply ModSem_MRA. }
-    etrans.
-    2: {eapply (@bar_oplus_weak). eapply ModSem_MRA. }
-    rewrite (get_modsem_affine_core _ EQV); et.
-    rewrite (get_modsem_affine_core _ EQV); et.
+    refl.
   Qed.
 
   Global Program Instance eps: Eps t := {|
@@ -97,9 +81,6 @@ Section MOD.
   .
 
   Global Program Instance equiv_Equiv: EquivFacts.
-  Next Obligation.
-    i; cbn. refl.
-  Qed.
   Next Obligation.
     econs.
     - ii; ss.
