@@ -369,6 +369,10 @@ Section PROOF.
 
 End PROOF.
 
+
+
+Notation "𝑊_{ a } b" := (Wrap (M:=(MRA_to_MRAS (@Mod_MRA Sk.gdefs))) a b) (at level 50).
+
 Section CCR.
 
   (* Definition α_conds (fn: string) (f: list val -> itree Es Z) : conds := *)
@@ -388,7 +392,8 @@ Section CCR.
     fun fn' => if (String.eqb fn fn') then
               mk_cond (fun args =>
                          exists (fb: ((nat + string) * Z)%type) (n x: Z),
-                           args = ([Vptr (fst fb) (snd fb); Vint n; Vint x])↑)
+                           (args = ([Vptr (fst fb) (snd fb); Vint n; Vint x])↑) /\
+                             (fst fb = inr fn))
                       (fun args ret =>
                          exists (fb: ((nat + string) * Z)%type) (n x r: Z),
                            (args = ([Vptr (fst fb) (snd fb); Vint n; Vint x])↑) /\
@@ -399,20 +404,186 @@ Section CCR.
   (* Definition β (fn: string) (f: list val -> itree Es Z) : conds_CM := *)
   (*   β_conds fn f. *)
 
-  (* TODO : notation *)
+  Lemma one_wrap_sim
+        (fn: string) (f: list val -> itree Es Z)
+    :
+    ModSemPair.sim (𝑤_{ α fn f } ONE.oneMS fn f) (ONE.oneMS fn f).
+  Proof.
+    Local Opaque String.eqb. Import ModSemPair.
+    ss. eapply mk. eapply (@top2_PreOrder unit). instantiate (1:= (fun _ '(src, tgt) => src = tgt)).
+    { i. ss. des; clarify. inv FINDS. exists (cfunU_int f). split.
+      { left. f_equal. }
+      ii. clarify. ginit.
 
-  (* Lemma rpt0_ccr_spec: *)
-  (*   OwnM (RPT0.rptM) ⊢ *)
-  (*        □ (∀ fn f, *)
-  (*              (∀ c, (𝑤_{c} (𝑤_{α fn f} (OwnM (ONE.oneM fn f)))) *)
-  (*                      ==∗ *)
-  (*                      (𝑤_{((α fn f) ⊕ (β fn f)) ⊕ c} (OwnM (RPT1.rptM fn (cfunU_int f)))))). *)
 
-  (*** TODO : help **)
 
-  (* Let wrap := Wrap (W:=Hoare_WA). *)
+      (* unfold wrap, wrap_itree. *)
+      unfold_goal @cfunU_int. unfold_goal @cast_val. unfold_goal
+      steps.
+      destruct p0. unfold unptr, unint, unr in *. des_ifs_safe. ss; clarify.
+      destruct (String.eqb_spec fn' s).
+      2:{ steps. }
+      clarify.
+      steps.
+      (* force_r. eexists; auto. steps. *)
+      rename z0 into v.
+      des; clarify.
+      remember (Z.to_nat z) as n.
+      revert x z v _UNWRAPU _ASSUME Heqn mrs_src tgt_l. induction n; intros.
+      { hexploit Z_to_nat_le_zero; eauto. intros. des_ifs.
+        2:{ lia. }
+        ss. steps.
+        unfold lift_rel. exists w; splits; eauto.
+      }
+      { hexploit Z_to_nat_ge_one; eauto. intros ZRANGE. des_ifs. clear l.
+        ss.
+        unfold ccallU. steps.
+        { right; left. instantiate (1:=focus_right (T:=Any.t) <*> cfunU_int f'). f_equal. }
+        unfold_goal @cfunU_int. unfold_goal @cfunU. unfold_goal @cast_val. steps.
+        guclo lbindC_spec. econs.
+        { guclo lflagC_spec. econs. gfinal. right.
+          eapply sim_itree_fsubset. 2: eapply sim_itree_tgtr. ss. eapply self_sim_itree.
+          all: eauto.
+          i. ss. split; ii.
+          - des. clarify. eauto.
+          - des. clarify. eauto.
+        }
+        i. rr in SIM. des. clear WLE. clarify. destruct w1. steps.
+        { left. instantiate (1:= focus_left (T:=Any.t) ∘ cfunU RPT0.rptF). auto. }
+        unfold_goal @cfunU. steps. unfold_goal RPT0.rptF. steps.
+        force_r.
+        { exfalso. apply _ASSUME0. clear - _ASSUME ZRANGE. unfold_intrange_64.
+          des_ifs. apply sumbool_to_bool_true in _ASSUME, H.
+          apply andb_true_intro. split; apply sumbool_to_bool_is_true; lia.
+        }
+        steps.
+        specialize (IHn ([Vptr (inr s) 0; Vint (z - 1); Vint (vret_tgt)]↑) (z - 1)%Z vret_tgt).
+        exploit IHn; auto.
+        { apply Any.upcast_downcast. }
+        { lia. }
+        clear IHn; intros IHn. des_ifs.
+        { steps.
+          match goal with
+          | [IHn: gpaco8 _ _ _ _ _ _ _ _ _ _ _ (?t1) |-
+               gpaco8 _ _ _ _ _ _ _ _ _ _ _ (?t2)] =>
+              replace t2 with t1
+          end.
+          guclo lflagC_spec. econs. eapply IHn.
+          all: auto.
+          f_equal. ired_eq_l. auto.
+        }
+        { steps. irw in IHn.
+          guclo guttC_spec. econs.
+          { guclo lflagC_spec. econs. eapply IHn. all: auto. }
+          - apply Reflexive_eqit_eq.
+          - ired_eq_r.
+            apply eqit_bind. apply Reflexive_eqit_eq. ii.
+            apply eqit_bind. apply Reflexive_eqit_eq. ii.
+            ired_eq_l. apply eqit_Tau_l. ired_eq_l. ired_eq_r.
+            apply Reflexive_eqit_eq.
+        }
+      }
+    }
+    { ss. exists tt. eauto. }
+  Qed.
+    
 
-  Notation "𝑊_{ a } b" := (Wrap (M:=(MRA_to_MRAS (@Mod_MRA Sk.gdefs))) a b) (at level 50).
+  Lemma one_wrap_ref fn f:
+    ONE.oneM fn f ⊑ 𝑤_{ α fn f } ONE.oneM fn f.
+  Proof.
+    eapply LSimMod. ss. ss. i. eapply ModSemPair.adequacy.
+    apply one_rpt_sim.
+  Qed.
+
+  Lemma one_rpt_sim
+        (fn': string) (f': list val -> itree Es Z)
+    :
+    ModSemPair.sim (RPT1.rptMS fn' (cfunU_int f')) (RPT0.rptMS ⊕ (ONE.oneMS fn' f')).
+  Proof.
+    Local Opaque String.eqb.
+    ss. eapply mk. eapply (@top2_PreOrder unit). instantiate (1:= (fun _ '(src, tgt) => exists tgt_l, tgt = Any.pair tgt_l src)).
+    { i. ss. des; clarify. exists (focus_left (T:=Any.t) ∘ cfunU RPT0.rptF). split.
+      { left. f_equal. }
+      ii. subst y. ginit.
+      unfold_goal RPT1.rptF. unfold_goal RPT0.rptF. unfold_goal @cfunU.
+      unfold_goal @cfunU_int. unfold_goal @cast_val.
+      steps.
+      destruct p0. unfold unptr, unint, unr in *. des_ifs_safe. ss; clarify.
+      destruct (String.eqb_spec fn' s).
+      2:{ steps. }
+      clarify.
+      steps.
+      (* force_r. eexists; auto. steps. *)
+      rename z0 into v.
+      des; clarify.
+      remember (Z.to_nat z) as n.
+      revert x z v _UNWRAPU _ASSUME Heqn mrs_src tgt_l. induction n; intros.
+      { hexploit Z_to_nat_le_zero; eauto. intros. des_ifs.
+        2:{ lia. }
+        ss. steps.
+        unfold lift_rel. exists w; splits; eauto.
+      }
+      { hexploit Z_to_nat_ge_one; eauto. intros ZRANGE. des_ifs. clear l.
+        ss.
+        unfold ccallU. steps.
+        { right; left. instantiate (1:=focus_right (T:=Any.t) <*> cfunU_int f'). f_equal. }
+        unfold_goal @cfunU_int. unfold_goal @cfunU. unfold_goal @cast_val. steps.
+        guclo lbindC_spec. econs.
+        { guclo lflagC_spec. econs. gfinal. right.
+          eapply sim_itree_fsubset. 2: eapply sim_itree_tgtr. ss. eapply self_sim_itree.
+          all: eauto.
+          i. ss. split; ii.
+          - des. clarify. eauto.
+          - des. clarify. eauto.
+        }
+        i. rr in SIM. des. clear WLE. clarify. destruct w1. steps.
+        { left. instantiate (1:= focus_left (T:=Any.t) ∘ cfunU RPT0.rptF). auto. }
+        unfold_goal @cfunU. steps. unfold_goal RPT0.rptF. steps.
+        force_r.
+        { exfalso. apply _ASSUME0. clear - _ASSUME ZRANGE. unfold_intrange_64.
+          des_ifs. apply sumbool_to_bool_true in _ASSUME, H.
+          apply andb_true_intro. split; apply sumbool_to_bool_is_true; lia.
+        }
+        steps.
+        specialize (IHn ([Vptr (inr s) 0; Vint (z - 1); Vint (vret_tgt)]↑) (z - 1)%Z vret_tgt).
+        exploit IHn; auto.
+        { apply Any.upcast_downcast. }
+        { lia. }
+        clear IHn; intros IHn. des_ifs.
+        { steps.
+          match goal with
+          | [IHn: gpaco8 _ _ _ _ _ _ _ _ _ _ _ (?t1) |-
+               gpaco8 _ _ _ _ _ _ _ _ _ _ _ (?t2)] =>
+              replace t2 with t1
+          end.
+          guclo lflagC_spec. econs. eapply IHn.
+          all: auto.
+          f_equal. ired_eq_l. auto.
+        }
+        { steps. irw in IHn.
+          guclo guttC_spec. econs.
+          { guclo lflagC_spec. econs. eapply IHn. all: auto. }
+          - apply Reflexive_eqit_eq.
+          - ired_eq_r.
+            apply eqit_bind. apply Reflexive_eqit_eq. ii.
+            apply eqit_bind. apply Reflexive_eqit_eq. ii.
+            ired_eq_l. apply eqit_Tau_l. ired_eq_l. ired_eq_r.
+            apply Reflexive_eqit_eq.
+        }
+      }
+    }
+    { ss. exists tt. eauto. }
+  Qed.
+
+
+  Lemma rpt0_precond :
+    ∀ fn f, OwnM (ONE.oneM fn f) ==∗ (𝑊_{α fn f} (OwnM (ONE.oneM fn f))).
+  Proof.
+    iIntros (fn f) "A". iApply wrap_own. iStopProof.
+    apply IPM.adequacy.
+
+    
+    
 
   Lemma rpt0_ccr_spec:
     OwnM (RPT0.rptM) ⊢
