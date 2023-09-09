@@ -464,15 +464,16 @@ Section CCR.
   (*   iIntros (fn f) "A". iApply wrap_own. iStopProof. *)
   (*   apply IPM.adequacy. *)
 
-  (* Lemma wrap_ref_comm1 c P: *)
-  (*   𝑊_{c} ( |==> P ) ⊢ ( |==> 𝑊_{c} P ). *)
-  (* Proof. *)
-  (*   econs. i. rr in H. rr. des. rr in H. rr in H0. des. *)
-  (*   exists (𝑤_{ c} src). *)
-  (*   rewrite <- H. clear H. splits. *)
-  (*   { rr. exists src. splits; auto. refl. } *)
-  (*   { rewrite ref_oplus. 3: eapply @MRAS.affinity. 2: refl. rewrite eps_r. *)
-  (*     rr in H1. rr. *)
+  Lemma wrap_ref_comm1 c P:
+    𝑊_{c} ( |==> P ) ⊢ ( |==> 𝑊_{c} P ).
+  Proof.
+    econs. i. rr in H. rr. des. rr in H. rr in H0. des.
+    exists (𝑤_{ c} src).
+    rewrite <- H. clear H. splits.
+    { rr. exists src. splits; auto. refl. }
+    { rewrite ref_oplus. 3: eapply @MRAS.affinity. 2: refl. rewrite eps_r.
+      Print Instances SqSubsetEq.
+      rr in H1. rr.
 
   Lemma rpt0_ccr_spec:
     OwnM (RPT0.rptM) ⊢
