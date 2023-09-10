@@ -372,42 +372,11 @@ End PROOF.
 
 
 Notation "𝑊_{ a } b" := (Wrap (M:=(MRA_to_MRAS (@Mod_MRA Sk.gdefs))) a b) (at level 50).
+Notation "𝑀_{ a } b" := (Wrap2 (M:=(MRA_to_MRAS (@Mod_MRA Sk.gdefs))) a b) (at level 50).
 
-Global Program Instance Mod_Wrap_Idem: (@WA.Idem _ _ Hoare_WA).
-Next Obligation.
-  Admitted.
+Section AUX.
 
-Section CCR.
-
-  (* Definition α_conds (fn: string) (f: list val -> itree Es Z) : conds := *)
-  Definition α (fn: string) (f: list val -> itree Es Z) : conds :=
-    fun fn' => if (String.eqb fn fn') then
-              mk_cond (fun args => exists (n: Z), args = ([Vint n])↑)
-                      (fun args ret =>
-                         exists (n r: Z), (args = ([Vint n])↑) /\ (ret = (Vint r)↑) /\
-                                       (Ret ret ≈ (cfunU_int f) args))
-            else ε.
-
-  (* Definition α (fn: string) (f: list val -> itree Es Z) : conds_CM := *)
-  (*   (α_conds fn f: conds_CM). *)
-
-  (* Definition β_conds (fn: string) (f: list val -> itree Es Z) : conds := *)
-  Definition β (fn: string) (f: list val -> itree Es Z) : conds :=
-    fun fn' => if (String.eqb fn fn') then
-              mk_cond (fun args =>
-                         exists (fb: ((nat + string) * Z)%type) (n x: Z),
-                           (args = ([Vptr (fst fb) (snd fb); Vint n; Vint x])↑) /\
-                             (fst fb = inr fn))
-                      (fun args ret =>
-                         exists (fb: ((nat + string) * Z)%type) (n x r: Z),
-                           (args = ([Vptr (fst fb) (snd fb); Vint n; Vint x])↑) /\
-                             (ret = (Vint r)↑) /\
-                             (Ret ret ≈ (RPT1.fun_iter (cfunU_int f) (Z.to_nat n) (Ret (Vint x)↑))))
-            else ε.
-
-  (* Definition β (fn: string) (f: list val -> itree Es Z) : conds_CM := *)
-  (*   β_conds fn f. *)
-
+  (* FIXME : fix wrap-ired interaction and move *)
   Import IRed.
   Global Program Instance wrap_rdb: red_database (mk_box (@wrap_itree)) :=
     mk_rdb
@@ -431,6 +400,36 @@ Section CCR.
       (mk_box wrap_guarantee)
       (mk_box wrap_ext)
   .
+
+End AUX.
+
+
+(* Global Program Instance Mod_Wrap_Idem: (@WA.Idem _ _ Hoare_WA). *)
+(* Next Obligation. *)
+
+Section CCR.
+
+  (* Definition α (fn: string) (f: list val -> itree Es Z) : conds := *)
+  (*   fun fn' => if (String.eqb fn fn') then *)
+  (*             mk_cond (fun args => exists (n: Z), args = ([Vint n])↑) *)
+  (*                     (fun args ret => *)
+  (*                        exists (n r: Z), (args = ([Vint n])↑) /\ (ret = (Vint r)↑) /\ *)
+  (*                                      (Ret ret ≈ (cfunU_int f) args)) *)
+  (*           else ε. *)
+
+  Definition β (fn: string) (f: list val -> itree Es Z) : conds :=
+    fun fn' => if (String.eqb fn fn') then
+              mk_cond (fun args =>
+                         exists (fb: ((nat + string) * Z)%type) (n x: Z),
+                           (args = ([Vptr (fst fb) (snd fb); Vint n; Vint x])↑) /\
+                             (fst fb = inr fn))
+                      (fun args ret =>
+                         exists (fb: ((nat + string) * Z)%type) (n x r: Z),
+                           (args = ([Vptr (fst fb) (snd fb); Vint n; Vint x])↑) /\
+                             (ret = (Vint r)↑) /\
+                             (Ret ret ≈ (RPT1.fun_iter (cfunU_int f) (Z.to_nat n) (Ret (Vint x)↑))))
+            else ε.
+
 
   (* Lemma one_wrap_sim *)
   (*       (fn: string) (f: list val -> itree Es Z) *)
@@ -464,34 +463,173 @@ Section CCR.
   (*   iIntros (fn f) "A". iApply wrap_own. iStopProof. *)
   (*   apply IPM.adequacy. *)
 
-  Lemma wrap_ref_comm1 c P:
-    𝑊_{c} ( |==> P ) ⊢ ( |==> 𝑊_{c} P ).
+  (* FIXME *)
+  Ltac wrap_steps := unfold_goal @wrap; steps.
+  Ltac wraps := repeat (try wrap_steps).
+
+  Lemma one_rpt_ccr_sim
+        (fn: string) (f: list val -> itree Es Z) (c: conds)
+    :
+    ModSemPair.sim (𝑤_{ β fn f ⊕ c} RPT1.rptMS fn (cfunU_int f))
+                   (𝑤_{ c} (RPT0.rptMS ⊕ ONE.oneMS fn f)).
   Proof.
-    econs. i. rr in H. rr. des. rr in H. rr in H0. des.
-    exists (𝑤_{ c} src).
-    rewrite <- H. clear H. splits.
-    { rr. exists src. splits; auto. refl. }
-    { rewrite ref_oplus. 3: eapply @MRAS.affinity. 2: refl. rewrite eps_r.
-      Print Instances SqSubsetEq.
-      rr in H1. rr.
+    Local Opaque String.eqb. Import ModSemPair.
+    ss. eapply mk. eapply (@top2_PreOrder unit). instantiate (1:= (fun _ '(src, tgt) => exists tgt_l, tgt = Any.pair tgt_l src)).
+    { i. ss. des; clarify.
+      inv FINDS.
+      exists (snd (𝑤_{ c} ("rpt", focus_left (T:=Any.t) <*> cfunU RPT0.rptF))). split.
+      (* unfold wrap. ss. unfold wrap. unfold wrap_ktree. ss. *)
+
+      (* exists (𝑤_{ c} ("rpt", focus_left (T:=Any.t) <*> cfunU RPT0.rptF)). split. *)
+      { left. ss. }
+      ii. subst y. ginit.
+      unfold_goal @wrap. ss. unfold_goal @wrap. steps.
+      des. steps. force_r. clarify. steps.
+      unfold_goal RPT1.rptF. unfold_goal RPT0.rptF. unfold_goal @cfunU.
+      unfold_goal @cfunU_int. unfold_goal @cast_val.
+      steps. wraps.
+
+      destruct p0. unfold unptr, unint, unr in *. des_ifs_safe. ss; clarify.
+      clear e0.
+      destruct (String.eqb_spec fn s).
+      2:{ steps. }
+      clarify.
+      wraps.
+      rename z0 into v.
+      remember (Z.to_nat z) as n.
+      clear _ASSUME1.
+      revert x z v _UNWRAPU _ASSUME _ASSUME0 _ASSUME2 Heqn mrs_src tgt_l.
+      induction n; intros.
+      { hexploit Z_to_nat_le_zero; eauto. intros. des_ifs.
+        2:{ lia. }
+        ss. wraps.
+        force_l.
+        { exfalso. apply _GUARANTEE0; clear _GUARANTEE0. splits; auto.
+          clear _ASSUME0 _GUARANTEE l.
+          unfold β in *. des_ifs. ss. des.
+          rewrite _ASSUME in _UNWRAPU. rewrite Any.upcast_downcast in _UNWRAPU. clarify.
+          exists fb, z, v, v. rewrite <- Heqn. ss. splits; auto. refl.
+        }
+        wraps. unfold lift_rel. exists w; splits; eauto.
+      }
+      { hexploit Z_to_nat_ge_one; eauto. intros ZRANGE. des_ifs. clear l.
+        ss.
+        unfold ccallU. wraps.
+        { right; left. ss. }
+        ss. unfold_goal @cfunU_int. unfold_goal @cfunU. unfold_goal @cast_val. wraps.
+        force_r.
+        { clarify. }
+        wraps.
+        guclo lbindC_spec. econs.
+        {
+          (* guclo guttC_spec. econs. 2: refl. *)
+          guclo lflagC_spec. econs.
+          gfinal. right.
+          eapply sim_itree_fsubset.
+          all: admit "".
+
+          (* 2: eapply sim_itree_tgtr. ss. eapply self_sim_itree. *)
+          (* all: eauto. *)
+          (* i. ss. split; ii. *)
+          (* - des. clarify. eauto. *)
+          (* - des. clarify. eauto. *)
+        }
+        i. rr in SIM. des. clear WLE. clarify. destruct w1. wraps.
+        force_r.
+        { clarify. }
+        wraps.
+        { left. ss. }
+        unfold_goal @cfunU. unfold_goal RPT0.rptF. wraps.
+        force_r.
+        { clarify. }
+        wraps.
+        force_r.
+        { exfalso. apply _ASSUME5. clear - _ASSUME2 ZRANGE. unfold_intrange_64.
+          des_ifs. apply sumbool_to_bool_true in _ASSUME2, H.
+          apply andb_true_intro. split; apply sumbool_to_bool_is_true; lia.
+        }
+        wraps.
+        (* specialize (IHn ([Vptr (inr s) 0; Vint (z - 1); Vint (vret_tgt)]↑) (z - 1)%Z vret_tgt). *)
+        specialize (IHn ([Vptr (inr s) 0; Vint (z - 1); Vint (vret_tgt)]↑) (z - 1)%Z vret_tgt).
+        exploit IHn; auto.
+        { apply Any.upcast_downcast. }
+        { unfold β. destruct (String.eqb s "rpt") eqn:CASES; ss. exists ((inr s), 0%Z). esplits; ss. }
+        { lia. }
+        clear IHn; intros IHn. des_ifs.
+        { wraps. irw in IHn.
+          guclo guttC_spec. econs.
+          { guclo lflagC_spec. econs. eapply IHn. all: auto. }
+          - unfold cfunU. unfold β in _ASSUME. clear - _UNWRAPU _ASSUME. des_ifs. ss.
+
+            subst x. refl.
+            apply eqit_bind. apply Reflexive_eqit_eq. ii.
+            apply eqit_bind. apply Reflexive_eqit_eq. ii.
+            apply eqit_bind. apply Reflexive_eqit_eq. ii.
+            ired_eq_l. apply eqit_Tau_l. ired_eq_l. ired_eq_r.
+            apply Reflexive_eqit_eq.
+          - ired_eq_r.
+            apply eqit_bind. apply Reflexive_eqit_eq. ii.
+            apply eqit_bind. apply Reflexive_eqit_eq. ii.
+            ired_eq_l. apply eqit_Tau_l. ired_eq_l. ired_eq_r.
+            apply Reflexive_eqit_eq.
+        }
+
+          
+          match goal with
+          | [IHn: gpaco8 _ _ _ _ _ _ _ _ _ _ _ (?t1) |-
+               gpaco8 _ _ _ _ _ _ _ _ _ _ _ (?t2)] =>
+              replace t2 with t1
+          end.
+          guclo lflagC_spec. econs. eapply IHn.
+          all: auto.
+          f_equal. ired_eq_l. auto.
+        }
+        { steps. irw in IHn.
+          guclo guttC_spec. econs.
+          { guclo lflagC_spec. econs. eapply IHn. all: auto. }
+          - apply Reflexive_eqit_eq.
+          - ired_eq_r.
+            apply eqit_bind. apply Reflexive_eqit_eq. ii.
+            apply eqit_bind. apply Reflexive_eqit_eq. ii.
+            ired_eq_l. apply eqit_Tau_l. ired_eq_l. ired_eq_r.
+            apply Reflexive_eqit_eq.
+        }
+      }
+    }
+    { ss. exists tt. eauto. }
+  Qed.
+
+  Theorem one_rpt_ccr_ref fn f (c: conds_CM):
+    𝑤_{ c} (RPT0.rptM ⊕ ONE.oneM fn f) ⊑ 𝑤_{ β fn f ⊕ c} RPT1.rptM fn (cfunU_int f).
+  Proof.
+    eapply LSimMod. ss. ss. i. eapply ModSemPair.adequacy. apply one_rpt_sim.
+  Qed.
+
 
   Lemma rpt0_ccr_spec:
     OwnM (RPT0.rptM) ⊢
          □ (∀ fn f,
-               (∀ c, (𝑊_{c} (𝑊_{α fn f} (OwnM (ONE.oneM fn f))))
-                       ==∗
-                       (𝑊_{((α fn f) ⊕ (β fn f)) ⊕ c} (OwnM (RPT1.rptM fn (cfunU_int f)))))).
+               (∀ c, 𝑀_{c} (
+                         (𝑊_{c} (OwnM (ONE.oneM fn f)))
+                           ==∗
+                           (𝑊_{(β fn f) ⊕ c} (OwnM (RPT1.rptM fn (cfunU_int f))))))).
   Proof.
-    Print Instances Algebra.Wrap.
-    iIntros "#RPT0". iModIntro. iIntros (fn f c) "ONE".
-    (* rewrite oplus_assoc. *)
-    iApply wrap_idem.
+    iIntros "#RPT0". iModIntro. iIntros (fn f c) "".
+    iApply wrap2_adj1. 2: iApply "RPT0". iIntros "RPT0 ONE".
+    iPoseProof (wrap_own with "RPT0") as "RPT0".
+    iPoseProof (wrap_own with "ONE") as "ONE".
+    iCombine "RPT0 ONE" as "TGT". rewrite WA.morph_oplus.
+    iApply wrap_own.
+    iStopProof. apply IPM.adequacy.
+
+    apply one_rpt_ref.
+    
+    
     TODO
 
 
     iPoseProof (own_sep with "[ONE RPT0]") as "OWN". iSplitL "RPT0". auto. iApply "ONE".
     iClear "RPT0".
-    iStopProof. apply IPM.adequacy. apply one_rpt_ref.
   Qed.
 
   Definition rptF (fn: string) (f: Any.t -> itree Es Any.t) : list val -> itree Es val :=
