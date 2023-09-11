@@ -11,6 +11,12 @@ Notation "| a |" := (bar a) (at level 50).
 
 (* Notation "'ref'" := sqsubseteq (at level 60, only parsing). *)
 Notation "'Ref'" := SqSubsetEq (at level 60, only parsing).
+
+Class RefStrong (T: Type) := ref_strong: T -> T -> Prop.
+Infix "⊑S" := ref_strong (at level 50).
+Notation "⊑S" := (ref_strong) (at level 50, only parsing).
+Notation "a ⊑S b" := (ref_strong a b) (at level 50).
+
 Definition ref_both `{Ref T}: T -> T -> Prop := λ a b, a ⊑ b /\ b ⊑ a.
 
 (* Notation "⊒⊑" := ref_both (at level 70). *)
@@ -198,6 +204,15 @@ Global Instance Ref_pointed `{Ref T}: Ref (pointed T) :=
     end
 .
 
+Global Instance RefStrong_pointed `{RefStrong T}: RefStrong (pointed T) :=
+  fun x y =>
+    match x, y with
+    | just x, just y => x ⊑S y
+    | mytt, mytt => True
+    | _, _ => False
+    end
+.
+
 Global Instance Bar_pointed `{Bar T}: Bar (pointed T) :=
   fun x =>
     match x with
@@ -212,6 +227,8 @@ Ltac upt :=
     | [ |- context[@equiv _ (@Equiv_pointed _ _)]] => unfold equiv, Equiv_pointed
     | [H: context[@sqsubseteq _ (@Ref_pointed _ _)] |- _] => unfold sqsubseteq, Ref_pointed in H
     | [ |- context[@sqsubseteq _ (@Ref_pointed _ _)]] => unfold sqsubseteq, Ref_pointed
+    | [H: context[@sqsubseteq _ (@RefStrong_pointed _ _)] |- _] => unfold ref_strong, RefStrong_pointed in H
+    | [ |- context[@sqsubseteq _ (@RefStrong_pointed _ _)]] => unfold ref_strong, RefStrong_pointed
     | [H: context[@Algebra.bar _ (@Bar_pointed _ _)] |- _] => unfold Algebra.bar, Bar_pointed in H
     | [ |- context[@Algebra.bar _ (@Bar_pointed _ _)]] => unfold Algebra.bar, Bar_pointed
     | [H: context[@Algebra.eps _ (@Eps_pointed _ _)] |- _] => unfold Algebra.eps, Eps_pointed in H
@@ -741,7 +758,23 @@ Qed.
 
 
 
-Section REFSTRONG.
+
+Class RefStrongFacts `{RefStrong T, Ref T, OPlus T, Equiv T, Bar T}: Prop := {
+  ref_strong_subrelation:> subrelation (⊑S) (⊑);
+  ref_strong_Proper:> Proper ((≡) ==> (≡) ==> impl) (⊑S);
+  ref_strong_PreOrder:> PreOrder (⊑S);
+  ref_strong_oplus:> Proper ((⊑S) ==> (⊑S) ==> (⊑S)) ((⊕));
+  ref_strong_bar:> Proper ((⊑S) ==> (⊑S)) ( |-| );
+}.
+
+Class RefStrongWrap `{RefStrong T, Wrap C T}: Prop := {
+  ref_strong_wrap:> forall s, Proper ((⊑S) ==> (⊑S)) ( 𝑤_{s} );
+}.
+
+(*** We don't use this construction, but for fun... It gives transitivity for free. ***)
+
+Module Construction.
+Section CONSTR.
 
   Context `{Ref T, Bar T, Equiv T, OPlus T, Eps T}.
   Context `{!EquivFacts, !RefFacts, !OPlusFactsWeak, !BarFacts}.
@@ -753,16 +786,7 @@ Section REFSTRONG.
     end
   .
 
-  Definition ref_strong: T -> T -> Prop := λ a b, ∀ n, ref_str n a b.
-
-  Infix "⊑S" := ref_strong (at level 50).
-  Notation "⊑S" := (ref_strong) (at level 50, only parsing).
-  Notation "a ⊑S b" := (ref_strong a b) (at level 50).
-
-  Global Program Instance ref_strong_ref: subrelation (⊑S) (⊑).
-  Next Obligation.
-    intros ? ? U. specialize (U 0). ss.
-  Qed.
+  Global Instance ref_strong_constr: RefStrong T := λ a b, ∀ n, ref_str n a b.
 
   Lemma ref_strong_Proper_aux: ∀ n x y, x ⊑S y -> ref_str n ( |x| ) ( |y| ) ∧ ∀ s, ref_str n (𝑤_{s} x) (𝑤_{s} y).
   Proof.
@@ -774,7 +798,7 @@ Section REFSTRONG.
     - i. eapply IHn; et. ii. specialize (U (S n0)). ss. des; ss.
   Qed.
 
-  Global Program Instance ref_str_Proper n: Proper ((≡) ==> (≡) ==> impl) (ref_str n).
+  Local Program Instance ref_str_Proper n: Proper ((≡) ==> (≡) ==> impl) (ref_str n).
   Next Obligation.
     ii. gen x y x0 y0. induction n; intros ? ? U ? V ? W; ss.
     { setoid_subst. ss. }
@@ -787,22 +811,7 @@ Section REFSTRONG.
       { rewrite W; ss. }
   Qed.
 
-  Global Program Instance ref_strong_Proper: Proper ((≡) ==> (≡) ==> impl) (⊑S).
-  Next Obligation.
-    ii. eapply ref_str_Proper; et.
-  Qed.
-
-  Global Program Instance ref_strong_Proper_bar: Proper ((⊑S) ==> (⊑S)) ( |-| ).
-  Next Obligation.
-    ii. eapply ref_strong_Proper_aux; ss.
-  Qed.
-
-  Global Program Instance ref_strong_Proper_wrap s: Proper ((⊑S) ==> (⊑S)) (𝑤_{s}).
-  Next Obligation.
-    ii. eapply ref_strong_Proper_aux; ss.
-  Qed.
-
-  Global Program Instance ref_str_PreOrder n: PreOrder (ref_str n).
+  Local Program Instance ref_str_PreOrder n: PreOrder (ref_str n).
   Next Obligation.
     r. induction n; i; ss.
   Qed.
@@ -815,7 +824,7 @@ Section REFSTRONG.
     }
   Qed.
 
-  Global Program Instance ref_str_OPlus n: Proper ((ref_str n) ==> (ref_str n) ==> (ref_str n)) ((⊕)).
+  Local Program Instance ref_str_OPlus n: Proper ((ref_str n) ==> (ref_str n) ==> (ref_str n)) ((⊕)).
   Next Obligation.
     do 2 r. induction n; intros ? ? U ? ? V; ss.
     { rewrite U. rewrite V. refl. }
@@ -825,20 +834,52 @@ Section REFSTRONG.
     }
   Qed.
 
-  Global Program Instance ref_strong_OPlus: Proper ((⊑S) ==> (⊑S) ==> (⊑S)) ((⊕)).
-  Next Obligation.
+
+
+
+  Lemma ref_strong_ref: subrelation (⊑S) (⊑).
+  Proof.
+    intros ? ? U. specialize (U 0). ss.
+  Qed.
+  Local Existing Instance ref_strong_ref.
+
+  Lemma ref_strong_Proper: Proper ((≡) ==> (≡) ==> impl) (⊑S).
+  Proof.
+    ii. eapply ref_str_Proper; et.
+  Qed.
+  Local Existing Instance ref_strong_Proper.
+
+  Lemma ref_strong_Proper_bar: Proper ((⊑S) ==> (⊑S)) ( |-| ).
+  Proof.
+    ii. eapply ref_strong_Proper_aux; ss.
+  Qed.
+  Local Existing Instance ref_strong_Proper_bar.
+
+  Lemma ref_strong_Proper_wrap s: Proper ((⊑S) ==> (⊑S)) (𝑤_{s}).
+  Proof.
+    ii. eapply ref_strong_Proper_aux; ss.
+  Qed.
+  Local Existing Instance ref_strong_Proper_wrap.
+
+  Lemma ref_strong_OPlus: Proper ((⊑S) ==> (⊑S) ==> (⊑S)) ((⊕)).
+  Proof.
     do 2 r. intros ? ? U ? ? V. ii. specialize (U n). rewrite U. specialize (V n). rewrite V. refl.
   Qed.
+  Local Existing Instance ref_strong_OPlus.
 
-  Global Program Instance ref_strong_PreOrder: PreOrder (⊑S).
-  Next Obligation. ii. refl. Qed.
-  Next Obligation. ii. etrans; et. Qed.
+  Lemma ref_strong_PreOrder: PreOrder (⊑S).
+  Proof.
+    econs.
+    - ii. refl.
+    - ii. etrans; et.
+  Qed.
+  Local Existing Instance ref_strong_PreOrder.
 
-End REFSTRONG.
+  Global Program Instance ref_strong_RefStrongFacts: RefStrongFacts.
+  Global Program Instance ref_strong_RefStrongWrap: RefStrongWrap.
 
-Infix "⊑S" := ref_strong (at level 50).
-Notation "⊑S" := (ref_strong) (at level 50, only parsing).
-Notation "a ⊑S b" := (ref_strong a b) (at level 50).
+End CONSTR.
+End Construction.
 
 Ltac r_first rs :=
   match rs with

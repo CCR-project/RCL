@@ -22,7 +22,8 @@ Section MOD.
     enclose: ModSem.t := (get_modsem sk);
     (* get_modsem_Proper:> Proper ((≡) ==> eq) get_modsem; *)
     get_modsem_Proper:> forall sk0 sk1 (EQV: sk0 ≡ sk1) (WF: Sk.wf sk0), get_modsem sk0 = get_modsem sk1;
-    get_modsem_affine: forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1), ref_strong (get_modsem sk1) (get_modsem sk0);
+    get_modsem_affine: forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1),
+                          (get_modsem sk1) ⊑S (get_modsem sk0);
     (* get_modsem_affine_core: forall sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1), | get_modsem sk1 | ⊑ | get_modsem sk0 |; *)
   }
   .
