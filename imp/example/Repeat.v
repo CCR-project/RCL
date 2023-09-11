@@ -409,13 +409,13 @@ End AUX.
 
 Section CCR.
 
-  (* Definition α (fn: string) (f: list val -> itree Es Z) : conds := *)
-  (*   fun fn' => if (String.eqb fn fn') then *)
-  (*             mk_cond (fun args => exists (n: Z), args = ([Vint n])↑) *)
-  (*                     (fun args ret => *)
-  (*                        exists (n r: Z), (args = ([Vint n])↑) /\ (ret = (Vint r)↑) /\ *)
-  (*                                      (Ret ret ≈ (cfunU_int f) args)) *)
-  (*           else ε. *)
+  Definition α (fn: string) (f: list val -> itree Es Z) : conds :=
+    fun fn' => if (String.eqb fn fn') then
+              mk_cond (fun args => exists (n: Z), args = ([Vint n])↑)
+                      (fun args ret =>
+                         exists (n r: Z), (args = ([Vint n])↑) /\ (ret = (Vint r)↑) /\
+                                       (Ret ret ≈ (cfunU_int f) args))
+            else ε.
 
   Definition β (fn: string) (f: list val -> itree Es Z) : conds :=
     fun fn' => if (String.eqb fn fn') then
@@ -498,81 +498,125 @@ Section CCR.
       rename z0 into v.
       remember (Z.to_nat z) as n.
       clear _ASSUME1.
-      revert x z v _UNWRAPU _ASSUME _ASSUME0 _ASSUME2 Heqn mrs_src tgt_l.
-      induction n; intros.
-      { hexploit Z_to_nat_le_zero; eauto. intros. des_ifs.
-        2:{ lia. }
-        ss. wraps.
-        force_l.
-        { exfalso. apply _GUARANTEE0; clear _GUARANTEE0. splits; auto.
-          clear _ASSUME0 _GUARANTEE l.
-          unfold β in *. des_ifs. ss. des.
-          rewrite _ASSUME in _UNWRAPU. rewrite Any.upcast_downcast in _UNWRAPU. clarify.
-          exists fb, z, v, v. rewrite <- Heqn. ss. splits; auto. refl.
-        }
-        wraps. unfold lift_rel. exists w; splits; eauto.
-      }
-      { hexploit Z_to_nat_ge_one; eauto. intros ZRANGE. des_ifs. clear l.
-        ss.
-        unfold ccallU. wraps.
-        { right; left. ss. }
-        ss. unfold_goal @cfunU_int. unfold_goal @cfunU. unfold_goal @cast_val. wraps.
-        force_r.
-        { clarify. }
-        wraps.
-        guclo lbindC_spec. econs.
-        {
-          (* guclo guttC_spec. econs. 2: refl. *)
-          guclo lflagC_spec. econs.
-          gfinal. right.
-          eapply sim_itree_fsubset.
-          all: admit "".
 
-          (* 2: eapply sim_itree_tgtr. ss. eapply self_sim_itree. *)
-          (* all: eauto. *)
-          (* i. ss. split; ii. *)
-          (* - des. clarify. eauto. *)
-          (* - des. clarify. eauto. *)
-        }
-        i. rr in SIM. des. clear WLE. clarify. destruct w1. wraps.
-        force_r.
-        { clarify. }
-        wraps.
-        { left. ss. }
-        unfold_goal @cfunU. unfold_goal RPT0.rptF. wraps.
-        force_r.
-        { clarify. }
-        wraps.
-        force_r.
-        { exfalso. apply _ASSUME5. clear - _ASSUME2 ZRANGE. unfold_intrange_64.
-          des_ifs. apply sumbool_to_bool_true in _ASSUME2, H.
-          apply andb_true_intro. split; apply sumbool_to_bool_is_true; lia.
-        }
-        wraps.
-        (* specialize (IHn ([Vptr (inr s) 0; Vint (z - 1); Vint (vret_tgt)]↑) (z - 1)%Z vret_tgt). *)
-        specialize (IHn ([Vptr (inr s) 0; Vint (z - 1); Vint (vret_tgt)]↑) (z - 1)%Z vret_tgt).
-        exploit IHn; auto.
-        { apply Any.upcast_downcast. }
-        { unfold β. destruct (String.eqb s "rpt") eqn:CASES; ss. exists ((inr s), 0%Z). esplits; ss. }
-        { lia. }
-        clear IHn; intros IHn. des_ifs.
-        { wraps. irw in IHn.
-          guclo guttC_spec. econs.
-          { guclo lflagC_spec. econs. eapply IHn. all: auto. }
-          - unfold cfunU. unfold β in _ASSUME. clear - _UNWRAPU _ASSUME. des_ifs. ss.
+      match goal with
+      | [ |- gpaco8 _ _ _ _ _ _ _ _ _ _ _ (_, ?t1)] =>
+          replace t1 with
+          (` x2 : Any.t <-
+                    (` x0 : val <- wrap_itree c (focus_left
+                                                  (if Z_lt_le_dec z 1
+                                                   then Ret (Vint v)
+                                                   else
+                                                     ` fn : string <- Ret s;;
+                                                            ` v0 : val <- ccallU fn [Vint v];; ccallU "rpt" [Vptr (inr s) 0; Vint (z - 1); v0]));;
+                            ` x1 : Any.t <- wrap_itree c (focus_left (Ret (Any.upcast x0)));; Ret x1);;
+                  (guarantee (postcond (c "rpt") x x2);;; Ret x2))
+      end.
+      2:{ grind. }
 
-            subst x. refl.
-            apply eqit_bind. apply Reflexive_eqit_eq. ii.
-            apply eqit_bind. apply Reflexive_eqit_eq. ii.
-            apply eqit_bind. apply Reflexive_eqit_eq. ii.
-            ired_eq_l. apply eqit_Tau_l. ired_eq_l. ired_eq_r.
-            apply Reflexive_eqit_eq.
-          - ired_eq_r.
-            apply eqit_bind. apply Reflexive_eqit_eq. ii.
-            apply eqit_bind. apply Reflexive_eqit_eq. ii.
-            ired_eq_l. apply eqit_Tau_l. ired_eq_l. ired_eq_r.
-            apply Reflexive_eqit_eq.
+      match goal with
+      | [ |- gpaco8 _ _ _ _ _ _ _ _ _ _ (_, ?t1) _] =>
+          replace t1 with
+          (` x2 : Any.t <- (` r : Any.t <-
+                                   wrap_itree (β s f ⊕ c)
+                                              (RPT1.fun_iter (cfunU (λ varg : list val, ` vret : Z <- f varg;; Ret (Vint vret))) n
+                                                             (Ret (Any.upcast (Vint v))));;
+                                 ` x0 : val <-
+                                          wrap_itree (β s f ⊕ c) (` vret0 : val <- unwrapU (Any.downcast r);; Ret vret0);;
+                                        ` x1 : Any.t <- wrap_itree (β s f ⊕ c) (Ret (Any.upcast x0));; Ret x1);;
+                  (guarantee (postcond (β s f "rpt") x x2 ∧ postcond (c "rpt") x x2);;; Ret x2))
+      end.
+      2:{ grind. }
+
+      guclo lbindC_spec. econs.
+      { instantiate
+          (2:= (fun src tgt r_s r_t =>
+                  (exists tgt_l, tgt = Any.pair tgt_l src) /\
+                    (r_s = r_t) /\
+                    (postcond (β s f "rpt") x r_s))).
+
+        revert x z v _UNWRAPU _ASSUME _ASSUME0 _ASSUME2 Heqn mrs_src tgt_l.
+        induction n; intros.
+        { hexploit Z_to_nat_le_zero; eauto. intros. des_ifs.
+          2:{ lia. }
+          ss. wraps.
+          (* force_l. *)
+          (* { exfalso. apply _GUARANTEE0; clear _GUARANTEE0. splits; auto. *)
+          (*   clear _ASSUME0 _GUARANTEE l. *)
+          (*   unfold β in *. des_ifs. ss. des. *)
+          (*   rewrite _ASSUME in _UNWRAPU. rewrite Any.upcast_downcast in _UNWRAPU. clarify. *)
+          (*   exists fb, z, v, v. rewrite <- Heqn. ss. splits; auto. refl. *)
+          (* } *)
+          (* wraps. unfold lift_rel. exists w; splits; eauto. *)
+          splits; eauto. unfold β. des_ifs. ss.
+          apply Any.downcast_upcast in _UNWRAPU. des. clarify.
+          exists (inr s, 0%Z). esplits; eauto. rewrite <- Heqn. ss. refl.
         }
+        { hexploit Z_to_nat_ge_one; eauto. intros ZRANGE. des_ifs. clear l.
+          ss. unfold ccallU. wraps.
+          { right; left. ss. }
+          ss. unfold_goal @cfunU_int. unfold_goal @cfunU. unfold_goal @cast_val. wraps.
+          force_r.
+          { clarify. }
+          wraps.
+          guclo lbindC_spec. econs.
+          {
+            (* guclo guttC_spec. econs. 2: refl. *)
+            guclo lflagC_spec. econs.
+            gfinal. right.
+            eapply sim_itree_fsubset.
+            all: admit "".
+
+            (* 2: eapply sim_itree_tgtr. ss. eapply self_sim_itree. *)
+            (* all: eauto. *)
+            (* i. ss. split; ii. *)
+            (* - des. clarify. eauto. *)
+            (* - des. clarify. eauto. *)
+          }
+          i. rr in SIM. des. clear WLE. clarify. destruct w1. wraps.
+          force_r.
+          { clarify. }
+          wraps.
+          { left. ss. }
+          unfold_goal @cfunU. unfold_goal RPT0.rptF. wraps.
+          force_r.
+          { clarify. }
+          wraps.
+          force_r.
+          { exfalso. apply _ASSUME5. clear - _ASSUME2 ZRANGE. unfold_intrange_64.
+            des_ifs. apply sumbool_to_bool_true in _ASSUME2, H.
+            apply andb_true_intro. split; apply sumbool_to_bool_is_true; lia.
+          }
+          wraps.
+          specialize (IHn ([Vptr (inr s) 0; Vint (z - 1); Vint (vret_tgt)]↑) (z - 1)%Z vret_tgt).
+          exploit IHn; auto.
+          (* { apply Any.upcast_downcast. } *)
+          (* { unfold β. destruct (String.eqb s "rpt") eqn:CASES; ss. exists ((inr s), 0%Z). esplits; ss. } *)
+          { lia. }
+          clear IHn; intros IHn. des_ifs.
+          { wraps. force_r.
+            { apply _ASSUME6 in _GUARANTEE2. inv _GUARANTEE2. }
+            wraps. guclo guttC_spec. econs.
+            { guclo lflagC_spec. econs.
+
+              TODO
+
+
+              eapply IHn. all: auto. }
+            - unfold cfunU. unfold β in _ASSUME. clear - _UNWRAPU _ASSUME. des_ifs. ss.
+
+              subst x. refl.
+              apply eqit_bind. apply Reflexive_eqit_eq. ii.
+              apply eqit_bind. apply Reflexive_eqit_eq. ii.
+              apply eqit_bind. apply Reflexive_eqit_eq. ii.
+              ired_eq_l. apply eqit_Tau_l. ired_eq_l. ired_eq_r.
+              apply Reflexive_eqit_eq.
+            - ired_eq_r.
+              apply eqit_bind. apply Reflexive_eqit_eq. ii.
+              apply eqit_bind. apply Reflexive_eqit_eq. ii.
+              ired_eq_l. apply eqit_Tau_l. ired_eq_l. ired_eq_r.
+              apply Reflexive_eqit_eq.
+          }
 
           
           match goal with
