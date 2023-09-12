@@ -1,7 +1,7 @@
 Require Import Coqlib.
 Require Export sflib.
 Require Export ITreelib.
-Require Export ModSemE.
+Require Export ModSemEFacts.
 Export Events.
 Require Export AList.
 Require Import Skeleton.
@@ -22,15 +22,15 @@ Section AUX.
   Global Program Instance interp_Es_rdb: red_database (mk_box (@Events.interp_Es)) :=
     mk_rdb
       1
-      (mk_box Events.interp_Es_bind)
-      (mk_box Events.interp_Es_tau)
-      (mk_box Events.interp_Es_ret)
-      (mk_box Events.interp_Es_pE)
-      (mk_box Events.interp_Es_pE)
-      (mk_box Events.interp_Es_callE)
-      (mk_box Events.interp_Es_eventE)
-      (mk_box Events.interp_Es_triggerUB)
-      (mk_box Events.interp_Es_triggerNB)
+      (mk_box interp_Es_bind)
+      (mk_box interp_Es_tau)
+      (mk_box interp_Es_ret)
+      (mk_box interp_Es_pE)
+      (mk_box interp_Es_pE)
+      (mk_box interp_Es_callE)
+      (mk_box interp_Es_eventE)
+      (mk_box interp_Es_triggerUB)
+      (mk_box interp_Es_triggerNB)
       (mk_box interp_Es_unwrapU)
       (mk_box interp_Es_unwrapN)
       (mk_box interp_Es_unleftU)
@@ -120,9 +120,8 @@ Proof.
   rewrite interp_interp.
   eapply eutt_interp; try refl.
   ii.
-  destruct a; ss.
+  destruct a; [destruct s|]; ss.
   { cbn. unfold trivial_Handler. rewrite interp_trigger. grind. resub. setoid_rewrite tau_eutt. grind. refl. }
-  destruct s; ss.
   { cbn. unfold trivial_Handler. unfold core_h. unfold triggerUB. grind. rewrite ! interp_trigger. grind. f_equiv; ss. }
   { cbn. unfold trivial_Handler. rewrite interp_trigger. grind. resub. setoid_rewrite tau_eutt. grind. refl. }
 Qed.
@@ -474,9 +473,8 @@ Section MODSEM.
       i. unfold focus_left, Algebra.bar, ktree_Bar, Algebra.bar, itree_Bar. cbn.
       rewrite ! interp_interp. eapply eutt_interp; try refl. ii. ss.
       unfold trivial_Handler.
-      destruct a.
+      destruct a; [destruct s0|]; ss.
       { ired.  rewrite ! interp_trigger. grind. refl. }
-      destruct s0.
       { ired.  unfold focus_left_h, core_h.
         des_ifs.
         - ired. rewrite ! interp_trigger. ired. unfold triggerUB. grind. rewrite ! interp_trigger. grind.
@@ -492,9 +490,8 @@ Section MODSEM.
       i. unfold focus_right, Algebra.bar, ktree_Bar, Algebra.bar, itree_Bar. cbn.
       rewrite ! interp_interp. eapply eutt_interp; try refl. ii. ss.
       unfold trivial_Handler.
-      destruct a.
+      destruct a; [destruct s0|]; ss.
       { ired.  rewrite ! interp_trigger. grind. refl. }
-      destruct s0.
       { ired.  unfold focus_right_h, core_h.
         des_ifs.
         - ired. rewrite ! interp_trigger. ired. unfold triggerUB. grind. rewrite ! interp_trigger. grind.

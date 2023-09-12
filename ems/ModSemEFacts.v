@@ -5,12 +5,60 @@ Require Export AList.
 Require Import Any.
 Require Import Skeleton.
 Require Import Red IRed.
-Require Import ModSemE.
-Include Events.
+Require Export ModSemE.
+Export Events.
 
 Set Implicit Arguments.
 
+(* Global Program Instance ReSum_trans (a b c: Type -> Type) *)
+(*   `{ReSum _ IFun a b} `{ReSum _ IFun b c}: ReSum IFun a c | 200. *)
+(* Next Obligation. *)
+(*   ii. eauto. *)
+(* Defined. *)
+
+Lemma resum_itr_event
+  Esub E F
+  `{Esub -< E}
+  `{E -< F}
+  (R: Type)
+  (i: Esub R)
+  :
+  (resum_itr (E:=E) (F:=F) (trigger i))
+  =
+    (trigger (subevent _ i) >>= (fun r => tau;; Ret r)).
+Proof.
+  Local Transparent resum_itr.
+  unfold resum_itr in *.
+  Local Opaque resum_itr.
+  repeat rewrite interp_trigger. grind.
+Qed.
+
 Section FACTS.
+
+  Ltac ired ::= repeat (try rewrite subst_bind;
+                        try rewrite bind_bind; try rewrite bind_ret_l; try rewrite bind_ret_r; try rewrite bind_tau;
+                        (* try rewrite interp_vis; *)
+                        try rewrite interp_ret;
+                        try rewrite interp_tau;
+                        (* try rewrite interp_trigger *)
+                        try rewrite interp_bind;
+
+                        try rewrite interp_mrec_hit;
+                        try rewrite interp_mrec_miss;
+                        try rewrite interp_mrec_bind;
+                        try rewrite interp_mrec_tau;
+                        try rewrite interp_mrec_ret;
+
+                        try rewrite interp_state_trigger;
+                        try rewrite interp_state_bind;
+                        try rewrite interp_state_tau;
+                        try rewrite interp_state_ret;
+                        try rewrite resum_itr_bind;
+                        try rewrite resum_itr_ret;
+                        try rewrite resum_itr_tau;
+                        try rewrite resum_itr_event;
+                        cbn
+                  ).
   
   Lemma interp_Es_bind
         A B
@@ -21,7 +69,7 @@ Section FACTS.
       interp_Es prog (v <- itr ;; ktr v) st0 =
       '(st1, v) <- interp_Es prog (itr) st0 ;; interp_Es prog (ktr v) st1
   .
-  Proof. unfold interp_Es, interp_pE. rewrite resum_itr_bind. grind. Qed.
+  Proof. unfold interp_Es, interp_pE. grind. Qed.
 
   Lemma interp_Es_tau
         (prog: callE ~> itree Es)
@@ -31,7 +79,7 @@ Section FACTS.
     :
       interp_Es prog (tau;; itr) st0 = tau;; interp_Es prog itr st0
   .
-  Proof. unfold interp_Es, interp_pE. des_ifs. rewrite resum_itr_tau. grind. Qed.
+  Proof. unfold interp_Es, interp_pE. des_ifs. grind. Qed.
 
   Lemma interp_Es_ret
         T
@@ -46,7 +94,8 @@ Section FACTS.
         (* (e: Es Σ) *)
         (e: callE T)
     :
-      interp_Es p (trigger e) st0 = tau;; (interp_Es p (p _ e) st0)
+      interp_Es p (trigger e) st0 =
+        tau;; '(st1, r) <- (interp_Es p (p _ e) st0);; tau;; Ret (st1, r)
   .
   Proof. unfold interp_Es, interp_pE. des_ifs. grind. Qed.
 
@@ -58,7 +107,7 @@ Section FACTS.
     :
       interp_Es p (trigger e) st0 =
       '(st1, r) <- handle_pE e st0;;
-      tau;; tau;;
+      tau;; tau;; tau;;
       Ret (st1, r)
   .
   Proof.
@@ -71,7 +120,7 @@ Section FACTS.
         T
         (e: eventE T)
     :
-      interp_Es p (trigger e) st0 = r <- trigger e;; tau;; tau;; Ret (st0, r)
+      interp_Es p (trigger e) st0 = r <- trigger e;; tau;; tau;; tau;; Ret (st0, r)
   .
   Proof.
     unfold interp_Es, interp_pE. grind.

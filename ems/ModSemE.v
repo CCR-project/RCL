@@ -129,7 +129,8 @@ Section EVENTS.
   (* Definition FPut E `{rE -< E} (mn: mname) (fr: GRA): itree E unit := *)
 
   Definition Es: Type -> Type := ((callE +' pE) +' eventE).
-  Let Es': Type -> Type := (callE +' (pE +' eventE)).
+  Definition Es': Type -> Type := (callE +' (pE +' eventE)).
+  Definition prf: Es -< Es' := (ReSum_sum IFun sum1 (callE +' pE) eventE Es').
 
   (* Inductive mdE: Type -> Type := *)
   (* | MPut (mn: mname) (r: GRA): mdE unit *)
@@ -166,8 +167,8 @@ Section EVENTS.
   (*   interp_pE (interp_rE (interp_mrec prog itr0) rst0) pst0 *)
   (* . *)
   Definition interp_Es A (prog: callE ~> itree Es) (itr0: itree Es A) (st0: p_state): itree eventE (p_state * _)%type :=
-    let prog': callE ~> itree Es' := (fun _ ce => resum_itr (prog _ ce)) in
-    let itr0': itree Es' A := resum_itr itr0 in
+    let prog': callE ~> itree Es' := (fun _ ce => resum_itr (H:=prf) (prog _ ce)) in
+    let itr0': itree Es' A := resum_itr (H:=prf) itr0 in
     '(st1, v) <- interp_pE (interp_mrec prog' itr0') st0;;
     Ret (st1, v)
   .
