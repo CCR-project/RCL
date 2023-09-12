@@ -1696,7 +1696,7 @@ Lemma adequacy_aux
   f_src f_tgt
   (SIMF: sim_itree ms_tgt.(ModSem.fnsems) wf le f_src f_tgt w0 (st_src, itr_src) (st_tgt, itr_tgt))
   :
-  paco7 (_simg (E:=callE +' pE)) bot7 (p_state * Any.t)%type (p_state * Any.t)%type
+  paco7 (_simg (E:=void1)) bot7 (p_state * Any.t)%type (p_state * Any.t)%type
     (fun _ _ '(st_src, ret_src) '(st_tgt, ret_tgt) =>
        lift_rel wf le w0 (@eq Any.t) st_src st_tgt ret_src ret_tgt) (Nat.b2n f_src) (Nat.b2n f_tgt)
     (interp_Es (ModSem.prog ms_src) itr_src st_src)
@@ -1713,9 +1713,9 @@ Proof.
     remember w0 in SIMF at 2.
     revert st_src itr_src st_tgt itr_tgt Heqp Heqp0 Heqw.
     punfold SIMF. induction SIMF using _sim_itree_ind2; ss; i; clarify.
-    - rr in RET. des. step. r. esplits; et.
+    - rr in RET. des. step; try refl. r. esplits; et.
     - steps. rename x into n. unfold assume, triggerUB. des_ifs; steps; ss. des. rename e into T.
-      exploit SIM; et.
+      hexploit SIM; et.
       { eapply nth_error_In; et. }
       intro U; des.
       eapply In_nth_error in FINDT. des. rename n0 into m.
@@ -1723,23 +1723,44 @@ Proof.
       2: { contradict n0. esplits; et. }
       clear e.
       steps. rewrite T, FINDT. ss. steps.
-      apply simg_progress_flag.
-      guclo bindC_spec. econs.
-      { gbase. eapply CIH. { instantiate (1:=w1). eauto. } }
-      { i. ss. des_ifs. r in SIM1. des. subst.
-        hexploit K; et. i. des. pclearbot.
-        steps. gbase. eapply CIH; ss.
-        eapply sim_itree_bot_flag_up. eauto.
+      gstep. econsr; et.
+      { guclo bindC_spec. econs.
+        { gbase. eapply CIH. { instantiate (1:=w1). eauto. } }
+        { i. ss. des_ifs. r in SIM1. des. subst.
+          hexploit K; et. i. des. pclearbot.
+          steps. gbase. eapply CIH; ss.
+          eapply sim_itree_bot_flag_up. eauto.
+        }
       }
-    - step. i. subst. apply simg_progress_flag.
-      hexploit (K x_tgt). i. des. pclearbot.
-      steps. gbase. eapply CIH; et.
+      { eapply Ord.S_is_S. }
+      { eapply Ord.S_is_S. }
+    - step. i. subst. gstep. econsr; et.
+      { hexploit (K vret). i. des. pclearbot.
+        steps. gbase. eapply CIH; et.
+      }
+      { eapply Ord.S_is_S. }
+      { eapply Ord.S_is_S. }
+    - step. i. subst. gstep. econsr; et.
+      { pclearbot. steps. gbase. eapply CIH; et.
+      }
+      { eapply Ord.S_is_S. }
+      { eapply Ord.S_is_S. }
     - ired_both. steps. eapply In_nth_error in FINDT. des.
       force. exists n. steps. unfold assume, triggerUB. des_ifs; steps; ss.
       2: { contradict n0. esplits; et. }
       clear e.
       steps. rewrite FINDT. ss. steps.
-      exploit IHSIMF; et. intro T. rp; et. ired_both. grind. ired_both. ss.
+      guclo euttC_spec. econs.
+      2: { refl. }
+      2: {
+        instantiate (1:= '(st1, v) <- interp_Es (ModSem.prog ms_tgt) (ft varg) st_tgt;;
+                         interp_Es (ModSem.prog ms_tgt) (k_tgt v) st1).
+        eapply eqit_bind.
+        { refl. }
+        ii. destruct a; ss. rewrite interp_Es_ret. ired_both.
+        rewrite tau_euttge. ired_both. refl.
+      }
+      hexploit IHSIMF; et. intro T. rp; et. ired_both. grind.
     - ired_both. steps.
     - des. force. exists x. steps. eapply IH; eauto.
     - steps. i. hexploit K. i. des. steps. eapply IH; eauto.
@@ -1750,10 +1771,14 @@ Proof.
     - des. force. exists x. steps. eapply IH; eauto.
     - steps. eapply IHSIMF; eauto.
     - steps. eapply IHSIMF; eauto.
-    - eapply simg_progress_flag. gbase. eapply CIH; et.
-      pclearbot. eauto.
+    - gstep. econsr; et.
+      { gbase. eapply CIH; et. pclearbot. eauto. }
+      { eapply Ord.S_is_S. }
+      { eapply Ord.S_is_S. }
   }
 Unshelve.
+  all: try exact Ord.O.
+  all: ss.
 Qed.
 
 Theorem _adequacy_whole
@@ -1765,12 +1790,12 @@ Theorem _adequacy_whole
   <1=
     (Beh.of_program (ModSem.compile ms_src)).
 Proof.
-  eapply adequacy_global_itree; ss.
+  eapply adequacy_global_itree2; ss.
   inv SIM.
   des. ginit.
   unfold ModSem.initial_itr, guarantee.
   unfold snd, base.fmap; ss. unfold fmap_itree, ITree.map. steps. unfold assume, triggerUB. des_ifs; steps; ss. des.
-  exploit sim_fnsems; et.
+  hexploit sim_fnsems; et.
   { eapply nth_error_In; et. }
   intro U; des. eapply In_nth_error in FINDT. des. force. esplits; et. steps.
   des_ifs; steps; ss.
@@ -1778,8 +1803,17 @@ Proof.
   clear e0.
   rewrite e, FINDT. ss. steps.
   guclo bindC_spec. econs.
-  { eapply simg_progress_flag. gfinal. right. eapply adequacy_aux; et. }
-  { i. des_ifs. r in SIM0. des; clarify. steps. }
+  { gstep. econsr; et.
+    { gfinal. right. eapply adequacy_aux; et. }
+    { eapply Ord.S_is_S. }
+    { eapply Ord.S_is_S. }
+  }
+  { i. des_ifs. r in SIM0. des; clarify. steps.
+    { refl. }
+    { refl. }
+  }
+Unshelve.
+  all: try exact Ord.O.
 Qed.
 
 Theorem adequacy_whole

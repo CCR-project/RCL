@@ -1330,12 +1330,12 @@ End DUAL.
 
 Section INIT.
 
-  CoFixpoint initialize (R: Type) (itr: itree (E +' eventE) R): itree eventE R :=
+  CoFixpoint initialize (R: Type) (itr: itree (E +' eventE) R): itree (void1 +' eventE) R :=
     match (observe itr) with
     | RetF r => Ret r
     | TauF ktr => tau;; (initialize ktr)
-    | @VisF _ _ _ _ (inl1 e) ktr => Vis (Take void) (@Empty_set_rect _)
-    | @VisF _ _ _ X (inr1 e) ktr => Vis e (fun x => initialize (ktr x))
+    | @VisF _ _ _ _ (inl1 e) ktr => Vis (inr1 (Take void)) (@Empty_set_rect _)
+    | @VisF _ _ _ X (inr1 e) ktr => Vis (inr1 e) (fun x => initialize (ktr x))
     end.
 
   Lemma observe_initialize
@@ -1346,9 +1346,9 @@ Section INIT.
       | RetF r => RetF r
       | TauF ktr => TauF (initialize ktr)
       | @VisF _ _ _ _ (inl1 e) ktr =>
-          VisF (Take void) (@Empty_set_rect _)
+          VisF (inr1 (Take void)) (@Empty_set_rect _)
       | @VisF _ _ _ X (inr1 e) ktr =>
-          VisF e (fun x => initialize (ktr x))
+          VisF (inr1 e) (fun x => initialize (ktr x))
       end.
   Proof. unfold initialize. ides itr; ss. destruct e; ss. Qed.
 
@@ -1377,52 +1377,52 @@ Section INIT.
   Proof. do 2 rewrite bind_trigger. eapply observe_eta. grind. Qed.
 
 
-  CoFixpoint embed_E (R: Type) (itr: itree (eventE) R): itree (E +' eventE) R :=
-    match (observe itr) with
-    | RetF r => Ret r
-    | TauF ktr => tau;; (embed_E ktr)
-    | @VisF _ _ _ X (e) ktr => Vis (inr1 e) (fun x => embed_E (ktr x))
-    end.
+  (* CoFixpoint embed_E (R: Type) (itr: itree (eventE) R): itree (E +' eventE) R := *)
+  (*   match (observe itr) with *)
+  (*   | RetF r => Ret r *)
+  (*   | TauF ktr => tau;; (embed_E ktr) *)
+  (*   | @VisF _ _ _ X (e) ktr => Vis (inr1 e) (fun x => embed_E (ktr x)) *)
+  (*   end. *)
 
-  Lemma observe_embed_E
-        R (itr: itree (eventE) R)
-    :
-    observe (embed_E itr) =
-      match (observe itr) with
-      | RetF r => RetF r
-      | TauF ktr => TauF (embed_E ktr)
-      | @VisF _ _ _ X (e) ktr =>
-          VisF (inr1 e) (fun x => embed_E (ktr x))
-      end.
-  Proof. unfold embed_E. ides itr; ss. Qed.
+  (* Lemma observe_embed_E *)
+  (*       R (itr: itree (eventE) R) *)
+  (*   : *)
+  (*   observe (embed_E itr) = *)
+  (*     match (observe itr) with *)
+  (*     | RetF r => RetF r *)
+  (*     | TauF ktr => TauF (embed_E ktr) *)
+  (*     | @VisF _ _ _ X (e) ktr => *)
+  (*         VisF (inr1 e) (fun x => embed_E (ktr x)) *)
+  (*     end. *)
+  (* Proof. unfold embed_E. ides itr; ss. Qed. *)
 
-  Lemma embed_E_ret
-        R (r: R)
-    :
-    embed_E (Ret r) = Ret r.
-  Proof. eapply observe_eta. ss. Qed.
+  (* Lemma embed_E_ret *)
+  (*       R (r: R) *)
+  (*   : *)
+  (*   embed_E (Ret r) = Ret r. *)
+  (* Proof. eapply observe_eta. ss. Qed. *)
 
-  Lemma embed_E_tau
-        R ktr
-    :
-    @embed_E R (tau;; ktr) = tau;; (embed_E ktr).
-  Proof. eapply observe_eta. ss. Qed.
+  (* Lemma embed_E_tau *)
+  (*       R ktr *)
+  (*   : *)
+  (*   @embed_E R (tau;; ktr) = tau;; (embed_E ktr). *)
+  (* Proof. eapply observe_eta. ss. Qed. *)
 
-  Lemma embed_E_vis
-        R X (e: eventE X) (ktr: X -> itree (eventE) R)
-    :
-    @embed_E R (trigger e >>= ktr) = trigger (inr1 e) >>= (fun x => embed_E (ktr x)).
-  Proof. do 2 rewrite bind_trigger. eapply observe_eta. grind. Qed.
+  (* Lemma embed_E_vis *)
+  (*       R X (e: eventE X) (ktr: X -> itree (eventE) R) *)
+  (*   : *)
+  (*   @embed_E R (trigger e >>= ktr) = trigger (inr1 e) >>= (fun x => embed_E (ktr x)). *)
+  (* Proof. do 2 rewrite bind_trigger. eapply observe_eta. grind. Qed. *)
 
-  Lemma initialize_embed_E
-        (R: Type) (itr: itree (eventE) R)
-    :
-    initialize (embed_E itr) = itr.
-  Proof.
-    eapply bisim_is_eq. revert itr. pcofix CIH. i. pfold. rr.
-    rewrite observe_initialize, observe_embed_E.
-    destruct (observe itr); ss; eauto.
-  Qed.
+  (* Lemma initialize_embed_E *)
+  (*       (R: Type) (itr: itree (eventE) R) *)
+  (*   : *)
+  (*   initialize (embed_E itr) = itr. *)
+  (* Proof. *)
+  (*   eapply bisim_is_eq. revert itr. pcofix CIH. i. pfold. rr. *)
+  (*   rewrite observe_initialize, observe_embed_E. *)
+  (*   destruct (observe itr); ss; eauto. *)
+  (* Qed. *)
 
 End INIT.
 
@@ -1546,6 +1546,46 @@ Qed.
 
 (* End ADEQUACY. *)
 End SIM.
+
+Lemma initialize_id
+        R
+  :
+  (@initialize void1 R) = id
+.
+Proof.
+  extensionality x. f. revert x. pcofix CIH. i.
+  ides x.
+  - ss. rewrite initialize_ret. pstep. econs; et.
+  - ss. rewrite initialize_tau. pstep. econs; et.
+  - ss. destruct e; ss.
+    { inv v. }
+    rewrite <- ! bind_trigger.
+    erewrite observe_eta at 1.
+    2: { instantiate (1:= trigger e >>= (fun x => initialize (k x))).
+         cbn.
+         f_equal. extensionality x. rewrite subst_bind. ired. refl.
+    }
+    rewrite ! bind_trigger.
+    pstep. econs; et.
+Qed.
+
+Theorem adequacy_global_itree2
+  {CONFS CONFT: EMSConfig}
+  (FINSAME: (@finalize CONFS) = (@finalize CONFT))
+  itr_src itr_tgt o_src0 o_tgt0
+  (SIM: simg (E:=void1) (fun _ _ => eq) o_src0 o_tgt0 itr_src itr_tgt)
+  :
+  Beh.of_program (@ModSem.compile_itree CONFT (itr_tgt))
+  <1=
+    Beh.of_program (@ModSem.compile_itree CONFS (itr_src)).
+Proof.
+  unfold Beh.of_program. ss. i. eapply adequacy; et.
+  replace (itr_src) with (initialize (itr_src)).
+  2: { rewrite initialize_id. ss. }
+  replace (itr_tgt) with (initialize (itr_tgt)).
+  2: { rewrite initialize_id. ss. }
+  eapply adequacy_global_itree_aux; et.
+Qed.
 
 Section DUALMORE.
 
@@ -1676,7 +1716,7 @@ But this is beyond the scope of previous works (ITrees).
   .
 
   Definition trivial_StatefulHandler `{E -< F} {S}: StatefulHandler S E F.
-    ii. eapply pure_state; try eassumption. eapply H. eauto.
+    ii. eapply pure_state; try eassumption. (* eapply H. eauto. *)
   Defined.
   Hint Unfold trivial_StatefulHandler.
 
