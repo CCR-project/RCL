@@ -80,30 +80,32 @@ Section class_instances.
 End class_instances.
 
 
+Require Import WrapModSem WrapMod.
+
 Section AUX.
 
-  Context `{Sk.ld}.
+  Context `{SK: Sk.ld}.
 
-  Let mod_mras: MRAS.t := (MRA_to_MRAS (Mod_MRA)).
+  Let mod_mras: MRAS.t := (MRA_to_MRAS (@Mod_MRA SK)).
   Opaque mod_mras.
 
   Definition OwnM (m: Mod.t) : (@mProp mod_mras) := Own (m: (mod_mras).(MRAS.car)).
 
   Global Program Instance OwnM_Proper0: Proper ((@equiv _ mod_mras.(MRAS.equiv)) ==> (≡)) OwnM.
   Next Obligation.
-    ii. unfold OwnM. rewrite H0. ss.
+    ii. unfold OwnM. rewrite H. ss.
   Qed.
 
   Global Program Instance OwnM_Proper: Proper ((≡@{Mod.t}) ==> (≡)) OwnM.
   Next Obligation.
-    ii. eapply OwnM_Proper0. eapply hat_Proper. ss.
+    ii. eapply OwnM_Proper0. setoid_subst. refl.
   Qed.
 
   Global Instance from_sep_ownM (a b1 b2 : mod_mras) :
     IsOp a b1 b2 →
     FromSep (OwnM a) (OwnM b1) (OwnM b2).
   Proof.
-    ii. red. unfold OwnM. inv H0.
+    ii. red. unfold OwnM. inv H.
     iIntros "[H1 H2]". iCombine "H1 H2" as "H".
     iApply "H".
   Qed.
@@ -111,7 +113,7 @@ Section AUX.
   Global Instance into_and_ownM p (a b1 b2 : mod_mras) :
     IsOp a b1 b2 → IntoAnd p (OwnM a) (OwnM b1) (OwnM b2).
   Proof.
-    ii. red. apply bi.intuitionistically_if_mono. inv H0.
+    ii. red. apply bi.intuitionistically_if_mono. inv H.
     unfold OwnM. iIntros "[H1 H2]". iSplit.
     { iApply "H1". }
     { iApply "H2". }
@@ -120,7 +122,7 @@ Section AUX.
   Global Instance into_sep_ownM (a b1 b2 : mod_mras) :
     IsOp a b1 b2 → IntoSep (OwnM a) (OwnM b1) (OwnM b2).
   Proof.
-    ii. red. inv H0. unfold OwnM.
+    ii. red. inv H. unfold OwnM.
     iIntros "[H1 H2]". iSplitL "H1"; iFrame.
   Qed.
 

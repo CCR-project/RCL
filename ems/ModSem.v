@@ -1,7 +1,7 @@
 Require Import Coqlib.
 Require Export sflib.
 Require Export ITreelib.
-Require Export ModSemE.
+Require Export ModSemEFacts.
 Export Events.
 Require Export AList.
 Require Import Skeleton.
@@ -9,6 +9,8 @@ Require Import STS Behavior.
 Require Import Any.
 Require Import Permutation.
 Require Import Algebra.
+Require Import SimGlobalIndex.
+From Ordinal Require Import Ordinal.
 
 Set Implicit Arguments.
 
@@ -22,15 +24,15 @@ Section AUX.
   Global Program Instance interp_Es_rdb: red_database (mk_box (@Events.interp_Es)) :=
     mk_rdb
       1
-      (mk_box Events.interp_Es_bind)
-      (mk_box Events.interp_Es_tau)
-      (mk_box Events.interp_Es_ret)
-      (mk_box Events.interp_Es_pE)
-      (mk_box Events.interp_Es_pE)
-      (mk_box Events.interp_Es_callE)
-      (mk_box Events.interp_Es_eventE)
-      (mk_box Events.interp_Es_triggerUB)
-      (mk_box Events.interp_Es_triggerNB)
+      (mk_box interp_Es_bind)
+      (mk_box interp_Es_tau)
+      (mk_box interp_Es_ret)
+      (mk_box interp_Es_pE)
+      (mk_box interp_Es_pE)
+      (mk_box interp_Es_callE)
+      (mk_box interp_Es_eventE)
+      (mk_box interp_Es_triggerUB)
+      (mk_box interp_Es_triggerNB)
       (mk_box interp_Es_unwrapU)
       (mk_box interp_Es_unwrapN)
       (mk_box interp_Es_unleftU)
@@ -120,9 +122,8 @@ Proof.
   rewrite interp_interp.
   eapply eutt_interp; try refl.
   ii.
-  destruct a; ss.
+  destruct a; [destruct s|]; ss.
   { cbn. unfold trivial_Handler. rewrite interp_trigger. grind. resub. setoid_rewrite tau_eutt. grind. refl. }
-  destruct s; ss.
   { cbn. unfold trivial_Handler. unfold core_h. unfold triggerUB. grind. rewrite ! interp_trigger. grind. f_equiv; ss. }
   { cbn. unfold trivial_Handler. rewrite interp_trigger. grind. resub. setoid_rewrite tau_eutt. grind. refl. }
 Qed.
@@ -264,12 +265,12 @@ Section MODSEM.
 
   Definition initial_p_state: p_state := ms.(initial_st).
 
-  Definition initial_itr: itree (eventE) Any.t :=
+  Definition initial_itr: itree (void1 +' eventE) Any.t :=
     snd <$> interp_Es prog (prog (Call "main" initial_arg)) (initial_p_state).
 
 
 
-  Let state: Type := itree eventE Any.t.
+  Let state: Type := itree (void1 +' eventE) Any.t.
 
   Definition state_sort (st0: state): sort :=
     match (observe st0) with
@@ -279,9 +280,11 @@ Section MODSEM.
       | Some rv => final rv
       | _ => angelic
       end
-    | VisF (Choose X) k => demonic
-    | VisF (Take X) k => angelic
-    | VisF (Syscall fn args rvs) k => vis
+    | VisF (inr1 (Choose X)) k => demonic
+    | VisF (inr1 (Take X)) k => angelic
+    | VisF (inr1 (SyscallOut fn args rvs)) k => vis
+    | VisF (inr1 (SyscallIn rv)) k => vis
+    | _ => angelic (** does not happen **)
     end
   .
 
@@ -298,12 +301,14 @@ Section MODSEM.
       X k (x: X)
     :
       step (Vis (subevent _ (Take X)) k) None (k x)
-  | step_syscall
-      fn args rv (rvs: Any.t -> Prop) k
-      (SYSCALL: syscall_sem (event_sys fn args rv))
-      (RETURN: rvs rv)
+  | step_syscall_out
+      fn args (rvs: Any.t -> Prop) k
     :
-      step (Vis (subevent _ (Syscall fn args rvs)) k) (Some (event_sys fn args rv)) (k rv)
+      step (Vis (subevent _ (SyscallOut fn args rvs)) k) (Some (event_out fn args)) (k tt)
+  | step_syscall_in
+      rv k
+    :
+      step (Vis (subevent _ (SyscallIn rv)) k) (Some (event_in rv)) (k tt)
   .
 
   Lemma step_trigger_choose_iff X k itr e
@@ -317,6 +322,7 @@ Section MODSEM.
     { eapply f_equal with (f:=observe) in H0. ss.
       unfold trigger in H0. ss. cbn in H0.
       dependent destruction H0. ired. et.  }
+    { eapply f_equal with (f:=observe) in H0. ss. }
     { eapply f_equal with (f:=observe) in H0. ss. }
     { eapply f_equal with (f:=observe) in H0. ss. }
   Qed.
@@ -333,6 +339,7 @@ Section MODSEM.
     { eapply f_equal with (f:=observe) in H0. ss.
       unfold trigger in H0. ss. cbn in H0.
       dependent destruction H0. ired. et.  }
+    { eapply f_equal with (f:=observe) in H0. ss. }
     { eapply f_equal with (f:=observe) in H0. ss. }
   Qed.
 
@@ -392,7 +399,7 @@ Section MODSEM.
       extensionality x0. eapply itree_eta. ss. }
   Qed.
 
-  Program Definition compile_itree: itree eventE Any.t -> semantics :=
+  Program Definition compile_itree: itree (void1 +' eventE) Any.t -> semantics :=
     fun itr =>
       {|
         STS.state := state;
@@ -440,7 +447,12 @@ Section MODSEM.
   .
 
 
-  Global Program Instance equiv_facts: EquivFacts.
+
+  (* Global Instance refs: RefStrong _t := *)
+  (*   fun ms0 ms1 => Forall2 (fun '(fn0, ktr0) '(fn1, ktr1) => fn0 = fn1 /\ *)
+  (*                      (forall x, simg (fun _ _ => eq) 0 0 (ktr0 x) (ktr1 x))) *)
+  (*                    ms0.(fnsems) ms1.(fnsems) *)
+  (*                  /\ ms0.(initial_st) = ms1.(initial_st). *)
 
   Lemma core_idemp: forall ms0, | |ms0| | ≡ |ms0|.
   Proof.
@@ -469,9 +481,8 @@ Section MODSEM.
       i. unfold focus_left, Algebra.bar, ktree_Bar, Algebra.bar, itree_Bar. cbn.
       rewrite ! interp_interp. eapply eutt_interp; try refl. ii. ss.
       unfold trivial_Handler.
-      destruct a.
+      destruct a; [destruct s0|]; ss.
       { ired.  rewrite ! interp_trigger. grind. refl. }
-      destruct s0.
       { ired.  unfold focus_left_h, core_h.
         des_ifs.
         - ired. rewrite ! interp_trigger. ired. unfold triggerUB. grind. rewrite ! interp_trigger. grind.
@@ -487,9 +498,8 @@ Section MODSEM.
       i. unfold focus_right, Algebra.bar, ktree_Bar, Algebra.bar, itree_Bar. cbn.
       rewrite ! interp_interp. eapply eutt_interp; try refl. ii. ss.
       unfold trivial_Handler.
-      destruct a.
+      destruct a; [destruct s0|]; ss.
       { ired.  rewrite ! interp_trigger. grind. refl. }
-      destruct s0.
       { ired.  unfold focus_right_h, core_h.
         des_ifs.
         - ired. rewrite ! interp_trigger. ired. unfold triggerUB. grind. rewrite ! interp_trigger. grind.

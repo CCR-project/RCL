@@ -1,4 +1,4 @@
-Require Import Coqlib Mod ModSem Algebra Any Skeleton AList.
+Require Import Coqlib ModSemFacts ModSem Algebra Any AList.
 From stdpp Require Import base gmap.
 
 Set Implicit Arguments.
@@ -90,7 +90,8 @@ Section WRAP.
   .
 
   Global Instance wrap_itree {R}: Wrap conds (itree Es R) :=
-    fun cs itr => interp (case_ (bif:=sum1) (wrap_h cs) trivial_Handler) itr
+    fun cs itr => interp (case_ (bif:=sum1) (case_ (wrap_h cs) trivial_Handler)
+                            trivial_Handler) itr
   .
 
   Global Instance wrap_ktree: Wrap conds (string * (Any.t -> itree Es Any.t)) :=
@@ -108,8 +109,6 @@ Section WRAP.
     fun cs nfs => List.map (fun nf => 𝑤_{cs} nf) nfs
   .
 
-  Context `{Sk.ld}.
-
   Global Instance wrap_modsem_: Wrap conds (ModSem._t) :=
     fun cs ms => ModSem.mk (𝑤_{cs} ms.(ModSem.fnsems)) ms.(ModSem.initial_st)
   .
@@ -121,18 +120,6 @@ Section WRAP.
       | mytt => mytt
       end
   .
-
-  Global Program Instance wrap_mod: Wrap conds (Mod.t) :=
-    fun cs md => Mod.mk (fun sk => 𝑤_{cs} (md.(Mod.get_modsem) sk)) md.(Mod.sk) _ _ _.
-  Next Obligation.
-    i. ss. erewrite Mod.get_modsem_Proper; et.
-  Qed.
-  Next Obligation.
-    i. ss. admit "strengthen".
-  Qed.
-  Next Obligation.
-    i. ss. admit "strengthen".
-  Qed.
 
 End WRAP.
 
@@ -330,10 +317,13 @@ Global Program Instance wrap_rdb: red_database (mk_box (@wrap_itree)) :=
 .
 
 Ltac my_red_both := try (prw _red_gen 2 0); try (prw _red_gen 1 0).
-Ltac my_steps :=
-  repeat (cbn; try rewrite ! interp_trigger;
-          grind; my_red_both; try (f_equiv; try refl; r; i);
-          try rewrite tau_eutt).
+(* Ltac my_steps := *)
+(*   repeat (cbn; try rewrite ! interp_trigger; *)
+(*           grind; my_red_both; try (f_equiv; try refl; r; i); *)
+(*           try rewrite tau_eutt). *)
+Ltac my_steps := repeat (cbn; try rewrite !interp_trigger;
+                         try eapply eutt_eq_bind; try refl; ii;
+                         grind; resub; my_red_both; try rewrite tau_eutt).
 
 Lemma focus_left_wrap_commute: ∀ R (i: itree Es R) cs,
     (focus_left (𝑤_{cs} i)) ≈ (𝑤_{cs} focus_left i).
@@ -341,18 +331,17 @@ Proof.
   i. unfold focus_left, wrap, wrap_itree.
   rewrite ! interp_interp.
   eapply eutt_interp; try refl.
-  ii. unfold trivial_Handler. destruct a; my_steps.
+  ii. unfold trivial_Handler.
+  destruct a; [destruct s|]; my_steps.
   { destruct c; ss.
     my_steps.
     { unfold assume, guarantee, triggerUB, triggerNB. des_ifs; my_steps. }
     { unfold assume, guarantee, triggerUB, triggerNB. des_ifs; my_steps. }
   }
-  destruct s; ss.
   { resub. my_steps.
     unfold focus_left_h, unwrapU, triggerUB.
     destruct p; my_steps; des_ifs; my_steps.
   }
-  { resub. my_steps. }
 Qed.
 
 Lemma focus_right_wrap_commute: ∀ R (i: itree Es R) cs,
@@ -361,18 +350,16 @@ Proof.
   i. unfold focus_right, wrap, wrap_itree.
   rewrite ! interp_interp.
   eapply eutt_interp; try refl.
-  ii. unfold trivial_Handler. destruct a; my_steps.
+  ii. unfold trivial_Handler. destruct a; [destruct s|]; my_steps.
   { destruct c; ss.
     my_steps.
     { unfold assume, guarantee, triggerUB, triggerNB. des_ifs; my_steps. }
     { unfold assume, guarantee, triggerUB, triggerNB. des_ifs; my_steps. }
   }
-  destruct s; ss.
   { resub. my_steps.
     unfold focus_right_h, unwrapU, triggerUB.
     destruct p; my_steps; des_ifs; my_steps.
   }
-  { resub. my_steps. }
 Qed.
 
 Global Program Instance conds_CM: CM.t := {
@@ -389,31 +376,32 @@ Next Obligation.
 Qed.
 
 (* Opaque MRAS.equiv. *)
-Opaque MRAS.car.
-Let MS := (MRA_to_MRAS ModSem_MRA).
-Global Program Instance Hoare_WA_ModSem: @WA.t MS conds_CM | 150 := {
+Opaque MRA.car.
+Let MS := (ModSem_MRA).
+Global Program Instance Hoare_WA_ModSem: WA.t (H:=MS.(MRA.equiv)) (S:=conds_CM) | 150 := {
   morph := (𝑤);
 }.
 Next Obligation.
   i; ss. unfold oplus, OPlus_pointed.
   destruct a, b; ss. cbn.
-  r. eapply hat_Proper. f_equiv.
   rr. ss. esplits; ss. unfold wrap, wrap_fnsems.
   rewrite ! map_app.
   eapply Forall2_app.
+  - rewrite ! List.map_map. eapply Forall2_fmap_2.
+    eapply Reflexive_instance_0. rr. i; ss. destruct x; ss.
+    splits; ss. i.
+    my_steps.
+    repeat (cbn; try rewrite !interp_trigger; grind; my_red_both; try (f_equiv; try refl; i); try rewrite tau_eutt).
+    rewrite focus_left_wrap_commute. refl.
   - rewrite ! map_map. eapply Forall2_fmap_2.
     eapply Reflexive_instance_0. rr. i; ss. destruct x; ss.
     splits; ss. i.
-    my_steps. eapply focus_left_wrap_commute.
-  - rewrite ! map_map. eapply Forall2_fmap_2.
-    eapply Reflexive_instance_0. rr. i; ss. destruct x; ss.
-    splits; ss. i.
-    my_steps. eapply focus_right_wrap_commute.
+    repeat (cbn; try rewrite !interp_trigger; grind; my_red_both; try (f_equiv; try refl; i); try rewrite tau_eutt).
+    rewrite focus_right_wrap_commute. refl.
 Qed.
 Next Obligation.
   i; ss.
   destruct a; ss. cbn.
-  r. eapply hat_Proper. f_equiv.
   rr. ss. esplits; ss. unfold wrap, wrap_fnsems.
   eapply Forall2_fmap_l.
   eapply Reflexive_instance_0. rr. i; ss. destruct x; ss.
@@ -424,89 +412,47 @@ Next Obligation.
   i; ss.
 Qed.
 Next Obligation.
-  assert(T: Proper ((eq) ==> (≡@{ModSem_MRA}) ==> (≡@{ModSem_MRA})) (𝑤)).
-  { admit "somehow". }
-  admit "somehow".
-  (* ii. subst. rr in H0. rr. des. esplits; et. *)
-  (* - rewrite T. *)
-  (* ii. subst. rr in H0. *)
-  (* assert(T: Proper ((≡) ==> (≡@{ModSem_MRA}) ==> (≡)) (𝑤)). *)
-  (* { *)
-  (*   ii. rr in H. rr in H0. rr. des_ifs. setoid_subst. *)
-  (* } *)
-  (* ii; ss. unfold wrap. *)
+  ii. subst. destruct x0, y0; ss. upt. des_ifs.
+  unfold wrap in *. ss. unfold wrap in *. destruct t, t0; ss. unfold wrap_modsem_ in *. ss.
+  injection Heq; clear Heq. intro T.
+  injection Heq0; clear Heq0. intro U.
+  subst.
+  rr in H0. rr. ss. des. esplits; ss.
+  admit "ez".
 Qed.
 
-Require Import ModFacts.
-
-Section MOD.
-Context `{Sk.ld}.
-
-Theorem LEquivMod
-  md0 md1
-  (SIMSK: md0.(Mod.sk) ≡ md1.(Mod.sk))
-  (SEM: forall sk, @equiv_relaxed (ModSem_MRA) (md0.(Mod.get_modsem) sk) (md1.(Mod.get_modsem) sk))
-  :
-  @equiv_relaxed (Mod_MRA) md0 md1
-.
-Proof.
-  rr. rr in SEM.
-  esplits; ss.
-  - rr. esplits; ss.
-    + eapply LSimMod; ss. i. specialize (SEM sk). des. eapply SEM.
-    + eapply LSimMod; ss. i. specialize (SEM sk). des. eapply SEM.
-  - rr. esplits; ss.
-    + eapply LSimMod; ss. i. specialize (SEM sk). des. eapply SEM0.
-    + eapply LSimMod; ss. i. specialize (SEM sk). des. eapply SEM0.
-Qed.
-
-Lemma wrap_get_modsem_commute: ∀ m s sk, (Mod.get_modsem (𝑤_{s} m) sk) = 𝑤_{s} (Mod.get_modsem m sk).
-Proof.
-  i. ss.
-Qed.
-
-(* Let M := (MRA_to_MRAS Mod_MRA). *)
-
-Obligation Tactic := idtac.
-Global Program Instance Hoare_WA: @WA.t (MRA_to_MRAS Mod_MRA) conds_CM | 50 := {
-  morph := wrap_mod;
-}.
+Global Instance itree_Equiv {E R}: Equiv (itree E R) := λ (a b: itree E R), eutt eq a b.
+Global Program Instance itree_WrapBar {R}: WrapBarCommute (T:=itree Es R) | 150.
 Next Obligation.
-  (* { *)
-  (*   ********** TODO: FIXME ********** *)
-  (* ii. ss. *)
-  (* eapply hat_Proper. rr. esplits; ss. *)
-  (* ii. assert (G:=@WA.morph_oplus _ _ Hoare_WA_ModSem s (Mod.get_modsem a sk0) (Mod.get_modsem b sk0)). *)
-  (* rr in G. rr. *)
-  (* } *)
-  ii. rr. esplits; ss.
-  - eapply LEquivMod; ss. ii.
-    assert (G:=@WA.morph_oplus _ _ Hoare_WA_ModSem s (Mod.get_modsem a sk) (Mod.get_modsem b sk)).
-    ss.
-  - eapply LEquivMod; ss. ii.
-    assert (G:=@WA.morph_oplus _ _ Hoare_WA_ModSem s (Mod.get_modsem a sk) (Mod.get_modsem b sk)).
-    ss.
+  ii. do 2 r. unfold wrap, wrap_itree. unfold bar, itree_Bar.
+  rewrite ! interp_interp. eapply eutt_interp; try refl.
+  ii. unfold trivial_Handler. destruct a0; [destruct s0|]; ss.
+  { destruct c. my_steps.
+    - unfold guarantee, assume, triggerUB, triggerNB. des_ifs; my_steps.
+    - unfold guarantee, assume, triggerUB, triggerNB. des_ifs; my_steps.
+  }
+  { my_steps. destruct p; my_steps.
+    - unfold core_h. unfold triggerUB. my_steps.
+    - unfold core_h. unfold triggerUB. my_steps.
+  }
+  { destruct e; my_steps. }
 Qed.
+
+Global Program Instance ModSem_WrapBar: WrapBarCommute (T:=ModSem.t) | 150.
 Next Obligation.
-  ii. rr. esplits; ss.
-  - eapply LEquivMod; ss. ii.
-    assert (G:=@WA.morph_unit _ _ Hoare_WA_ModSem (Mod.get_modsem a sk)).
-    ss.
-  - eapply LEquivMod; ss. ii.
-    assert (G:=@WA.morph_unit _ _ Hoare_WA_ModSem (Mod.get_modsem a sk)).
-    ss.
+  i. rr. des_ifs. unfold wrap in *. ss.
+  injection Heq0; intro T; clear Heq0.
+  injection Heq1; intro U; clear Heq1.
+  subst. destruct t; ss. cbn. hnf. esplits; ss.
+  unfold wrap. eapply Forall2_fmap. eapply Forall2_fmap.
+  eapply Reflexive_instance_0.
+  - ii. des_ifs. ss.
+    unfold map_snd in *. des_ifs. unfold wrap, wrap_ktree in *. ss. clarify. esplits; ss.
+    i. unfold bar, ktree_Bar. unfold bar, itree_Bar.
+    unfold guarantee, assume, triggerUB, triggerNB. des_ifs; my_steps.
+    { change (interp (case_ (case_ trivial_Handler core_h) trivial_Handler) (i x)) with ( |i x| ).
+      change (interp (case_ (case_ trivial_Handler core_h) trivial_Handler) (wrap_itree s (i x))) with ( |𝑤_{s} (i x)| ).
+      rewrite wrap_bar. refl.
+    }
+    des_ifs; my_steps.
 Qed.
-Next Obligation.
-  ii. rr. esplits; ss.
-  - eapply LEquivMod; ss.
-  - eapply LEquivMod; ss.
-Qed.
-Next Obligation.
-  ii. subst. eapply LEquivMod; ss.
-  - admit "check: add sk in equiv_relaxed".
-  - ii; ss. assert(G:=WA.morph_Proper1 y y eq_refl (Mod.get_modsem x0 sk) (Mod.get_modsem y0 sk)).
-    hexploit1 G.
-    { admit" check: add sk in equiv_relaxed". }
-    ss.
-Qed.
-End MOD.

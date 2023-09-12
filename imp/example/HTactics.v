@@ -65,8 +65,16 @@ Section SIM.
       (K: forall vret,
           g _ _ RR true true w0 (st_src0, k_src vret) (st_tgt0, k_tgt vret))
     :
-    _safe_sim_itree r g RR i_src0 i_tgt0 w0 (st_src0, trigger (Syscall fn varg rvs) >>= k_src)
-                    (st_tgt0, trigger (Syscall fn varg rvs) >>= k_tgt)
+    _safe_sim_itree r g RR i_src0 i_tgt0 w0 (st_src0, trigger (SyscallOut fn varg rvs) >>= k_src)
+                    (st_tgt0, trigger (SyscallOut fn varg rvs) >>= k_tgt)
+  | safe_sim_itree_syscall_in
+      i_src0 i_tgt0 w0 st_src0 st_tgt0
+      rv k_src k_tgt
+      (K: forall vret,
+          g _ _ RR true true w0 (st_src0, k_src vret) (st_tgt0, k_tgt vret))
+    :
+    _safe_sim_itree r g RR i_src0 i_tgt0 w0 (st_src0, trigger (SyscallIn rv) >>= k_src)
+                    (st_tgt0, trigger (SyscallIn rv) >>= k_tgt)
 
   | safe_sim_itree_call_tgt
       i_src0 i_tgt0 w st_src0 st_tgt0

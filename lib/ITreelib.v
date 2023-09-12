@@ -367,6 +367,21 @@ Goal forall E X Y (itr: itree E X) (ktr: X -> itree E Y), ((x <- itr;; tau;; tau
   i. progress grind. (*** it should progress ***)
 Abort.
 
+Lemma unfold_iter :
+forall {E : Type -> Type} {A B : Type} (f : A -> itree E (A + B)) (x : A),
+ITree.iter f x = ` lr : A + B <- f x;; match lr with
+                                       | inl l => tau;; ITree.iter f l
+                                       | inr r => Ret r
+                                       end.
+Proof.
+  i. f. eapply unfold_iter.
+Qed.
+
+Lemma interp_iter':
+  forall {E F : Type -> Type} (f : forall T : Type, E T -> itree F T) {I A : Type} (t : I -> itree E (I + A))
+    (t' : I -> itree F (I + A)),
+  (forall i : I, interp f (t i) = t' i) -> forall i : I, interp f (ITree.iter t i) = ITree.iter t' i.
+Proof. i. f. eapply interp_iter'. i. f. ss. Qed.
 
 
 
@@ -665,5 +680,6 @@ Ltac simpl_euttge :=
     end; des; subst
 .
 
-Notation "≈" := (eutt eq) (at level 70).
-Notation "a ≈ b" := (eutt a b) (at level 70).
+Infix "≈" := (eutt eq) (at level 70).
+Notation "≈" := (eutt eq) (at level 70, only parsing).
+Notation "a ≈ b" := (eutt eq a b) (at level 70).
