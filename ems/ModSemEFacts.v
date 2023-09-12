@@ -132,7 +132,7 @@ Section FACTS.
         st0
         A
     :
-      (interp_Es prog (triggerUB) st0: itree eventE (_ * A)) = triggerUB
+      (interp_Es prog (triggerUB) st0: itree _ (_ * A)) = triggerUB
   .
   Proof.
     unfold interp_Es, interp_pE, pure_state, triggerUB. grind.
@@ -143,7 +143,7 @@ Section FACTS.
         st0
         A
     :
-      (interp_Es prog (triggerNB) st0: itree eventE (_ * A)) = triggerNB
+      (interp_Es prog (triggerNB) st0: itree _ (_ * A)) = triggerNB
   .
   Proof.
     unfold interp_Es, interp_pE, pure_state, triggerNB. grind.

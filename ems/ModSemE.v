@@ -97,7 +97,7 @@ Section EVENTSCOMMON.
   Definition p_state: Type := (Any.t).
 
   (*** Same as State.pure_state, but does not use "Vis" directly ***)
-  Definition pure_state {S E}: E ~> stateT S (itree E) := fun _ e s => x <- trigger e;; Ret (s, x).
+  Definition pure_state {S E F} `{E -< F}: E ~> stateT S (itree F) := fun _ e s => x <- trigger e;; Ret (s, x).
 
   Lemma unfold_interp_state: forall {E F} {S R} (h: E ~> stateT S (itree F)) (t: itree E R) (s: S),
       interp_state h t s = _interp_state h (observe t) s.
@@ -153,20 +153,20 @@ Section EVENTS.
   (*************************** Interpretation *************************)
   (********************************************************************)
 
-  Definition handle_pE `{eventE -< E}: pE ~> stateT p_state (itree E) :=
+  Definition handle_pE `{eventE -< E}: pE ~> stateT p_state (itree (void1 +' E)) :=
     fun _ e p =>
       match e with
       | PPut p => Ret (p, tt)
       | PGet => Ret (p, p)
       end.
-  Definition interp_pE `{eventE -< E}: itree (pE +' E) ~> stateT p_state (itree E) :=
+  Definition interp_pE `{eventE -< E}: itree (pE +' E) ~> stateT p_state (itree (void1 +' E)) :=
     (* State.interp_state (case_ ((fun _ e s0 => resum_itr (handle_pE e s0)): _ ~> stateT _ _) State.pure_state). *)
     State.interp_state (case_ handle_pE pure_state).
 
   (* Definition interp_Es A (prog: callE ~> itree Es) (itr0: itree Es A) (rst0: r_state) (pst0: p_state): itree eventE _ := *)
   (*   interp_pE (interp_rE (interp_mrec prog itr0) rst0) pst0 *)
   (* . *)
-  Definition interp_Es A (prog: callE ~> itree Es) (itr0: itree Es A) (st0: p_state): itree eventE (p_state * _)%type :=
+  Definition interp_Es A (prog: callE ~> itree Es) (itr0: itree Es A) (st0: p_state): itree (void1 +' eventE) (p_state * _)%type :=
     let prog': callE ~> itree Es' := (fun _ ce => resum_itr (H:=prf) (prog _ ce)) in
     let itr0': itree Es' A := resum_itr (H:=prf) itr0 in
     '(st1, v) <- interp_pE (interp_mrec prog' itr0') st0;;

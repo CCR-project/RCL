@@ -1246,12 +1246,11 @@ Proof.
     guclo sim_itree_indC_spec. econs.
     eapply sim_itree_progress_flag. gbase. auto.
   }
-  destruct e.
+  destruct e; [destruct s|].
   { dependent destruction c. rewrite <- ! bind_trigger. gstep.
     eapply sim_itree_call; ss. ii. subst.
     eapply sim_itree_flag_down. gbase. auto.
   }
-  destruct s.
   { rewrite <- ! bind_trigger. resub. dependent destruction p.
     { guclo sim_itree_indC_spec. econs.
       guclo sim_itree_indC_spec. econs.
@@ -1296,12 +1295,11 @@ Proof.
     (* guclo lbindC_spec. econs; eauto. *)
     (* { gfinal. right. eapply paco8_mon. { eapply self_sim_itree. } ii; ss. } *)
     (* ii. rr in SIM. des; subst. des_u. *)
-    destruct e.
+    destruct e; [destruct s|].
     { destruct c. gstep. econs; ss; eauto. i. subst.
       guclo lflagC_spec. econs; ss.
       gbase. eapply CIH. pclearbot. eauto.
     }
-    destruct s.
     { destruct p.
       - guclo sim_itree_indC_spec. econs; eauto. guclo sim_itree_indC_spec. econs; eauto.
         gstep. econsr; eauto. gbase. eapply CIH. pclearbot. eauto.

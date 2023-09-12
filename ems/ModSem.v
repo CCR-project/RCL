@@ -263,12 +263,12 @@ Section MODSEM.
 
   Definition initial_p_state: p_state := ms.(initial_st).
 
-  Definition initial_itr: itree (eventE) Any.t :=
+  Definition initial_itr: itree (void1 +' eventE) Any.t :=
     snd <$> interp_Es prog (prog (Call "main" initial_arg)) (initial_p_state).
 
 
 
-  Let state: Type := itree eventE Any.t.
+  Let state: Type := itree (void1 +' eventE) Any.t.
 
   Definition state_sort (st0: state): sort :=
     match (observe st0) with
@@ -278,10 +278,11 @@ Section MODSEM.
       | Some rv => final rv
       | _ => angelic
       end
-    | VisF (Choose X) k => demonic
-    | VisF (Take X) k => angelic
-    | VisF (SyscallOut fn args rvs) k => vis
-    | VisF (SyscallIn rv) k => vis
+    | VisF (inr1 (Choose X)) k => demonic
+    | VisF (inr1 (Take X)) k => angelic
+    | VisF (inr1 (SyscallOut fn args rvs)) k => vis
+    | VisF (inr1 (SyscallIn rv)) k => vis
+    | _ => angelic (** does not happen **)
     end
   .
 
@@ -396,7 +397,7 @@ Section MODSEM.
       extensionality x0. eapply itree_eta. ss. }
   Qed.
 
-  Program Definition compile_itree: itree eventE Any.t -> semantics :=
+  Program Definition compile_itree: itree (void1 +' eventE) Any.t -> semantics :=
     fun itr =>
       {|
         STS.state := state;
