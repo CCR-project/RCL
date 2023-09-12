@@ -117,24 +117,38 @@ Section PROOF.
     - eapply NAME in Heq0; ss. congruence.
   Qed.
 
+  Definition sim (ms mt: ModSem.t) :=
+    match ms, mt with
+    | just ms, just mt =>
+        exists wf,
+        (Forall2 (fun '(fn0, ktr0) '(fn1, ktr1) => fn0 = fn1
+                   /\ (sim_fsem [] (fun (_: unit) => wf) top2 ktr0 ktr1))
+           ms.(ModSem.fnsems) mt.(ModSem.fnsems))
+        /\ wf (ms.(ModSem.initial_st), mt.(ModSem.initial_st))
+    | mytt, mytt => True
+    | _, _ => False
+    end
+  .
+
   Lemma affine_aux: ∀ sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1),
-      ModSemPair.sim (MemSem sk0) (MemSem sk1).
+      sim (MemSem sk0) (MemSem sk1).
   Proof.
     i. ss.
-    econs.
-    { instantiate (1:=top2). ss. }
-    2: { instantiate (2:=unit).
-         instantiate (1:=fun _ '(st_src, st_tgt) =>
-                           exists m0 m1, st_tgt = Any.upcast m0 /\ st_src = Any.upcast m1 /\ mem_extends m1 m0).
-         ss. esplits; ss; et.
-         r. esplits; ss. i. uo. des_ifs_safe.
-         rr in EQV. des. rr in EQV. unfold oplus, Sk.add in *. ss. rr in WF.
-         erewrite alist_permutation_find.
-         2: { et. }
-         2: { sym; et. }
-         erewrite alist_find_app; et. ss.
+    unshelve eexists.
+    { eapply (fun '(st_src, st_tgt) =>
+                           exists m0 m1, st_tgt = Any.upcast m0 /\
+                                           st_src = Any.upcast m1 /\ mem_extends m1 m0).
     }
-    ss. ii. des; ss; clarify.
+    esplits; ss.
+    2: {
+      r. esplits; ss. i. uo. des_ifs_safe.
+      rr in EQV. des. rr in EQV. unfold oplus, Sk.add in *. ss. rr in WF.
+      erewrite alist_permutation_find.
+      2: { et. }
+      2: { sym; et. }
+      erewrite alist_find_app; et. ss.
+    }
+    econs; [split|]; ss.
     {
       esplits; ss; et. ii. des; subst.
       rr in SIMMRS1. des.
@@ -151,6 +165,7 @@ Section PROOF.
       - ii. rewrite NB in *. unfold update in *. des_ifs; ss; et.
       - ii. rewrite NB in *. unfold update in *. des_ifs; ss; et.
     }
+    econs; [split|]; ss.
     {
       esplits; ss; et. ii. des; subst.
       rr in SIMMRS1. des.
@@ -171,6 +186,7 @@ Section PROOF.
       - ii. unfold update in *. des_ifs; ss; et.
       - ii. unfold update in *. des_ifs; ss; et.
     }
+    econs; [split|]; ss.
     {
       esplits; ss; et. ii. des; subst.
       rr in SIMMRS1. des.
@@ -189,6 +205,7 @@ Section PROOF.
       rewrite V; ss. my_steps.
       rr. esplits; ss; et.
     }
+    econs; [split|]; ss.
     {
       esplits; ss; et. ii. des; subst.
       rr in SIMMRS1. des.
@@ -211,6 +228,7 @@ Section PROOF.
       - ii. extensionalities ofs0. rewrite BLK; ss.
       - ii. des_ifs; ss; et.
     }
+    econs; [split|]; ss.
     {
       esplits; ss; eauto 10. ii. des; subst.
       assert(W:=extends_valid_ptr SIMMRS1).
@@ -230,28 +248,85 @@ Section PROOF.
     }
   Qed.
 
-  Lemma sim_strong_bar: ∀ a b, ModSemPair.sim a b -> ModSemPair.sim ( |a| ) ( |b| ).
+  Lemma sim_strong_bar: ∀ a b, sim a b -> sim ( |a| ) ( |b| ).
   Proof.
-    i. upt. des_ifs; ss. inv H.
-    unshelve econs; et.
-    i. unfold bar, ModSem.bar in FINDS. ss. rewrite in_map_iff in *. des.
-    destruct x; ss. clarify.
-    hexploit sim_fnsems; et. intro T; des.
-    esplits; et.
-    { rewrite in_map_iff. esplits; et. ss. }
-    clear - SIM. ii. subst. exploit SIM; et. instantiate (1:=y). intro T.
+    i. upt. des_ifs; ss. des. exists wf. esplits; ss.
+    eapply Forall2_apply_Forall2; et.
+    clear.
+    i. ss. des_ifs. des; ss. clarify. esplits; ss. clear - H0.
+    clear - H0. ii. clarify. exploit H0; et. des_u.
+    instantiate (1:=y). instantiate (1:=tt). intro T.
     unfold bar, ktree_Bar, bar, itree_Bar.
-    abstr (i y) i_src.
-    abstr (f_tgt y) i_tgt.
+    abstr (i1 y) i_src.
+    abstr (i2 y) i_tgt.
     clear_tac.
-    revert T.
-    clear Heqitr_src. 
-    ss.
+    clear - T.
+    ginit.
+    revert_until wf.
+    gcofix CIH; i.
+    punfold T. dependent induction T using _sim_itree_ind2.
+    - rewrite ! interp_ret. gstep. econs; eauto.
+    - rewrite ! interp_bind. rewrite ! interp_trigger. irw. unfold trivial_Handler.
+      gstep. econs; eauto. ii. subst. irw. des_u.
+      guclo sim_itree_indC_spec. econs; eauto.
+      guclo sim_itree_indC_spec. econs; eauto.
+      gstep. econsr; et.
+      gbase. eapply CIH.
+      exploit K; et. intro T. pclearbot. eapply sim_itree_bot_flag_up. eauto.
+    - rewrite ! interp_bind. rewrite ! interp_trigger. irw. unfold trivial_Handler.
+      gstep. econs; eauto. ii. subst. irw. des_u.
+      guclo sim_itree_indC_spec. econs; eauto.
+      guclo sim_itree_indC_spec. econs; eauto.
+      gstep. econsr; et.
+      gbase. eapply CIH.
+      exploit K; et. intro T. pclearbot. eapply sim_itree_bot_flag_up. eauto.
+    - rewrite ! interp_bind. rewrite ! interp_trigger. irw. unfold trivial_Handler.
+      gstep. econs; eauto. ii. subst. irw.
+      guclo sim_itree_indC_spec. econs; eauto.
+      guclo sim_itree_indC_spec. econs; eauto.
+      gstep. econsr; et.
+      gbase. eapply CIH.
+      pclearbot. eapply sim_itree_bot_flag_up. eauto.
+    - rewrite interp_tau. guclo simg_indC_spec.
+    - rewrite interp_tau. guclo simg_indC_spec.
+    - des.
+      rewrite interp_bind. rewrite interp_trigger. irw.
+      guclo simg_indC_spec. econs; eauto. esplits; eauto.
+      irw. guclo simg_indC_spec.
+    - rewrite interp_bind. rewrite interp_trigger. irw.
+      guclo simg_indC_spec. econs; eauto. esplits; eauto.
+      spc SIM. des.
+      irw. guclo simg_indC_spec.
+    - rewrite interp_bind. rewrite interp_trigger. irw.
+      guclo simg_indC_spec. econs; eauto. esplits; eauto.
+      spc SIM. des.
+      irw. guclo simg_indC_spec.
+    - des.
+      rewrite interp_bind. rewrite interp_trigger. irw.
+      guclo simg_indC_spec. econs; eauto. esplits; eauto.
+      irw. guclo simg_indC_spec.
+    - gstep. econs; eauto. gbase. eapply CIH; et.
+    - rewrite ! interp_bind. rewrite ! interp_trigger. irw.
+      guclo bindC_spec. econs; eauto.
+      { gfinal. right. eapply paco7_mon.
+        { eapply simg_refl. }
+        ii; ss.
+      }
+      ii. ss. des. subst. irw.
+      guclo simg_indC_spec. econs; eauto. instantiate (1:=(Ord.S f_src0)%ord).
+      guclo simg_indC_spec. econs; eauto. instantiate (1:=(Ord.S f_tgt0)%ord).
+      gstep. econsr; eauto.
+      { gbase. eapply CIH; eauto. }
+      { eapply Ord.S_is_S. }
+      { eapply Ord.S_is_S. }
+  Unshelve.
+    all: ss.
+
   Qed.
 
   Fixpoint sim_str (n: nat): ModSem.t -> ModSem.t -> Prop :=
     match n with
-    | 0 => λ a b, ModSemPair.sim a b
+    | 0 => λ a b, sim a b
     | S n => λ a b, sim_str n ( |a| ) ( |b| ) ∧ ∀ s, sim_str n (𝑤_{s} a) (𝑤_{s} b)
     end
   .
