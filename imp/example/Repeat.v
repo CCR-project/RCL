@@ -145,7 +145,7 @@ End SUCC.
 Module PUT.
 
   Definition putOnceF : Z -> itree Es Z :=
-    embed (fun z => _ <- trigger (Syscall "print" ((Vint z)↑) top1);; Ret 0%Z) (fun z => z).
+    embed (fun z => _ <- trigger (SyscallOut "print" ((Vint z)↑) top1);; Ret 0%Z) (fun z => z).
 
   Definition putM : Mod.t := ONE.oneM "putOnce" putOnceF.
 
@@ -770,7 +770,7 @@ Section CCR.
     iApply wrap2_adj1. 2: iApply "RPT0". iIntros "RPT0 ONE".
     iPoseProof (wrap_own with "RPT0") as "RPT0".
     iPoseProof (wrap_own with "ONE") as "ONE".
-    iCombine "RPT0 ONE" as "TGT". rewrite WA.morph_oplus.
+    iCombine "RPT0 ONE" as "TGT". rewrite <- WA.morph_oplus.
     iApply wrap_own.
     iStopProof. apply IPM.adequacy.
     apply one_rpt_ccr_ref.
