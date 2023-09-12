@@ -13,7 +13,7 @@ Require Import SimModSem.
 Require Import ImpPrelude.
 Require Import HTactics.
 
-Require Import IPM IPMAux Hoare.
+Require Import IPM IPMAux WrapMod WrapModSem.
 
 
 Set Implicit Arguments.
@@ -47,8 +47,7 @@ Module RPT0.
       Mod.sk := Sk.unit;
     |}.
   Next Obligation. ss. Qed.
-  Next Obligation. ss. Qed.
-  Next Obligation. ss. Qed.
+  Next Obligation. ss. refl. Qed.
 
 End RPT0.
 
@@ -89,8 +88,7 @@ Module RPT1.
       Mod.sk := Sk.unit;
     |}.
   Next Obligation. ss. Qed.
-  Next Obligation. ss. Qed.
-  Next Obligation. ss. Qed.
+  Next Obligation. ss. refl. Qed.
 
 End RPT1.
 
@@ -118,8 +116,7 @@ Module ONE.
       Mod.sk := Sk.unit;
     |}.
   Next Obligation. ss. Qed.
-  Next Obligation. ss. Qed.
-  Next Obligation. ss. Qed.
+  Next Obligation. ss. refl. Qed.
 
 End ONE.
 
@@ -139,7 +136,7 @@ Module PUT.
   Definition putOnceF : list val -> itree Es Z :=
     fun varg =>
       n <- ((pargs [Tint] varg)?);;
-      x <- trigger (Syscall "print" ((Vint n)↑) top1);;
+      x <- trigger (SyscallOut "print" ((Vint n)↑) top1);;
       Ret (n).
 
   Definition putM : Mod.t := ONE.oneM "putOnce" putOnceF.

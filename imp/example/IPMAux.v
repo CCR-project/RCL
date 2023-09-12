@@ -80,7 +80,7 @@ Section class_instances.
 End class_instances.
 
 
-Require Import Hoare.
+Require Import WrapModSem WrapMod.
 
 Section AUX.
 

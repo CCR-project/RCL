@@ -59,8 +59,7 @@ Module VAR0.
       Mod.sk := Sk.unit;
     |}.
   Next Obligation. ss. Qed.
-  Next Obligation. ss. Qed.
-  Next Obligation. ss. Qed.
+  Next Obligation. ss. refl. Qed.
 
 End VAR0.
 
@@ -103,8 +102,7 @@ Module VAR1.
       Mod.sk := Sk.unit;
     |}.
   Next Obligation. ss. Qed.
-  Next Obligation. ss. Qed.
-  Next Obligation. ss. Qed.
+  Next Obligation. ss. refl. Qed.
 
 End VAR1.
 

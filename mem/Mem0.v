@@ -122,7 +122,7 @@ Section PROOF.
     | just ms, just mt =>
         exists wf,
         (Forall2 (fun '(fn0, ktr0) '(fn1, ktr1) => fn0 = fn1
-                   /\ (sim_fsem [] (fun (_: unit) => wf) top2 ktr0 ktr1))
+                   /\ (sim_fsem (fun (_: unit) => wf) top2 ktr0 ktr1))
            ms.(ModSem.fnsems) mt.(ModSem.fnsems))
         /\ wf (ms.(ModSem.initial_st), mt.(ModSem.initial_st))
     | mytt, mytt => True
@@ -152,7 +152,6 @@ Section PROOF.
     {
       esplits; ss; et. ii. des; subst.
       rr in SIMMRS1. des.
-      eapply sim_itree_fsubset with []; ss.
       unfold cfunU, allocF.
       ginit. my_steps.
       destruct (Any.downcast y) eqn:T.
@@ -169,7 +168,6 @@ Section PROOF.
     {
       esplits; ss; et. ii. des; subst.
       rr in SIMMRS1. des.
-      eapply sim_itree_fsubset with []; ss.
       unfold cfunU, freeF.
       ginit. my_steps.
       destruct (Any.downcast y) eqn:T.
@@ -190,7 +188,6 @@ Section PROOF.
     {
       esplits; ss; et. ii. des; subst.
       rr in SIMMRS1. des.
-      eapply sim_itree_fsubset with []; ss.
       unfold cfunU, loadF.
       ginit. my_steps.
       destruct (Any.downcast y) eqn:T.
@@ -209,7 +206,6 @@ Section PROOF.
     {
       esplits; ss; et. ii. des; subst.
       rr in SIMMRS1. des.
-      eapply sim_itree_fsubset with []; ss.
       unfold cfunU, storeF.
       ginit. my_steps.
       destruct (Any.downcast y) eqn:T.
@@ -233,7 +229,6 @@ Section PROOF.
       esplits; ss; eauto 10. ii. des; subst.
       assert(W:=extends_valid_ptr SIMMRS1).
       rr in SIMMRS1. des.
-      eapply sim_itree_fsubset with []; ss.
       unfold cfunU, cmpF.
       ginit. my_steps.
       destruct (Any.downcast y) eqn:T.
@@ -248,6 +243,53 @@ Section PROOF.
     }
   Qed.
 
+  Lemma sim_strong_bar_aux
+    wf mrs_src mrs_tgt (i_src i_tgt: itree Es Any.t)
+    f_src f_tgt
+    (SIM: sim_itree (λ _ : (), wf) top2 f_src f_tgt () (mrs_src, i_src) (mrs_tgt, i_tgt))
+    :
+    sim_itree (λ _ : (), wf) top2 f_src f_tgt ()
+    (mrs_src, bar i_src)
+    (mrs_tgt, bar i_tgt)
+  .
+  Proof.
+    ginit.
+    revert_until wf.
+    gcofix CIH; i.
+    punfold SIM. dependent induction SIM using _sim_itree_ind2; my_red_both.
+    - gstep. econs; eauto.
+    - gstep. econs; eauto. ii. subst. irw. des_u.
+      guclo sim_itree_indC_spec. econs; eauto.
+      guclo sim_itree_indC_spec. econs; eauto.
+      gstep. econsr; et.
+      gbase. eapply CIH.
+      exploit K; et. intro T. pclearbot. eapply sim_itree_bot_flag_up. eauto.
+    - gstep. econs; eauto. ii. subst. irw. des_u.
+      guclo sim_itree_indC_spec. econs; eauto.
+      guclo sim_itree_indC_spec. econs; eauto.
+      gstep. econsr; et.
+      gbase. eapply CIH.
+      exploit K; et. intro T. pclearbot. eapply sim_itree_bot_flag_up. eauto.
+    - gstep. econs; eauto. ii. subst. irw.
+      guclo sim_itree_indC_spec. econs; eauto.
+      guclo sim_itree_indC_spec. econs; eauto.
+      gstep. econsr; et.
+      gbase. eapply CIH.
+      pclearbot. eapply sim_itree_bot_flag_up. eauto.
+    - guclo sim_itree_indC_spec. econs; et.
+    - des. guclo sim_itree_indC_spec. econs; et. esplits; et.
+      my_steps.
+    - my_steps. exploit K; et. intro T; des. eauto.
+    - guclo sim_itree_indC_spec. econs; et.
+    - my_steps. exploit K; et. intro T; des. eauto.
+    - des. guclo sim_itree_indC_spec. econs; et. esplits; et.
+      my_steps.
+    - unfold core_h. unfold triggerUB. my_steps.
+    - unfold core_h. unfold triggerUB. my_steps.
+    - gstep. econsr; et.
+      { gbase. eapply CIH; eauto. pclearbot. eauto. }
+  Qed.
+
   Lemma sim_strong_bar: ∀ a b, sim a b -> sim ( |a| ) ( |b| ).
   Proof.
     i. upt. des_ifs; ss. des. exists wf. esplits; ss.
@@ -255,73 +297,144 @@ Section PROOF.
     clear.
     i. ss. des_ifs. des; ss. clarify. esplits; ss. clear - H0.
     clear - H0. ii. clarify. exploit H0; et. des_u.
-    instantiate (1:=y). instantiate (1:=tt). intro T.
-    unfold bar, ktree_Bar, bar, itree_Bar.
-    abstr (i1 y) i_src.
-    abstr (i2 y) i_tgt.
-    clear_tac.
-    clear - T.
+    eapply sim_strong_bar_aux; et.
+  Qed.
+
+  Require Import WrapModSem.
+  Require Import IRed.
+
+  (*** TODO: FIXME ***)
+  Global Program Instance wrap_rdb:
+    red_database (mk_box (@wrap conds (itree Es Any.t) (@wrap_itree Any.t))) :=
+    mk_rdb
+      0
+      (mk_box wrap_bind)
+      (mk_box wrap_tau)
+      (mk_box wrap_ret)
+      (mk_box wrap_pE)
+      (mk_box wrap_pE)
+      (mk_box wrap_callE)
+      (mk_box wrap_eventE)
+      (mk_box wrap_triggerUB)
+      (mk_box wrap_triggerNB)
+      (mk_box wrap_unwrapU)
+      (mk_box wrap_unwrapN)
+      (mk_box wrap_unleftU)
+      (mk_box wrap_unleftN)
+      (mk_box wrap_unrightU)
+      (mk_box wrap_unrightN)
+      (mk_box wrap_assume)
+      (mk_box wrap_guarantee)
+      (mk_box wrap_ext)
+  .
+
+  Lemma sim_strong_wrap_aux
+    wf mrs_src mrs_tgt (i_src i_tgt: itree Es Any.t)
+    c
+    f_src f_tgt
+    (SIM: sim_itree (λ _ : (), wf) top2 f_src f_tgt () (mrs_src, i_src) (mrs_tgt, i_tgt))
+    :
+    sim_itree (λ _ : (), wf) top2 f_src f_tgt ()
+    (mrs_src, 𝑤_{c} i_src)
+    (mrs_tgt, 𝑤_{c} i_tgt)
+  .
+  Proof.
     ginit.
     revert_until wf.
     gcofix CIH; i.
-    punfold T. dependent induction T using _sim_itree_ind2.
-    - rewrite ! interp_ret. gstep. econs; eauto.
-    - rewrite ! interp_bind. rewrite ! interp_trigger. irw. unfold trivial_Handler.
-      gstep. econs; eauto. ii. subst. irw. des_u.
+    punfold SIM. dependent induction SIM using _sim_itree_ind2; my_red_both.
+    - rewrite ! wrap_ret. gstep. econs; eauto.
+    - rewrite ! wrap_bind. rewrite ! wrap_callE.
+      unfold wrap_h, guarantee, assume, triggerUB, triggerNB.
+      my_red_both. des_ifs; my_steps.
+      2: { gstep. econsr; et. i; ss. }
+      gstep. econs; eauto. ii. subst. des_u. des_ifs; my_steps.
+      2: { gstep. econs; et. i; ss. }
       guclo sim_itree_indC_spec. econs; eauto.
       guclo sim_itree_indC_spec. econs; eauto.
       gstep. econsr; et.
       gbase. eapply CIH.
       exploit K; et. intro T. pclearbot. eapply sim_itree_bot_flag_up. eauto.
-    - rewrite ! interp_bind. rewrite ! interp_trigger. irw. unfold trivial_Handler.
-      gstep. econs; eauto. ii. subst. irw. des_u.
+    - rewrite ! wrap_bind. rewrite ! wrap_eventE.
+      unfold wrap_h, guarantee, assume, triggerUB, triggerNB.
+      my_red_both. des_ifs; my_steps.
+      gstep. econs; eauto. ii. subst. des_u. des_ifs; my_steps.
       guclo sim_itree_indC_spec. econs; eauto.
       guclo sim_itree_indC_spec. econs; eauto.
       gstep. econsr; et.
       gbase. eapply CIH.
       exploit K; et. intro T. pclearbot. eapply sim_itree_bot_flag_up. eauto.
-    - rewrite ! interp_bind. rewrite ! interp_trigger. irw. unfold trivial_Handler.
-      gstep. econs; eauto. ii. subst. irw.
+    - rewrite ! wrap_bind. rewrite ! wrap_eventE.
+      unfold wrap_h, guarantee, assume, triggerUB, triggerNB.
+      my_red_both. des_ifs; my_steps.
+      gstep. econs; eauto. ii. subst. des_ifs; my_steps.
       guclo sim_itree_indC_spec. econs; eauto.
       guclo sim_itree_indC_spec. econs; eauto.
       gstep. econsr; et.
       gbase. eapply CIH.
       pclearbot. eapply sim_itree_bot_flag_up. eauto.
-    - rewrite interp_tau. guclo simg_indC_spec.
-    - rewrite interp_tau. guclo simg_indC_spec.
-    - des.
-      rewrite interp_bind. rewrite interp_trigger. irw.
-      guclo simg_indC_spec. econs; eauto. esplits; eauto.
-      irw. guclo simg_indC_spec.
-    - rewrite interp_bind. rewrite interp_trigger. irw.
-      guclo simg_indC_spec. econs; eauto. esplits; eauto.
-      spc SIM. des.
-      irw. guclo simg_indC_spec.
-    - rewrite interp_bind. rewrite interp_trigger. irw.
-      guclo simg_indC_spec. econs; eauto. esplits; eauto.
-      spc SIM. des.
-      irw. guclo simg_indC_spec.
-    - des.
-      rewrite interp_bind. rewrite interp_trigger. irw.
-      guclo simg_indC_spec. econs; eauto. esplits; eauto.
-      irw. guclo simg_indC_spec.
-    - gstep. econs; eauto. gbase. eapply CIH; et.
-    - rewrite ! interp_bind. rewrite ! interp_trigger. irw.
-      guclo bindC_spec. econs; eauto.
-      { gfinal. right. eapply paco7_mon.
-        { eapply simg_refl. }
-        ii; ss.
-      }
-      ii. ss. des. subst. irw.
-      guclo simg_indC_spec. econs; eauto. instantiate (1:=(Ord.S f_src0)%ord).
-      guclo simg_indC_spec. econs; eauto. instantiate (1:=(Ord.S f_tgt0)%ord).
-      gstep. econsr; eauto.
-      { gbase. eapply CIH; eauto. }
-      { eapply Ord.S_is_S. }
-      { eapply Ord.S_is_S. }
+    - rewrite ! wrap_tau. guclo sim_itree_indC_spec. econs; et.
+    - rewrite ! wrap_bind. rewrite ! wrap_eventE.
+      des. my_steps. guclo sim_itree_indC_spec. econs; et. esplits; et.
+      my_steps.
+      guclo sim_itree_indC_spec. econs; eauto.
+    - my_steps.
+      rewrite ! wrap_bind. rewrite ! wrap_eventE.
+      des. my_steps. guclo sim_itree_indC_spec. econs; et. i.
+      spc K. des.
+      my_steps.
+      guclo sim_itree_indC_spec. econs; et.
+    - rewrite ! wrap_tau. guclo sim_itree_indC_spec. econs; et.
+    - my_steps.
+      rewrite ! wrap_bind. rewrite ! wrap_eventE.
+      des. my_steps. guclo sim_itree_indC_spec. econs; et. i.
+      spc K. des.
+      my_steps.
+      guclo sim_itree_indC_spec. econs; et.
+    - rewrite ! wrap_bind. rewrite ! wrap_eventE.
+      des. my_steps. guclo sim_itree_indC_spec. econs; et. esplits; et.
+      my_steps.
+      guclo sim_itree_indC_spec. econs; eauto.
+    - rewrite ! wrap_bind. rewrite ! wrap_pE. my_steps.
+      gstep. econs; et. my_steps.
+      guclo sim_itree_indC_spec. econs; eauto.
+      guclo sim_itree_indC_spec. econs; eauto.
+      gbase. eapply CIH; et. pclearbot; et.
+    - rewrite ! wrap_bind. rewrite ! wrap_pE. my_steps.
+      gstep. econs; et. my_steps.
+      guclo sim_itree_indC_spec. econs; eauto.
+      guclo sim_itree_indC_spec. econs; eauto.
+      gbase. eapply CIH; et. pclearbot; et.
+    - gstep. econsr; et.
+      { gbase. eapply CIH; eauto. pclearbot. eauto. }
+  Qed.
+
+  Lemma sim_strong_wrap: ∀ c a b, sim a b -> sim ( 𝑤_{c} a ) ( 𝑤_{c} b ).
+  Proof.
+    i. destruct a, b; ss. des. exists wf. esplits; ss.
+    eapply Forall2_apply_Forall2; et.
+    clear.
+    i. ss. des_ifs. des; ss. clarify. esplits; ss. clear - H0.
+    clear - H0. ii. clarify. exploit H0; et. des_u. i.
+    ginit.
+    guclo lbindC_spec. econs.
+    { unfold assume, guarantee, triggerUB, triggerNB. des_ifs; my_steps.
+      - gstep. econs; et.
+        instantiate (1:=fun mrs_src' mrs_tgt' _ _ =>
+                          mrs_src = mrs_src' /\ mrs_tgt = mrs_tgt'). ss.
+      - gstep. econs; et. i; ss.
+    }
+    i; ss. des; clarify. des_u; ss.
+    guclo lbindC_spec. econs.
+    { gfinal. right. eapply sim_strong_wrap_aux; et. }
+    { i; ss. rr in SIM. des; clarify. des_u; ss.
+      unfold assume, guarantee, triggerUB, triggerNB. des_ifs; my_steps.
+      - gstep. econs; et.
+        rr. esplits; ss.
+      - gstep. econsr; et. i; ss.
+    }
   Unshelve.
     all: ss.
-
   Qed.
 
   Fixpoint sim_str (n: nat): ModSem.t -> ModSem.t -> Prop :=
@@ -332,39 +445,33 @@ Section PROOF.
   .
 
   Lemma sim_str_intro
-    (IHB: ∀ a b, ModSemPair.sim a b -> ModSemPair.sim ( |a| ) ( |b| ))
-    (IHW: ∀ a b, ModSemPair.sim a b -> ∀ s, ModSemPair.sim ( 𝑤_{s} a ) ( 𝑤_{s} b ))
     a b
-    (BASE: ModSemPair.sim a b)
+    (BASE: sim a b)
     :
     ∀ n, sim_str n a b.
   Proof.
     i. gen a b. induction n; i; ss.
     esplits; et.
+    { eapply IHn. eapply sim_strong_bar; et. }
+    { i. eapply IHn. eapply sim_strong_wrap; et. }
   Qed.
 
   Lemma sim_str_ref_str: ∀ a b, (∀ n, sim_str n a b) -> b ⊑S a.
   Proof.
     ii. gen a b. induction n; i; ss.
-    { eapply ModSemPair.adequacy; et. eapply (H 0). }
+    { eapply ModSemPair.adequacy; et. specialize (H 0). ss.
+      rr in H. des_ifs. des; ss.
+      econs; et.
+      { instantiate (1:=top2); ss. }
+      2: { exists tt. instantiate (1:=fun _ => wf). ss. }
+      { i. eapply Forall2_In_l in FINDS; et. des. des_ifs. des; clarify.
+        esplits; et.
+      }
+    }
     esplits; et.
     - eapply IHn; et. i. specialize (H (S n0)). ss. des; et.
     - i. eapply IHn; et. i. specialize (H (S n0)). ss. des; et.
   Qed.
-
-  Local Opaque MemSem.
-  Lemma affine_aux2: ∀ n, ∀ sk0 sk1 (EQV: Sk.extends sk0 sk1) (WF: Sk.wf sk1),
-      sim_str n (MemSem sk0) (MemSem sk1).
-  Proof.
-    induction n; i.
-    { eapply affine_aux; et. }
-    ss. esplits; ss.
-    admit "tt".
-    admit "tt".
-  Qed.
-  Local Transparent MemSem.
-
-
 
   Program Definition Mem: Mod.t := {|
     Mod.get_modsem := MemSem;
@@ -377,131 +484,7 @@ Section PROOF.
   Qed.
   Next Obligation.
     i. eapply sim_str_ref_str. i.
-    i; cbn.
-    ii. induction n.
-    { eapply ModSemPair.adequacy.
-      eapply affine_aux; ss.
-    }
-    Local Opaque MemSem.
-    ss.
-    split; ss.
-    -
-      ss.
-    econs.
-    { instantiate (1:=top2). ss. }
-    2: { instantiate (2:=unit).
-         instantiate (1:=fun _ '(st_src, st_tgt) =>
-                           exists m0 m1, st_tgt = Any.upcast m0 /\ st_src = Any.upcast m1 /\ mem_extends m1 m0).
-         ss. esplits; ss; et.
-         r. esplits; ss. i. uo. des_ifs_safe.
-         rr in EQV. des. rr in EQV. unfold oplus, Sk.add in *. ss. rr in WF.
-         erewrite alist_permutation_find.
-         2: { et. }
-         2: { sym; et. }
-         erewrite alist_find_app; et. ss.
-    }
-    ss. ii. des; ss; clarify.
-    {
-      esplits; ss; et. ii. des; subst.
-      rr in SIMMRS1. des.
-      eapply sim_itree_fsubset with []; ss.
-      unfold cfunU, allocF.
-      ginit. my_steps.
-      destruct (Any.downcast y) eqn:T.
-      2: { cbn. unfold triggerUB. my_steps. }
-      my_steps. des_ifs; my_steps; unfold triggerUB; my_steps.
-      destruct v; my_steps; des_ifs; my_steps; unfold triggerUB; my_steps.
-      rr. esplits; ss; et.
-      2: { rewrite NB; ss. }
-      rr. ss. esplits; try lia.
-      - ii. rewrite NB in *. unfold update in *. des_ifs; ss; et.
-      - ii. rewrite NB in *. unfold update in *. des_ifs; ss; et.
-    }
-    {
-      esplits; ss; et. ii. des; subst.
-      rr in SIMMRS1. des.
-      eapply sim_itree_fsubset with []; ss.
-      unfold cfunU, freeF.
-      ginit. my_steps.
-      destruct (Any.downcast y) eqn:T.
-      2: { cbn. unfold triggerUB. my_steps. }
-      my_steps. des_ifs; my_steps; unfold triggerUB; my_steps.
-      destruct v; my_steps; des_ifs; my_steps; unfold triggerUB; my_steps.
-      destruct blk; my_steps; des_ifs; my_steps; unfold triggerUB; my_steps.
-      destruct (Mem.free m1 n ofs) eqn:U.
-      2: { cbn. unfold triggerUB. my_steps. }
-      my_steps.
-      unfold Mem.free in *. des_ifs_safe. rewrite <- BLK. des_ifs. my_steps.
-      rr. esplits; ss; et.
-      rr. ss. esplits; try lia.
-      - ii. unfold update in *. des_ifs; ss; et.
-      - ii. unfold update in *. des_ifs; ss; et.
-    }
-    {
-      esplits; ss; et. ii. des; subst.
-      rr in SIMMRS1. des.
-      eapply sim_itree_fsubset with []; ss.
-      unfold cfunU, loadF.
-      ginit. my_steps.
-      destruct (Any.downcast y) eqn:T.
-      2: { cbn. unfold triggerUB. my_steps. }
-      my_steps. des_ifs; my_steps; unfold triggerUB; my_steps.
-      destruct v; my_steps; des_ifs; my_steps; unfold triggerUB; my_steps.
-      destruct (Mem.load m1 blk ofs) eqn:U.
-      2: { cbn. unfold triggerUB. my_steps. }
-      my_steps.
-      assert(V: Mem.load m0 blk ofs = Some v).
-      { destruct blk; ss; et. rewrite <- BLK; et. }
-      rewrite V; ss. my_steps.
-      rr. esplits; ss; et.
-    }
-    {
-      esplits; ss; et. ii. des; subst.
-      rr in SIMMRS1. des.
-      eapply sim_itree_fsubset with []; ss.
-      unfold cfunU, storeF.
-      ginit. my_steps.
-      destruct (Any.downcast y) eqn:T.
-      2: { cbn. unfold triggerUB. my_steps. }
-      my_steps. des_ifs; my_steps; unfold triggerUB; my_steps.
-      destruct v; my_steps; des_ifs; my_steps; unfold triggerUB; my_steps.
-      destruct (Mem.store m1 blk ofs) eqn:U.
-      2: { cbn. unfold triggerUB. my_steps. }
-      my_steps.
-      unfold Mem.store in *. des_ifs_safe.
-      assert(U: Mem.cnts m0 blk ofs = Some v).
-      { destruct blk; ss; et. rewrite <- BLK; et. }
-      des_ifs. my_steps.
-      rr. esplits; ss; et.
-      rr. ss. esplits; try lia.
-      - ii. extensionalities ofs0. rewrite BLK; ss.
-      - ii. des_ifs; ss; et.
-    }
-    {
-      esplits; ss; eauto 10. ii. des; subst.
-      assert(W:=extends_valid_ptr SIMMRS1).
-      rr in SIMMRS1. des.
-      eapply sim_itree_fsubset with []; ss.
-      unfold cfunU, cmpF.
-      ginit. my_steps.
-      destruct (Any.downcast y) eqn:T.
-      2: { cbn. unfold triggerUB. my_steps. }
-      my_steps. des_ifs; my_steps; unfold triggerUB; my_steps.
-      destruct (vcmp m1 v v0) eqn:U.
-      2: { cbn. unfold triggerUB. my_steps. }
-      unfold vcmp in *. des_ifs; my_steps; des_ifs; my_steps; rr; esplits; ss;
-        bsimpl; des; des_sumbool; ss; subst; exploit W; et; i; try congruence.
-      - clear Heq2. exploit W; et; i; try congruence.
-      - clear Heq2. exploit W; et; i; try congruence.
-    }
-    }
-    {
-      ss.
-    }
-  Qed.
-  Next Obligation.
-    i; cbn.
-    eapply bar_state_irr; ss.
+    eapply sim_str_intro. eapply affine_aux; et.
   Qed.
 
 End PROOF.
