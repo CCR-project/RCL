@@ -37,9 +37,8 @@ Proof.
   revert mrs_src mrs_tgt itr. ginit. gcofix CIH. i.
   ides itr; my_steps.
   + gstep. econs; et. gbase. eapply CIH.
-  + destruct e.
+  + destruct e; [destruct s|].
     { destruct c; rewrite <- ! bind_trigger; resub. my_steps; gstep; econs; et; gbase; eapply CIH. }
-    destruct s.
     { destruct p; rewrite <- ! bind_trigger; resub; my_steps.
       - unfold core_h. unfold triggerUB. my_steps.
       - unfold core_h. unfold triggerUB. my_steps. }
@@ -71,9 +70,8 @@ Next Obligation.
     ides itr; my_steps.
     + rr. esplits; ss; et.
     + gstep. econs; et. gbase. eapply CIH.
-    + destruct e.
+    + destruct e; [destruct s|].
       { destruct c; rewrite <- ! bind_trigger; resub. my_steps; gstep; econs; et; gbase; eapply CIH. }
-      destruct s.
       { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
       { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
   - rewrite in_map_iff in *. des; ss. destruct x; ss. clarify.
@@ -86,9 +84,8 @@ Next Obligation.
     ides itr; my_steps.
     + rr. esplits; ss; et.
     + gstep. econs; et. gbase. eapply CIH.
-    + destruct e.
+    + destruct e; [destruct s|].
       { destruct c; rewrite <- ! bind_trigger; resub. my_steps; gstep; econs; et; gbase; eapply CIH. }
-      destruct s.
       { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
       { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
 Qed.
@@ -119,10 +116,9 @@ Next Obligation.
     ides itr; my_steps.
     + rr. esplits; ss; et.
     + gstep. econs; et. gbase. eapply CIH.
-    + destruct e.
+    + destruct e; [destruct s|].
       { destruct c; rewrite <- ! bind_trigger; resub. my_red_both. (*** FIXME ***) rewrite focus_right_callE. my_steps.
         gstep; econs; et; gbase; eapply CIH. }
-      destruct s.
       { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
       { destruct e; rewrite <- ! bind_trigger; resub;
           my_red_both; (*** FIXME ***) rewrite focus_right_eventE; my_steps; gstep; econs; et; gbase; eapply CIH.
@@ -140,10 +136,9 @@ Next Obligation.
     ides itr; my_steps.
     + rr. esplits; ss; et.
     + gstep. econs; et. gbase. eapply CIH.
-    + destruct e.
+    + destruct e; [destruct s|].
       { destruct c; rewrite <- ! bind_trigger; resub. my_red_both. (*** FIXME ***) rewrite focus_left_callE. my_steps.
         gstep; econs; et; gbase; eapply CIH. }
-      destruct s.
       { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
       { destruct e; rewrite <- ! bind_trigger; resub;
           my_red_both; (*** FIXME ***) rewrite focus_left_eventE; my_steps; gstep; econs; et; gbase; eapply CIH.
@@ -161,9 +156,8 @@ Next Obligation.
     ides itr; my_steps.
     + rr. esplits; ss; et.
     + gstep. econs; et. gbase. eapply CIH.
-    + destruct e.
+    + destruct e; [destruct s|].
       { destruct c; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-      destruct s.
       { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
       { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
   }
@@ -316,9 +310,8 @@ Next Obligation.
       ides itr; my_steps.
       + rr. esplits; ss; et.
       + gstep. econs; et. gbase. eapply CIH.
-      + destruct e.
+      + destruct e; [destruct s|].
         { destruct c; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-        destruct s.
         { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
         { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
     }
@@ -342,9 +335,8 @@ Next Obligation.
       ides itr0; my_steps.
       + rr. esplits; ss; et.
       + gstep. econs; et. gbase. eapply CIH.
-      + destruct e.
+      + destruct e; [destruct s|].
         { destruct c; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-        destruct s.
         { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
         { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
     }
@@ -358,9 +350,8 @@ Next Obligation.
       ides itr0; my_steps.
       + rr. esplits; ss; et.
       + gstep. econs; et. gbase. eapply CIH.
-      + destruct e.
+      + destruct e; [destruct s|].
         { destruct c; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
-        destruct s.
         { destruct p; rewrite <- ! bind_trigger; resub; my_steps.
           - (*** FIXME ***) unfold core_h. unfold triggerUB. my_steps.
           - (*** FIXME ***) unfold core_h. unfold triggerUB. my_steps.
@@ -368,6 +359,129 @@ Next Obligation.
         { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
     }
   }
+Qed.
+
+Require Import SimGlobalIndex SimGlobalIndexFacts.
+From Ordinal Require Import Ordinal.
+Global Program Instance refs_oplus_: Proper ((⊑S) ==> (⊑S) ==> (⊑S)) ((⊕)).
+Next Obligation.
+  ii.
+  rr in H. rr in H0. des. rr. ss. esplits; ss.
+  2: { congruence. }
+  eapply Forall2_app.
+  - eapply Forall2_apply_Forall2; et. clear. ii; ss. des_ifs. ss. clarify. ss.
+    des; ss. subst. esplits; ss.
+    ii. eapply simg_interp; et.
+  - eapply Forall2_apply_Forall2; et. clear. ii; ss. des_ifs. ss. clarify. ss.
+    des; ss. subst. esplits; ss.
+    ii. eapply simg_interp; et.
+Qed.
+
+Global Program Instance refs_PreOrder_: PreOrder (⊑S).
+Next Obligation.
+  ii. rr. esplits; ss.
+  eapply Forall2_impl. 2: { eapply Forall2_eq; ss. } i; ss. des_ifs. esplits; ss.
+  i.
+  ginit.
+  guclo postcondC_spec.
+  econs.
+  2: { gfinal; right. eapply simg_refl. }
+  i; ss. des; ss.
+Qed.
+Next Obligation.
+  ii; ss. rr in H. rr in H0. des. rr. esplits; ss.
+  2: { congruence. }
+  eapply Forall2_impl.
+  2: { eapply Forall2_trans; et. }
+  clear. i; ss. des. des_ifs. des; ss. esplits; ss.
+  { congruence. }
+  i. eapply simg_trans; et.
+Qed.
+
+(*** TODO: put in Algebra.v ***)
+Infix "⊑S@{ A }" := (@ref_strong A) (at level 50, only parsing).
+Notation "⊑S@{ A }" := (@ref_strong A) (at level 50, only parsing).
+
+Ltac upt :=
+  repeat match goal with
+    | [H: context[@equiv _ (@Equiv_pointed _ _)] |- _] => unfold equiv, Equiv_pointed in H
+    | [ |- context[@equiv _ (@Equiv_pointed _ _)]] => unfold equiv, Equiv_pointed
+    | [H: context[@sqsubseteq _ (@Ref_pointed _ _)] |- _] => unfold sqsubseteq, Ref_pointed in H
+    | [ |- context[@sqsubseteq _ (@Ref_pointed _ _)]] => unfold sqsubseteq, Ref_pointed
+    | [H: context[@ref_strong _ (@RefStrong_pointed _ _)] |- _] => unfold ref_strong, RefStrong_pointed in H
+    | [ |- context[@ref_strong _ (@RefStrong_pointed _ _)]] => unfold ref_strong, RefStrong_pointed
+    | [H: context[@Algebra.bar _ (@Bar_pointed _ _)] |- _] => unfold Algebra.bar, Bar_pointed in H
+    | [ |- context[@Algebra.bar _ (@Bar_pointed _ _)]] => unfold Algebra.bar, Bar_pointed
+    | [H: context[@Algebra.eps _ (@Eps_pointed _ _)] |- _] => unfold Algebra.eps, Eps_pointed in H
+    | [ |- context[@Algebra.eps _ (@Eps_pointed _ _)]] => unfold Algebra.eps, Eps_pointed
+    | [H: context[@Algebra.oplus _ (@OPlus_pointed _ _)] |- _] => unfold Algebra.oplus, OPlus_pointed in H
+    | [ |- context[@Algebra.oplus _ (@OPlus_pointed _ _)]] => unfold Algebra.oplus, OPlus_pointed
+    end.
+
+Global Program Instance refs_PreOrder: PreOrder (⊑S@{ModSem.t}).
+Next Obligation.
+  ii. upt. des_ifs. refl.
+Qed.
+Next Obligation.
+  ii. upt. des_ifs. etrans; et.
+Qed.
+
+Global Program Instance refs_oplus: Proper ((⊑S@{ModSem.t}) ==> (⊑S) ==> (⊑S)) ((⊕)).
+Next Obligation.
+  ii. upt. des_ifs. rewrite H. rewrite H0. refl.
+Qed.
+
+Global Program Instance ModSem_RefStrongFacts: RefStrongFacts.
+Next Obligation.
+  {
+    do 1 r.
+    i. eapply ModSemPair.adequacy. upt. des_ifs.
+    ss. rr in H. des; ss. econs; ss.
+    { instantiate (1:=top2). ss. }
+    2:{ instantiate (1:=top2). instantiate (1:=unit). ss. }
+    ii; ss.
+    hexploit Forall2_In_r; et. intro T; des. des_ifs. des; ss. subst.
+    esplits; et.
+    admit "ez".
+  }
+  (* { *)
+  (*   ii. *)
+  (*   assert(T: (ctx ⊕ x) ⊑S (ctx ⊕ y)). *)
+  (*   { rewrite H. refl. } *)
+  (*   upt. des_ifs; ss. *)
+  (*   - eapply adequacy_global_itree2; et; ss. *)
+  (*     unfold ModSem.initial_itr. *)
+  (*     Local Opaque ModSem.prog. *)
+  (*     rr in T. des; ss. admit "ez". *)
+  (*   - admit "ez". *)
+  (* } *)
+Qed.
+Next Obligation.
+  ii. upt. des_ifs; ss.
+  rename H into P. rename H0 into Q. rename H1 into R.
+  symmetry in P.
+  rr in P. rr in Q. rr in R. des; ss.
+  rr. esplits; ss.
+  2: { congruence. }
+  clear P0 Q0 R0.
+  eapply Forall2_impl.
+  2: { eapply Forall2_trans; et. eapply Forall2_trans; et. }
+  clear.
+  i; ss. des. des_ifs. des; ss. clarify. esplits; ss.
+  i.
+  eapply simg_trans.
+  { eapply eutt_simg; et. eapply PR4. }
+  eapply simg_trans.
+  2: { eapply eutt_simg; et. eapply PR2. }
+  eapply PR3.
+Qed.
+Next Obligation.
+  ii. upt. des_ifs. ss.
+  rr in H. rr. des; ss. esplits; ss.
+  eapply Forall2_apply_Forall2; et. clear.
+  i. ss. des_ifs. des; ss. clarify. esplits; ss.
+  i. unfold bar, ktree_Bar, bar, itree_Bar.
+  eapply simg_interp; et.
 Qed.
 
 End ALGEBRA.

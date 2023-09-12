@@ -786,7 +786,7 @@ Section CONSTR.
     end
   .
 
-  Global Instance ref_strong_constr: RefStrong T := λ a b, ∀ n, ref_str n a b.
+  Local Instance ref_strong_constr: RefStrong T := λ a b, ∀ n, ref_str n a b.
 
   Lemma ref_strong_Proper_aux: ∀ n x y, x ⊑S y -> ref_str n ( |x| ) ( |y| ) ∧ ∀ s, ref_str n (𝑤_{s} x) (𝑤_{s} y).
   Proof.

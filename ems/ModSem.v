@@ -9,6 +9,8 @@ Require Import STS Behavior.
 Require Import Any.
 Require Import Permutation.
 Require Import Algebra.
+Require Import SimGlobalIndex.
+From Ordinal Require Import Ordinal.
 
 Set Implicit Arguments.
 
@@ -445,7 +447,12 @@ Section MODSEM.
   .
 
 
-  Global Program Instance equiv_facts: EquivFacts.
+
+  Global Instance refs: RefStrong _t :=
+    fun ms0 ms1 => Forall2 (fun '(fn0, ktr0) '(fn1, ktr1) => fn0 = fn1 /\
+                       (forall x, simg (fun _ _ => eq) 0 0 (ktr0 x) (ktr1 x)))
+                     ms0.(fnsems) ms1.(fnsems)
+                   /\ ms0.(initial_st) = ms1.(initial_st).
 
   Lemma core_idemp: forall ms0, | |ms0| | ≡ |ms0|.
   Proof.
