@@ -362,6 +362,81 @@ Proof.
   }
 Qed.
 
+Lemma wrap_eps_eutt
+      X Y
+      (i : X → itree Es Y)
+      (x : X)
+  :
+  𝑤_{ ε} i x ≈ i x.
+Proof.
+  etrans. 2: eapply interp_trigger_h.
+  unfold wrap, wrap_itree.
+  eapply eutt_interp. 2:refl.
+  ii. unfold trivial_Handler. destruct a; [destruct s|]; my_steps.
+  destruct c; ss.
+  unfold guarantee, assume. des_ifs. my_steps.
+Qed.
+
+Global Program Instance wrap_rdb2: red_database (mk_box (@wrap_itree)) :=
+  mk_rdb
+    0
+    (mk_box wrap_bind)
+    (mk_box wrap_tau)
+    (mk_box wrap_ret)
+    (mk_box wrap_pE)
+    (mk_box wrap_pE)
+    (mk_box wrap_callE)
+    (mk_box wrap_eventE)
+    (mk_box wrap_triggerUB)
+    (mk_box wrap_triggerNB)
+    (mk_box wrap_unwrapU)
+    (mk_box wrap_unwrapN)
+    (mk_box wrap_unleftU)
+    (mk_box wrap_unleftN)
+    (mk_box wrap_unrightU)
+    (mk_box wrap_unrightN)
+    (mk_box wrap_assume)
+    (mk_box wrap_guarantee)
+    (mk_box wrap_ext)
+.
+
+Ltac wred := unfold wrap; my_red_both.
+Ltac wreds := repeat wred.
+Ltac wmy_steps := repeat (cbn; try rewrite !interp_trigger;
+                         try eapply eutt_eq_bind; try refl; ii;
+                         grind; resub; wred; try rewrite tau_eutt).
+
+Lemma wrap_ext_eutt
+      X (c: conds)
+      (i j : itree Es X)
+      (EUTT: i ≈ j)
+  :
+  𝑤_{c} i ≈ 𝑤_{c} j.
+Proof.
+  revert_until c. ginit. gcofix CIH; i.
+  punfold EUTT. red in EUTT.
+  dependent induction EUTT; simpobs_all.
+  - wreds. gstep. econs; auto.
+  - pclearbot. wreds. gstep. econs. gfinal. left; eauto.
+  - ss. pclearbot.
+    rewrite <- ! bind_trigger. resub. destruct e. destruct s.
+    + wreds. unfold wrap_h. wmy_steps. unfold guarantee. des_ifs; wmy_steps.
+      * rewrite ! bind_trigger. gstep. econs. i. ss. wmy_steps.
+        unfold assume. des_ifs; wreds.
+        { gstep. econs. gfinal. left; eauto. }
+        { unfold triggerUB. wmy_steps. rewrite ! bind_trigger. gstep. econs. i. clarify. }
+      * unfold triggerNB. wmy_steps. rewrite ! bind_trigger. gstep. econs. i. clarify.
+    + wreds. rewrite ! bind_trigger. gstep. econs. i. ss.
+      wreds. gstep. econs. wreds. gfinal. left; eauto.
+    + wreds. rewrite ! bind_trigger. gstep. econs. i. ss.
+      wreds. gstep. econs. wreds. gfinal. left; eauto.
+  - wreds. guclo eqit_clo_trans. econs. eapply eqit_Tau_l. refl. refl.
+    all: ii; clarify; eauto.
+  - wreds. guclo eqit_clo_trans. econs. refl. eapply eqit_Tau_l. refl.
+    all: ii; clarify; eauto.
+Qed.
+
+
 Global Program Instance conds_CM: CM.t := {
    car := conds;
 }.
@@ -406,7 +481,11 @@ Next Obligation.
   eapply Forall2_fmap_l.
   eapply Reflexive_instance_0. rr. i; ss. destruct x; ss.
   splits; ss. i. unfold assume, guarantee. grind.
-  admit "ez".
+  match goal with
+  | [|- ?a ≈ _] => replace a with (𝑤_{ε} i x)
+  end.
+  2:{ rewrite bind_ret_r_rev at 1. f_equal. extensionalities. grind. }
+  apply wrap_eps_eutt.
 Qed.
 Next Obligation.
   i; ss.
@@ -418,7 +497,13 @@ Next Obligation.
   injection Heq0; clear Heq0. intro U.
   subst.
   rr in H0. rr. ss. des. esplits; ss.
-  admit "ez".
+  subst.
+  induction H0.
+  { unfold wrap. ss. }
+  unfold wrap. ss. econs. 2: eapply IHForall2.
+  clear - H. destruct x, y0. des; clarify. unfold wrap. ss. split; auto.
+  i. my_steps. specialize (H0 x). unfold wrap.
+  apply wrap_ext_eutt. auto.
 Qed.
 
 Global Instance itree_Equiv {E R}: Equiv (itree E R) := λ (a b: itree E R), eutt eq a b.
