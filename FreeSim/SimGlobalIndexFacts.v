@@ -312,54 +312,6 @@ Qed.
 
 
 
-Lemma step_trigger_choose_iff X k itr e
-      (STEP: ModSemL.step (trigger (Choose X) >>= k) e itr)
-  :
-    exists x,
-      e = None /\ itr = k x.
-Proof.
-  inv STEP.
-  { eapply f_equal with (f:=observe) in H0. ss. }
-  { eapply f_equal with (f:=observe) in H0. ss.
-    unfold trigger in H0. ss. cbn in H0.
-    dependent destruction H0. ired. et.  }
-  { eapply f_equal with (f:=observe) in H0. ss. }
-  { eapply f_equal with (f:=observe) in H0. ss. }
-  { eapply f_equal with (f:=observe) in H0. ss. }
-Qed.
-
-Lemma step_trigger_take_iff X k itr e
-      (STEP: ModSemL.step (trigger (Take X) >>= k) e itr)
-  :
-    exists x,
-      e = None /\ itr = k x.
-Proof.
-  inv STEP.
-  { eapply f_equal with (f:=observe) in H0. ss. }
-  { eapply f_equal with (f:=observe) in H0. ss. }
-  { eapply f_equal with (f:=observe) in H0. ss.
-    unfold trigger in H0. ss. cbn in H0.
-    dependent destruction H0. ired. et.  }
-  { eapply f_equal with (f:=observe) in H0. ss. }
-  { eapply f_equal with (f:=observe) in H0. ss. }
-Qed.
-
-Lemma step_tau_iff itr0 itr1 e
-      (STEP: ModSemL.step (Tau itr0) e itr1)
-  :
-    e = None /\ itr0 = itr1.
-Proof.
-  inv STEP. et.
-Qed.
-
-Lemma step_ret_iff rv itr e
-      (STEP: ModSemL.step (Ret rv) e itr)
-  :
-    False.
-Proof.
-  inv STEP.
-Qed.
-
 (* Lemma step_trigger_syscall_iff fn args rvs k e itr *)
 (*       (STEP: ModSemL.step (trigger (Syscall fn args rvs) >>= k) e itr) *)
 (*   : *)
@@ -386,34 +338,6 @@ Proof.
   rewrite OBSERVE. auto.
 Qed.
 
-Lemma step_trigger_choose X k x
-  :
-    ModSemL.step (trigger (Choose X) >>= k) None (k x).
-Proof.
-  unfold trigger. ss.
-  match goal with
-  | [ |- ModSemL.step ?itr _ _] =>
-    replace itr with (Subevent.vis (Choose X) k)
-  end; ss.
-  { econs. }
-  { eapply itree_eta_eq. ss. cbv. f_equal.
-    extensionality x0. eapply itree_eta_eq. ss. }
-Qed.
-
-Lemma step_trigger_take X k x
-  :
-    ModSemL.step (trigger (Take X) >>= k) None (k x).
-Proof.
-  unfold trigger. ss.
-  match goal with
-  | [ |- ModSemL.step ?itr _ _] =>
-    replace itr with (Subevent.vis (Take X) k)
-  end; ss.
-  { econs. }
-  { eapply itree_eta_eq. ss. cbv. f_equal.
-    extensionality x0. eapply itree_eta_eq. ss. }
-Qed.
-
 (* Lemma step_trigger_syscall fn args (rvs: Any.t -> Prop) k rv *)
 (*       (RV: rvs rv) (SYS: syscall_sem (event_sys fn args rv)) *)
 (*   : *)
@@ -428,13 +352,6 @@ Qed.
 (*   { eapply itree_eta_eq. ss. cbv. f_equal. *)
 (*     extensionality x0. eapply itree_eta_eq. ss. } *)
 (* Qed. *)
-
-Lemma step_tau itr
-  :
-    ModSemL.step (Tau itr) None itr.
-Proof.
-  econs.
-Qed.
 
 Section EUTT.
 
@@ -1523,8 +1440,8 @@ Require Import SimSTSIndex.
 Theorem adequacy_global_itree_aux itr_src itr_tgt o_src0 o_tgt0
         (SIM: simg (E:=E) (fun _ _ => eq) o_src0 o_tgt0 itr_src itr_tgt)
   :
-  sim (@ModSemL.compile_itree CONFS (initialize itr_src))
-    (@ModSemL.compile_itree CONFT (initialize itr_tgt)) o_src0 o_tgt0 (initialize itr_src) (initialize itr_tgt).
+  sim (@ModSem.compile_itree CONFS (initialize itr_src))
+    (@ModSem.compile_itree CONFT (initialize itr_tgt)) o_src0 o_tgt0 (initialize itr_src) (initialize itr_tgt).
 Proof.
   generalize itr_tgt at 1 as md_tgt.
   generalize itr_src at 1 as md_src. i. ginit.
@@ -1563,34 +1480,34 @@ Proof.
   }
   Local Transparent STS.state.
   { guclo sim_indC_spec. eapply sim_indC_demonic_src; ss.
-    esplits; eauto. eapply step_tau; et.
+    esplits; eauto. eapply ModSem.step_tau; et.
   }
   { guclo sim_indC_spec. eapply sim_indC_demonic_tgt; ss. i.
-    eapply step_tau_iff in STEP. des. clarify. esplits; et.
+    eapply ModSem.step_tau_iff in STEP. des. clarify. esplits; et.
   }
   { des. guclo sim_indC_spec. eapply sim_indC_demonic_src; ss.
     esplits; eauto.
     set (ktr_src1 := fun (x: X) => initialize (ktr_src0 x)).
     change (initialize (ktr_src0 x)) with (ktr_src1 x).
-    eapply step_trigger_choose; et.
+    eapply ModSem.step_trigger_choose; et.
   }
   { guclo sim_indC_spec. eapply sim_indC_demonic_tgt; ss.
-    i.  eapply step_trigger_choose_iff in STEP. des. clarify.
+    i.  eapply ModSem.step_trigger_choose_iff in STEP. des. clarify.
     hexploit (SIM x); et. i. des. esplits; eauto.
   }
   { guclo sim_indC_spec. eapply sim_indC_angelic_src; ss. i.
-    eapply step_trigger_take_iff in STEP. des. clarify.
+    eapply ModSem.step_trigger_take_iff in STEP. des. clarify.
     hexploit (SIM x); et. i. des. esplits; et.
   }
   { des. guclo sim_indC_spec. eapply sim_indC_angelic_tgt; ss.
     esplits; eauto.
     set (ktr_tgt1 := fun (x: X) => initialize (ktr_tgt0 x)).
     change (initialize (ktr_tgt0 x)) with (ktr_tgt1 x).
-    eapply step_trigger_take; et.
+    eapply ModSem.step_trigger_take; et.
   }
   { gstep. eapply sim_progress; eauto. gbase. auto. }
   { guclo sim_indC_spec. eapply sim_indC_angelic_src; ss. i.
-    eapply step_trigger_take_iff in STEP. des. clarify.
+    eapply ModSem.step_trigger_take_iff in STEP. des. clarify.
   }
 Unshelve.
   all: ss.
@@ -1599,35 +1516,35 @@ Qed.
 Theorem adequacy_global_itree itr_src itr_tgt o_src0 o_tgt0
         (SIM: simg (E:=E) (fun _ _ => eq) o_src0 o_tgt0 itr_src itr_tgt)
   :
-    Beh.of_program (@ModSemL.compile_itree CONFT (initialize itr_tgt))
+    Beh.of_program (@ModSem.compile_itree CONFT (initialize itr_tgt))
     <1=
-    Beh.of_program (@ModSemL.compile_itree CONFS (initialize itr_src)).
+    Beh.of_program (@ModSem.compile_itree CONFS (initialize itr_src)).
 Proof.
   unfold Beh.of_program. ss. i. eapply adequacy; et. eapply adequacy_global_itree_aux; et.
 Qed.
 
 
-Variable md_src md_tgt: ModL.t.
-Let ms_src: ModSemL.t := md_src.(ModL.enclose).
-Let ms_tgt: ModSemL.t := md_tgt.(ModL.enclose).
+(* Variable md_src md_tgt: ModL.t. *)
+(* Let ms_src: ModSemL.t := md_src.(ModL.enclose). *)
+(* Let ms_tgt: ModSemL.t := md_tgt.(ModL.enclose). *)
 
-Section ADEQUACY.
+(* Section ADEQUACY. *)
 
-Hypothesis (SIM: simg (fun _ _ => eq) 0 0 (embed_E (@ModSemL.initial_itr ms_src CONFS (Some (ModL.wf md_src)))) (embed_E (@ModSemL.initial_itr ms_tgt CONFT (Some (ModL.wf md_tgt))))).
+(* Hypothesis (SIM: simg (fun _ _ => eq) 0 0 (embed_E (@ModSemL.initial_itr ms_src CONFS (Some (ModL.wf md_src)))) (embed_E (@ModSemL.initial_itr ms_tgt CONFT (Some (ModL.wf md_tgt))))). *)
 
 
-Theorem adequacy_global: Beh.of_program (@ModL.compile _ CONFT md_tgt) <1= Beh.of_program (@ModL.compile _ CONFS md_src).
-Proof.
-  unfold ModL.compile.
-  replace (@ModSemL.initial_itr (ModL.enclose md_tgt) CONFT (Some (ModL.wf md_tgt))) with
-    (initialize (embed_E (@ModSemL.initial_itr (ModL.enclose md_tgt) CONFT (Some (ModL.wf md_tgt))))).
-  replace (@ModSemL.initial_itr (ModL.enclose md_src) CONFS (Some (ModL.wf md_src))) with
-    (initialize (embed_E (@ModSemL.initial_itr (ModL.enclose md_src) CONFS (Some (ModL.wf md_src))))).
-  eapply adequacy_global_itree. eapply SIM.
-  all: apply initialize_embed_E.
-Qed.
+(* Theorem adequacy_global: Beh.of_program (@ModL.compile _ CONFT md_tgt) <1= Beh.of_program (@ModL.compile _ CONFS md_src). *)
+(* Proof. *)
+(*   unfold ModL.compile. *)
+(*   replace (@ModSemL.initial_itr (ModL.enclose md_tgt) CONFT (Some (ModL.wf md_tgt))) with *)
+(*     (initialize (embed_E (@ModSemL.initial_itr (ModL.enclose md_tgt) CONFT (Some (ModL.wf md_tgt))))). *)
+(*   replace (@ModSemL.initial_itr (ModL.enclose md_src) CONFS (Some (ModL.wf md_src))) with *)
+(*     (initialize (embed_E (@ModSemL.initial_itr (ModL.enclose md_src) CONFS (Some (ModL.wf md_src))))). *)
+(*   eapply adequacy_global_itree. eapply SIM. *)
+(*   all: apply initialize_embed_E. *)
+(* Qed. *)
 
-End ADEQUACY.
+(* End ADEQUACY. *)
 End SIM.
 
 Section DUALMORE.
@@ -1868,3 +1785,5 @@ But this is beyond the scope of previous works (ITrees).
   Qed.
 
 End ITER.
+
+
