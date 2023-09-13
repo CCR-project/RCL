@@ -93,21 +93,23 @@ Module RPT1.
 End RPT1.
 
 
-Definition cast_val {X} (body: X -> itree Es Z): X -> itree Es val :=
-  fun '(varg) => vret <- body varg;; Ret (Vint vret).
+Definition cast_val (body: Z -> itree Es Z): list val -> itree Es val :=
+  fun varg =>
+    z <- ((pargs [Tint] varg)?);;
+    vret <- body z;; Ret (Vint vret).
 
-Definition cfunU_int {X} (body: X -> itree Es Z): Any.t -> itree Es Any.t :=
+Definition cfunU_int (body: Z -> itree Es Z): Any.t -> itree Es Any.t :=
   cfunU (cast_val body).
 
 Module ONE.
 
-  Definition oneMS_ (fn: string) (f: list val -> itree Es Z): ModSem._t :=
+  Definition oneMS_ (fn: string) (f: Z -> itree Es Z): ModSem._t :=
     {|
       ModSem.fnsems := [(fn, cfunU_int f)];
       ModSem.initial_st := tt↑;
     |}.
 
-  Definition oneMS (fn: string) (f: list val -> itree Es Z): ModSem.t :=
+  Definition oneMS (fn: string) (f: Z -> itree Es Z): ModSem.t :=
     Algebra.just (oneMS_ fn f).
 
   Program Definition oneM fn f : Mod.t :=
@@ -120,12 +122,21 @@ Module ONE.
 
 End ONE.
 
+Notation fzz := (Z -> Z).
+Definition SEs := (pE +' eventE).
+
+Section EMBED.
+
+  Definition embed (se: Z -> itree SEs Z) (cp: fzz): Z -> itree Es Z :=
+    fun z =>
+      _ <- (resum_itr (se z));;
+      Ret (cp z).
+
+End EMBED.
+
 Module SUCC.
 
-  Definition succF : list val -> itree Es Z :=
-    fun varg =>
-      n <- ((pargs [Tint] varg)?);;
-      Ret (n + 1)%Z.
+  Definition succF : Z -> itree Es Z := embed (fun z => Ret z) (fun z => (z + 1)%Z).
 
   Definition succM : Mod.t := ONE.oneM "succ" succF.
 
@@ -133,11 +144,8 @@ End SUCC.
 
 Module PUT.
 
-  Definition putOnceF : list val -> itree Es Z :=
-    fun varg =>
-      n <- ((pargs [Tint] varg)?);;
-      x <- trigger (SyscallOut "print" ((Vint n)↑) top1);;
-      Ret (n).
+  Definition putOnceF : Z -> itree Es Z :=
+    embed (fun z => _ <- trigger (SyscallOut "print" ((Vint z)↑) top1);; Ret 0%Z) (fun z => z).
 
   Definition putM : Mod.t := ONE.oneM "putOnce" putOnceF.
 
@@ -155,7 +163,7 @@ Section PROOFSIM.
   Proof. intros. unfold Z.to_nat in H. des_ifs. lia. Qed.
 
   Lemma one_rpt_sim
-        (fn': string) (f': list val -> itree Es Z)
+        (fn': string) (f': Z -> itree Es Z)
     :
     ModSemPair.sim (RPT1.rptMS fn' (cfunU_int f')) (RPT0.rptMS ⊕ (ONE.oneMS fn' f')).
   Proof.
@@ -338,11 +346,6 @@ Section PROOF.
     iStopProof. apply IPM.adequacy. apply one_rpt_ref.
   Qed.
 
-  (** Coq complains that type is wrong. *)
-  (* Definition REF : mProp := *)
-  (*   ∀ (fn: string) (f: list val -> itree Es Z), *)
-  (*     OwnM (ONE.oneM fn f) ==∗ OwnM (RPT1.rptM fn (cfunU_int f)). *)
-
   Theorem rpts_ref_iprop:
     OwnM RPT0.rptM ∗ OwnM SUCC.succM ∗ OwnM PUT.putM
       ⊢
@@ -367,75 +370,410 @@ Section PROOF.
 
 End PROOF.
 
+
+
+Notation "𝑊_{ a } b" := (Wrap (M:=(MRA_to_MRAS (@Mod_MRA Sk.gdefs))) a b) (at level 50).
+Notation "𝑀_{ a } b" := (Wrap2 (M:=(MRA_to_MRAS (@Mod_MRA Sk.gdefs))) a b) (at level 50).
+
+Section AUX.
+
+  (* FIXME : fix wrap-ired interaction and move *)
+  Import IRed.
+  Global Program Instance wrap_rdb: red_database (mk_box (@wrap_itree)) :=
+    mk_rdb
+      0
+      (mk_box wrap_bind)
+      (mk_box wrap_tau)
+      (mk_box wrap_ret)
+      (mk_box wrap_pE)
+      (mk_box wrap_pE)
+      (mk_box wrap_callE)
+      (mk_box wrap_eventE)
+      (mk_box wrap_triggerUB)
+      (mk_box wrap_triggerNB)
+      (mk_box wrap_unwrapU)
+      (mk_box wrap_unwrapN)
+      (mk_box wrap_unleftU)
+      (mk_box wrap_unleftN)
+      (mk_box wrap_unrightU)
+      (mk_box wrap_unrightN)
+      (mk_box wrap_assume)
+      (mk_box wrap_guarantee)
+      (mk_box wrap_ext)
+  .
+
+End AUX.
+
+Section EMBEDAUX.
+
+  Fixpoint fzz_fun_iter (f: fzz) (n: nat) (x: Z) :=
+    match n with
+    | O => x
+    | S n' => fzz_fun_iter f n' (f x)
+    end.
+
+  Lemma fzz_fun_iter_red f n x: fzz_fun_iter f (S n) x = fzz_fun_iter f n (f x).
+  Proof. ss. Qed.
+
+
+  Lemma red_embed se cp v:
+    (cfunU (cast_val (embed se cp)) (Any.upcast [Vint v])) =
+      ((cfunU (cast_val (fun z => resum_itr (se z))) (Any.upcast [Vint v]));;; Ret (Vint (cp v))↑).
+  Proof.
+    unfold cfunU, cast_val, embed. rewrite Any.upcast_downcast. grind.
+  Qed.
+
+  Import Red IRed.
+
+  Ltac my_red_both := try (prw _red_gen 2 0); try (prw _red_gen 1 0).
+  Ltac wrb := repeat (unfold wrap; my_red_both).
+
+  Lemma wrap_itree_se:
+    ∀ (cs : conds) [T : Type] (e : SEs T),
+      wrap_itree cs (trigger e) = ` r : T <- trigger e;; (tau;; Ret r).
+  Proof.
+    i. destruct e.
+    - match goal with | [ |- ?a = _] => replace a with (𝑤_{cs} trigger p) end.
+      2:{ grind. }
+      rewrite wrap_pE. grind.
+    - match goal with | [ |- ?a = _] => replace a with (𝑤_{cs} trigger e) end.
+      2:{ grind. }
+      rewrite wrap_eventE. grind.
+  Qed.
+
+  Lemma wrap_itree_tau: ∀ (cs : conds) [A : Type] (itr : itree Es A), wrap_itree cs (tau;; itr) = (tau;; 𝑤_{ cs} itr).
+    Proof. ii. rewrite <- wrap_tau. grind. Qed.
+
+  Lemma wrap_itree_se_euttge
+        T (se: itree SEs T) (c: conds)
+    :
+    wrap_itree c (resum_itr se) ≳ resum_itr se.
+  Proof.
+    revert_until T.
+    ginit. gcofix CIH. i. ides se.
+    - gstep. wrb. refl.
+    - wrb. gstep. econs. gbase. auto.
+    - rewrite <- bind_trigger. resub. wrb. rewrite wrap_itree_se. wrb. rewrite ! bind_trigger.
+      gstep. econs. i. ss. wrb. gstep. eapply EqTauL. ss. grind. rewrite wrap_itree_tau.
+      grind. eapply EqTau. wrb. gbase. auto.
+  Qed.
+
+  Lemma wrap_itree_focus_right_euttge
+        X (e: SEs X) (c: conds)
+    :
+    wrap_itree c (focus_right (trigger e)) ≳ focus_right (trigger e).
+  Proof.
+    ginit. destruct e.
+    - grind. resub. wrb. destruct p; grind; wrb.
+      + rewrite ! bind_trigger. gstep. econs. i; ss. grind.
+        repeat (gstep; econs; grind). unfold unwrapU. des_ifs.
+        * grind.
+          unfold wrap_itree. grind. rewrite unfold_interp. grind. econs. i; ss. grind.
+          repeat (gstep; econs; grind). refl.
+        * grind.
+          unfold wrap_itree. grind. rewrite unfold_interp. grind. econs. i; ss.
+      + rewrite ! bind_trigger. gstep. econs. i; ss. grind.
+        repeat (gstep; econs; grind). unfold unwrapU. des_ifs.
+        * grind.
+          unfold wrap_itree. grind. refl.
+        * grind.
+          unfold wrap_itree. grind. rewrite unfold_interp. grind. econs. i; ss.
+    - grind. resub. wrb. rewrite ! bind_trigger. gstep. econs. i; ss. grind.
+      gstep; econs; wrb. gstep; econs; wrb. ss. 
+      unfold wrap_itree. grind. refl.
+  Qed.
+
+  Lemma wrap_itree_focus_right_se_euttge
+        T (se: itree SEs T) (c: conds)
+    :
+    wrap_itree c (focus_right (resum_itr se)) ≳ focus_right (resum_itr se).
+  Proof.
+    revert_until T.
+    ginit. gcofix CIH. i. ides se.
+    - gstep. wrb. refl.
+    - wrb. gstep. econs. gbase. auto.
+    - rewrite <- bind_trigger. resub. wrb.
+      guclo eqit_clo_bind. econs.
+      { eapply wrap_itree_focus_right_euttge. }
+      i; clarify. wrb. gstep. econs. wrb. gbase. auto.
+  Qed.
+
+End EMBEDAUX.
+
+Opaque fzz_fun_iter.
+
+
 Section CCR.
 
-  (* Definition α_conds (fn: string) (f: list val -> itree Es Z) : conds := *)
-  Definition α (fn: string) (f: list val -> itree Es Z) : conds :=
-    fun fn' => if (String.eqb fn fn') then
-              mk_cond (fun args => exists (n: Z), args = ([Vint n])↑)
-                      (fun args ret =>
-                         exists (n r: Z), (args = ([Vint n])↑) /\ (ret = (Vint r)↑) /\
-                                       (Ret ret ≈ (cfunU_int f) args))
-            else ε.
+  (* Definition α (fn: string) (f: list val -> itree Es Z) : conds := *)
+  (*   fun fn' => if (String.eqb fn fn') then *)
+  (*             mk_cond (fun args => exists (n: Z), args = ([Vint n])↑) *)
+  (*                     (fun args ret => *)
+  (*                        exists (n r: Z), (args = ([Vint n])↑) /\ (ret = (Vint r)↑) /\ *)
+  (*                                      (Ret ret ≈ (cfunU_int f) args)) *)
+  (*           else ε. *)
 
-  (* Definition α (fn: string) (f: list val -> itree Es Z) : conds_CM := *)
-  (*   (α_conds fn f: conds_CM). *)
-
-  (* Definition β_conds (fn: string) (f: list val -> itree Es Z) : conds := *)
-  Definition β (fn: string) (f: list val -> itree Es Z) : conds :=
+  Definition β (fn: string) (cp: fzz) : conds :=
     fun fn' => if (String.eqb fn fn') then
               mk_cond (fun args =>
                          exists (fb: ((nat + string) * Z)%type) (n x: Z),
-                           args = ([Vptr (fst fb) (snd fb); Vint n; Vint x])↑)
+                           (args = ([Vptr (fst fb) (snd fb); Vint n; Vint x])↑) /\
+                             (fst fb = inr fn))
                       (fun args ret =>
                          exists (fb: ((nat + string) * Z)%type) (n x r: Z),
                            (args = ([Vptr (fst fb) (snd fb); Vint n; Vint x])↑) /\
                              (ret = (Vint r)↑) /\
-                             (Ret ret ≈ (RPT1.fun_iter (cfunU_int f) (Z.to_nat n) (Ret (Vint x)↑))))
+                             (r = fzz_fun_iter cp (Z.to_nat n) x))
             else ε.
 
-  (* Definition β (fn: string) (f: list val -> itree Es Z) : conds_CM := *)
-  (*   β_conds fn f. *)
+  (* FIXME *)
+  Ltac wrap_steps := unfold_goal @wrap; steps.
+  Ltac wraps := repeat (try wrap_steps).
 
-  (* TODO : notation *)
+  Lemma one_rpt_ccr_sim
+        (fn: string) (se: Z -> itree SEs Z) (cp: fzz) (c: conds)
+    :
+    ModSemPair.sim (𝑤_{ (β fn cp) ⊕ c} RPT1.rptMS fn (cfunU_int (embed se cp)))
+                   (𝑤_{ c} (RPT0.rptMS ⊕ ONE.oneMS fn (embed se cp))).
+  Proof.
+    Local Opaque String.eqb. Import ModSemPair.
+    ss. eapply mk. eapply (@top2_PreOrder unit). instantiate (1:= (fun _ '(src, tgt) => exists tgt_l, tgt = Any.pair tgt_l src)).
+    { i. ss. des; clarify.
+      inv FINDS.
+      exists (snd (𝑤_{ c} ("rpt", focus_left (T:=Any.t) <*> cfunU RPT0.rptF))). split.
+      { left. ss. }
+      ii. subst y. ginit.
+      unfold_goal @wrap. ss. unfold_goal @wrap. steps.
+      des. steps. force_r. clarify. wraps.
+      unfold_goal RPT1.rptF. unfold_goal RPT0.rptF. unfold_goal @cfunU.
+      unfold_goal @cfunU_int.
+      wraps.
 
-  (* Lemma rpt0_ccr_spec: *)
-  (*   OwnM (RPT0.rptM) ⊢ *)
-  (*        □ (∀ fn f, *)
-  (*              (∀ c, (𝑤_{c} (𝑤_{α fn f} (OwnM (ONE.oneM fn f)))) *)
-  (*                      ==∗ *)
-  (*                      (𝑤_{((α fn f) ⊕ (β fn f)) ⊕ c} (OwnM (RPT1.rptM fn (cfunU_int f)))))). *)
+      destruct p0. unfold unptr, unint, unr in *. des_ifs_safe. ss; clarify.
+      clear e0.
+      destruct (String.eqb_spec fn s).
+      2:{ steps. }
+      clarify. wraps.
+      rename z0 into v. remember (Z.to_nat z) as n. clear _ASSUME1.
 
-  (*** TODO : help **)
+      match goal with
+      | [ |- gpaco8 _ _ _ _ _ _ _ _ _ _ _ (_, ?t1)] =>
+          replace t1 with
+          (` x2 : Any.t <-
+                    (` x0 : val <- wrap_itree c (focus_left
+                                                  (if Z_lt_le_dec z 1
+                                                   then Ret (Vint v)
+                                                   else
+                                                     ` fn : string <- Ret s;;
+                                                            ` v0 : val <- ccallU fn [Vint v];; ccallU "rpt" [Vptr (inr s) 0; Vint (z - 1); v0]));;
+                            ` x1 : Any.t <- wrap_itree c (focus_left (Ret (Any.upcast x0)));; Ret x1);;
+                  (guarantee (postcond (c "rpt") x x2);;; Ret x2))
+      end.
+      2:{ grind. }
 
-  (* Let wrap := Wrap (W:=Hoare_WA). *)
+      match goal with
+      | [ |- gpaco8 _ _ _ _ _ _ _ _ _ _ (_, ?t1) _] =>
+          replace t1 with
+          (` x2 : Any.t <- (` r : Any.t <-
+                                   wrap_itree (β s cp ⊕ c)
+                                              (RPT1.fun_iter (cfunU (cast_val (embed se cp))) n
+                                                             (Ret (Any.upcast (Vint v))));;
+                                 ` x0 : val <-
+                                          wrap_itree (β s cp ⊕ c) (` vret0 : val <- unwrapU (Any.downcast r);; Ret vret0);;
+                                        ` x1 : Any.t <- wrap_itree (β s cp ⊕ c) (Ret (Any.upcast x0));; Ret x1);;
+                  (guarantee (postcond (β s cp "rpt") x x2 ∧ postcond (c "rpt") x x2);;; Ret x2))
+      end.
+      2:{ grind. }
 
-  Notation "𝑊_{ a } b" := (Wrap (M:=(MRA_to_MRAS (@Mod_MRA Sk.gdefs))) a b) (at level 50).
+      guclo lbindC_spec. econs.
+      { instantiate
+          (2:= (fun src tgt r_s r_t =>
+                  (exists tgt_l, tgt = Any.pair tgt_l src) /\
+                    (r_s = r_t) /\ (exists (v: val), r_t = v↑) /\
+                    (postcond (β s cp "rpt") x r_s))).
+
+        revert x z v _UNWRAPU _ASSUME _ASSUME0 _ASSUME2 Heqn mrs_src tgt_l.
+        induction n; intros.
+        { hexploit Z_to_nat_le_zero; eauto. intros. des_ifs.
+          2:{ lia. }
+          ss. wraps.
+          splits; eauto. unfold β. des_ifs. ss.
+          apply Any.downcast_upcast in _UNWRAPU. des. clarify.
+          exists (inr s, 0%Z). esplits; eauto. rewrite <- Heqn. ss.
+        }
+        { hexploit Z_to_nat_ge_one; eauto. intros ZRANGE. des_ifs. clear l.
+          ss. unfold ccallU. wraps.
+          { right; left. ss. }
+          ss. force_r. clarify. wraps.
+          unfold_goal @cfunU_int.
+          rewrite (red_embed se cp v). wraps.
+          guclo lbindC_spec. econs.
+          { unfold_goal @cfunU. unfold_goal @cast_val. wraps.
+            guclo lbindC_spec. econs.
+            { guclo guttC_spec. econs.
+              2: eapply wrap_itree_se_euttge. 2: eapply wrap_itree_focus_right_se_euttge.
+              guclo lflagC_spec. econs.
+              gfinal. right.
+              eapply sim_itree_fsubset.
+              2:{ eapply sim_itree_tgtr. eapply self_sim_itree.
+                  ss. ii. split; ii.
+                  - des. clarify. eauto.
+                  - des. esplits; eauto.
+              }
+              ss. all: auto.
+            }
+            i. wraps.
+            instantiate (1:= fun ss st rs rt => (exists st2, st = Any.pair st2 ss) /\ (rs = rt)).
+            rr in SIM. des. subst. esplits; auto.
+          }
+          i. wraps.
+          force_r. clarify.
+          wraps.
+          { left. ss. }
+          unfold_goal @cfunU. unfold_goal RPT0.rptF. wraps.
+          force_r.
+          { clarify. }
+          wraps.
+          force_r.
+          { exfalso. apply _ASSUME5. clear - _ASSUME2 ZRANGE. unfold_intrange_64.
+            des_ifs. apply sumbool_to_bool_true in _ASSUME2, H.
+            apply andb_true_intro. split; apply sumbool_to_bool_is_true; lia.
+          }
+          wraps.
+          simpl in SIM. des. subst.
+          specialize (IHn ([Vptr (inr s) 0; Vint (z - 1); Vint (cp v)]↑) (z - 1)%Z (cp v)).
+          exploit IHn; auto.
+          { lia. }
+          clear IHn; intros IHn. des_ifs.
+          { wraps. force_r.
+            { apply _ASSUME6 in _GUARANTEE2. inv _GUARANTEE2. }
+            wraps. guclo guttC_spec. econs.
+            { match goal with
+              | [IHn: gpaco8 _ _ _ _ _ _ ?RR0 _ _ _ _ _ |-
+                   gpaco8 _ _ _ _ _ _ ?RR1 _ _ _ _ _] =>
+                  replace RR1 with RR0
+              end.
+              { guclo lflagC_spec. econs. eapply IHn. all: auto. }
+              { clear IHn. apply Any.downcast_upcast in _UNWRAPU. des.
+                extensionalities. apply Axioms.prop_ext. split; ii.
+                - des. subst. esplits; eauto. clear - H6 Heqn. unfold β in *. des_ifs; ss.
+                  des. clarify. exists fb. exists z, v. destruct fb. ss.
+                  apply Any.upcast_inj in H6. des; clarify. apply JMeq_eq in EQ0. clarify.
+                  esplits; eauto. rewrite Z2Nat.inj_sub. 2: lia. rewrite <- Heqn. ss.
+                  rewrite Nat.sub_0_r. ss.
+                - des. subst. esplits; eauto. clear - H6 Heqn. unfold β in *. des_ifs; ss.
+                  des. clarify. exists fb. exists (z - 1)%Z, (cp v). destruct fb. ss.
+                  apply Any.upcast_inj in H6. des; clarify. apply JMeq_eq in EQ0. clarify.
+                  esplits; eauto. rewrite Z2Nat.inj_sub. 2: lia. rewrite <- Heqn. ss.
+                  rewrite Nat.sub_0_r. ss.
+              }
+            }
+
+            - unfold cfunU. refl.
+            - ired_eq_r. unfold wrap. ired_eq_r. unfold wrap. ired_eq_r. refl.
+          }
+          { wraps.
+            match goal with
+            | [ |- gpaco8 _ _ _ _ _ _ _ _ _ _ (_, ?t1) _] =>
+                rewrite (bind_ret_r_rev t1)
+            end.
+
+            match goal with
+            | [ |- gpaco8 _ _ _ _ _ _ _ _ _ _ _ (_, ?t1)] =>
+                replace t1 with
+    (` x1 : Any.t <- (` r : val <- wrap_itree c (focus_left (ccallU s [Vint (cp v)]));;
+    ` x0 : val <-
+    wrap_itree c (focus_left (ccallU "rpt" [Vptr (inr s) 0; Vint (z - 1 - 1); r]));;
+           ` x1 : Any.t <- wrap_itree c (focus_left (Ret (Any.upcast x0)));; Ret x1);;
+    ` x2 : Any.t <-
+    (guarantee (postcond (c "rpt") (Any.upcast [Vptr (inr s) 0; Vint (z - 1); Vint (cp v)]) x1);;;
+     Ret x1);;
+    ` x3 : Any.t <-
+    (assume (postcond (c "rpt") (Any.upcast [Vptr (inr s) 0; Vint (z - 1); Vint (cp v)]) x2);;;
+     Ret x2);;
+    ` x4 : Any.t <- (tau;; Ret x3);;
+    ` x5 : Any.t <- wrap_itree c (tau;; Ret x4);;
+    ` x6 : val <-
+    wrap_itree c (focus_left (` vret : val <- unwrapU (Any.downcast x5);; Ret vret));;
+    ` x7 : Any.t <- wrap_itree c (focus_left (Ret (Any.upcast x6)));; Ret x7)
+            end.
+            2:{ grind. }
+
+            guclo lbindC_spec. econs.
+            { instantiate
+                (2:= (fun src tgt r_s r_t =>
+                        (exists tgt_l, tgt = Any.pair tgt_l src) /\
+                          (r_s = r_t) /\ (exists (v: val), r_t = v↑) /\
+                          (postcond (β s cp "rpt") x r_s))).
+
+              guclo guttC_spec. econs.
+              { match goal with
+                | [IHn: gpaco8 _ _ _ _ _ _ ?RR0 _ _ _ _ _ |-
+                     gpaco8 _ _ _ _ _ _ ?RR1 _ _ _ _ _] =>
+                    replace RR1 with RR0
+                end.
+                { guclo lflagC_spec. econs. eapply IHn. all: auto. }
+                { clear IHn. apply Any.downcast_upcast in _UNWRAPU. des.
+                  extensionalities. apply Axioms.prop_ext. split; ii.
+                  - des. subst. esplits; eauto. clear - H6 Heqn. unfold β in *. des_ifs; ss.
+                    des. clarify. exists fb. exists z, v. destruct fb. ss.
+                    apply Any.upcast_inj in H6. des; clarify. apply JMeq_eq in EQ0. clarify.
+                    esplits; eauto. rewrite Z2Nat.inj_sub. 2: lia. rewrite <- Heqn. ss.
+                    rewrite Nat.sub_0_r. ss.
+                  - des. subst. esplits; eauto. clear - H6 Heqn. unfold β in *. des_ifs; ss.
+                    des. clarify. exists fb. exists (z - 1)%Z, (cp v). destruct fb. ss.
+                    apply Any.upcast_inj in H6. des; clarify. apply JMeq_eq in EQ0. clarify.
+                    esplits; eauto. rewrite Z2Nat.inj_sub. 2: lia. rewrite <- Heqn. ss.
+                    rewrite Nat.sub_0_r. ss.
+                }
+              }
+
+              - unfold cfunU. refl.
+              - ired_eq_r. repeat (unfold wrap; try ired_eq_r). refl.
+            }
+            { clear IHn. ss. i; des. subst. wraps. force_r.
+              exfalso. clear - _GUARANTEE2 _ASSUME6. clarify.
+              wraps. esplits; eauto.
+            }
+          }
+        }
+      }
+      { ss; ii. des; clarify. wraps. force_l.
+        { exfalso. apply _GUARANTEE0. splits; auto. }
+        wraps. exists tt. splits; eauto.
+      }
+    }
+    { ss. exists tt. eauto. }
+    Unshelve. all: auto. apply Any.upcast_downcast.
+    { clear - _UNWRAPU _ASSUME Heqn. unfold β in *. des_ifs; ss.
+      des. exists fb. destruct fb; ss; clarify. rewrite Any.upcast_downcast in _UNWRAPU.
+      clarify. esplits; eauto.
+    }
+  Qed.
+
+  Theorem one_rpt_ccr_ref fn se cp (c: conds_CM):
+    𝑤_{ c} (RPT0.rptM ⊕ ONE.oneM fn (embed se cp)) ⊑
+      𝑤_{ β fn cp ⊕ c} RPT1.rptM fn (cfunU_int (embed se cp)).
+  Proof.
+    eapply LSimMod. ss. ss. i. eapply ModSemPair.adequacy. apply one_rpt_ccr_sim.
+  Qed.
 
   Lemma rpt0_ccr_spec:
     OwnM (RPT0.rptM) ⊢
-         □ (∀ fn f,
-               (∀ c, (𝑊_{c} (𝑊_{α fn f} (OwnM (ONE.oneM fn f))))
-                       ==∗
-                       (𝑊_{((α fn f) ⊕ (β fn f)) ⊕ c} (OwnM (RPT1.rptM fn (cfunU_int f)))))).
+         □ (∀ fn se cp,
+               (∀ c, 𝑀_{c} (
+                         (𝑊_{c} (OwnM (ONE.oneM fn (embed se cp))))
+                           ==∗
+                           (𝑊_{(β fn cp) ⊕ c} (OwnM (RPT1.rptM fn (cfunU_int (embed se cp)))))))).
   Proof.
-    iIntros "#RPT0". iModIntro. iIntros (fn f) "ONE".
-    iPoseProof (own_sep with "[ONE RPT0]") as "OWN". iSplitL "RPT0". auto. iApply "ONE".
-    iClear "RPT0".
-    iStopProof. apply IPM.adequacy. apply one_rpt_ref.
+    iIntros "#RPT0". iModIntro. iIntros (fn se cp c) "".
+    iApply wrap2_adj1. 2: iApply "RPT0". iIntros "RPT0 ONE".
+    iPoseProof (wrap_own with "RPT0") as "RPT0".
+    iPoseProof (wrap_own with "ONE") as "ONE".
+    iCombine "RPT0 ONE" as "TGT". rewrite <- WA.morph_oplus.
+    iApply wrap_own.
+    iStopProof. apply IPM.adequacy.
+    apply one_rpt_ccr_ref.
   Qed.
-
-  Definition rptF (fn: string) (f: Any.t -> itree Es Any.t) : list val -> itree Es val :=
-    fun varg =>
-      '(fb, (n, x)) <- (pargs [Tptr; Tint; Tint] varg)?;;
-      fn0 <- ((unname (Vptr (fst fb) (snd fb)))?);;
-      if (String.eqb fn fn0)
-      then
-        assume(intrange_64 n);;;
-        vret <- (fun_iter f (Z.to_nat n) (Ret (Vint x)↑));;
-        vret0 <- (vret↓)?;;
-        Ret vret0
-      else
-        triggerUB.
 
 End CCR.
