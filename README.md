@@ -1,166 +1,58 @@
-# Conditional Contextual Refinement
+# Refinement Composition Logic
 
 ## Dependencies
-Our development successfully compiles with following versions (in Linux, OS X):
+Our development successfully compiles with following versions (in Linux):
 
-- coq (= *8.13.2*)
+- coq (= *8.15.2*)
 
-- coq-ext-lib (= *0.11.3*)
-- coq-paco (= *4.1.1*)
-- coq-itree (= *3.2.0*)
-- coq-ordinal (= *0.5.0*)
-
-- coq-stdpp (= *1.5.0*)
-- coq-iris (= *3.4.0*)
-
-- coq-compcert (= *3.9*) and its dependencies:
-  + coq-flocq (= *3.4.1*)
-  + menhir (= *20210310*)
-  + coq-menhirlib (= *20210310*)
-
-- ocamlbuild (= *0.14.0*)
+- coq-ext-lib (= *0.11.8*)
+- coq-iris (= *4.0.0*)
+- coq-itree (= *4.0.0*)
+- coq-ordinal (= *0.5.2*)
+- coq-paco (= *4.1.2*)
+- coq-stdpp (= *1.8.0*)
 
 All packages can be installed from [OPAM archive for Coq](https://github.com/coq/opam-coq-archive)
 
 ## How to build
 - make -j[N] -k
 
-## Delta with paper (and technical report)'s presentation
+## Mapping from the paper to the code
+Sec. 1 INTRODUCTION
+- Definition of *Contextual refinement* $⊑_{ctx}$ --> `ref` at ems/ModSem.v
+- Fig. 1 --> `RefFacts` at lib/Algebra.v, and `ModSem_RefFacts` at ems/ModSemFacts.v
+- Fig. 2 --> `RPT0`, `RPT1`, `SUCC`, `PUT` at imp/example/Repeat.v
+- Sec 1.2, Example involving Fig. 2 --> Theorem `rpts_ref` at imp/example/Repeat.v
 
-- In the paper and technical report, the order of arguments in pre/postconditions are "x -> x_a -> d", but in development it is "x_a -> x -> d".
-- In the technical report, we use explicit event GetCaller (using monadic style) but in development we just thread it.
+Sec. 3 REFINEMENT COMPOSITION LOGIC
+- Definition of *mProp* --> `mProp` at iris/IPM.v
+- Fig.4 and Fig.5 --> Provided in iris/IPM.v
+- Sec. 3.2, *Example: Rpt module.* --> Lemma `rpt0_spec` at imp/example/Repeat.v
+- Sec. 3.3, *Semantics of polysemic programs.* --> `prog: callE ~> itree Es` at ems/ModSem.v
 
-## EMS extraction example
-Running extracted examples (abstractions and implementation of MW, Echo, and etc.)
-- "cd ./extract; ./run.sh"
+Sec. 4 FOUNDATIONS OF RCL
+- Sec. 4.1, Definition of *MRAs* --> Module `MRAS` at lib/Algebra.v
+- Fig.7 --> Provided in iris/IPM.v. For examples, 
+-- Set of modules --> `Own`
+-- The refines modality --> `Refines`
+-- The persistence modality --> `Pers`
+-- The magic wand --> `wand`
+- Contents in Sec. 4.2, Sec. 4.3 --> Provided in iris/homomorphisms.v
+-- For example, *MRA* --> Section `MRA`
 
-## IMP compilation example
-Building IMP compiler and compiling the example (IMP implementation of Echo)
-- "cd ./imp/compiler_extract; ./run.sh" (please refer to the script for detailed instructions)
+Sec. 5 DERIVED PATTERNS AND THEIR APPLICATIONS
+- Sec. 5.1, Definition of *layered refinement*, rules of *layer calculus* (also Fig.3), and the example --> Section `CAL` in iris/IPM.v
+- Sec. 5.2, Definition of *fancy update* --> `IUpd` at iris/IPM.v
+- Sec. 5.2, example --> Provided in imp/example/Stealing.v
 
-## Paper to code mapping
+Sec. 6 A CONCRETE INSTANCE OF MRA
+- Fig.6 --> Collected in FreeSim/Behavior.v
+- The *core* operator --> `core_h` at ems/ModSemE.v
+- *findDef* --> `prog: callE ~> itree Es` at ems/ModSem.v
+- Theorem 6.1 --> Proved by `ModSem_MRA` at ems/ModSemFacts.v
 
-Fig. 1
-(examples/map)
-- module I_Map --> MapI.v
-- module A_Map --> MapA.v
-- pre/post conditions S_Map --> `MapStb` in MapHeader.v
-- proof of I_Map ⊑_ctx <S0_Map ⊢ M_Map > -> `MapIAproof.v`
-- proof of <S0_Map ⊢ M_Map > ⊑_ctx <S_Map ⊢ A_Map > -> `MapMAproof.v` 
- 
-Sec. 2.4 Incremental and modular verification of the running example
-(examples/map)
-- proof of I_Map ⊑_ctx <S0_Map ⊢ M_Map > -> `MapIAproof.v`
-- proof of <S0_Map ⊢ M_Map > ⊑_ctx <S_Map ⊢ A_Map > -> `MapMAproof.v` 
-
-Fig. 3
-(ems/)
-- E_P --> `eventE` in ModSem.v
-- E_EMS --> `Es` in ModSem.v
-- Mod --> `Mod.t` in ModSem.v
-- Mi ≤ctx Ma --> `refines2` in ModSem.v
-
-Fig. 4
-(ems/)
-- Trace --> `Tr.t` in Behavior.v
-- Beh --> composition of `Beh.of_program` in Behavior.v and `ModL.compile` in ModSem.v.
-
-Fig. 6
-(spc/)
-- PCM --> `URA.t` in PCM.v
-- rProp --> `iProp'` in IProp.v
-- Cond --> `fspec` in HoarDef.v
-- Conds --> `(alist gname fspec)`
-- <S |-a M> --> `Module SMod` in HoareDef.v
-- WrapC --> `HoareCall` in HoardDef.v
-- WrapF --> `HoareFun` in HoardDef.v
-
-Fig. 7
-- mem/Mem1.v
-
-Theorem 3.1 (Adequaccy)
-- `adequacy_local2` in ems/SimModSem.v
-
-Theorem 4.1 (Assumption Cancellation Theorem (ACT))
-- `adequacy_type2` in spc/Hoare.v
-
-Theorem 4.2 (Extensionality)
-- `adequacy_weaken` in spc/Weakening.v
-
-Lemma 4.3 (Safety)
-- `safe_mods_safe` in spc/Safe.v
-
-Theorem 6.1 (Separate Compilation Correctness)
-- `compile_behavior_improves` in imp/compiler_proof/Imp2AsmProof.v
-
-## Technical Report to code mapping
-
-Fig. 2
-- In examples/cannon directory.
-
-Fig. 3
-- mem/MemOpen.v
-
-Fig. 4
-- examples/stack directory. I_Stack maps to Stack0.v, Stack1 maps to Stack2.v
-
-Fig. 5
-- examples/stack directory. Stack2A/2B maps to Stack3A/B.v
-
-Fig. 6
-- examples/echo directory. Composed result is in EchoAll.v
-
-Fig. 7
-- examples/repeat directory.
-
-Fig. 8
-- Eprim --> `eventE` in ModSem.v
-- EEMS --> `Es` in ModSem.v
-- EMS --> `ModSem.t` in ModSem.v
-- EPAbs --> `hEs` in HoarDef.v
-- PAbs --> `KModSem.t` in OpenDef.v
-- PCM --> `URA.t` in PCM.v
-- rProp --> `iProp'` in IProp.v
-- Spec --> `fspec` in HoarDef.v
-- Specs --> `(alist gname fspec)`
-- s1 ⊒ s0 --> `fspec_weaker` in STB.v
-- S1 ⊒ s0 --> `stb_weaker` in STB.v
-- Mod --> `Mod.t` in ModSem.v
-- Trace --> `Tr.t` in Behavior.v
-- Beh --> composition of `Beh.of_program` in Behavior.v and `ModL.compile` in ModSem.v.
-- Mi ≤ctx Ma --> `refines2` in ModSem.v
-
-Fig. 9
-- `compile_itree` in ModSem.v
-- `interp_Es` in ModSemE.v
-
-Fig. 10
-- STS.v, Behavior.v
-
-Fig. 11
-- toAbs ([A]) --> `KModSem.transl_src` in OpenDef.v
-- toAbspec (S_in \rtimes A : S_out) --> `KModSem.transl_tgt` in OpenDef.v
-- others are in OpenDef.v/HoareDef.v
-
-Theorem 1
-- `adequacy_open` in Open.v
-
-Theorem 2
-- `adequacy_type` (`adequacy_type2`) in Hoare.v
-
-Theorem 3
-- `adequacy_weaken` in Weakening.v
-
-Theorem 4
-- safe --> `safe_itree` in Safe.v
-- `safe_mods_safe` in Safe.v
-
-Theorem 6
-- `adequacy_local2` in SimModSemHint.v
-
-Theorem 7
-- `beh_preserved` in STS2ITree.v
-
-Theorem 8
-- `compile_behavior_improves` in Imp2AsmProof.v
-- 
+Sec. 7 INTEGRATING CONDITIONAL REFINEMENT INTO RCL
+- Sec. 7.2 *wrapper modality* --> `Wrap` in iris/IPM.v
+- Rules for the wrapper modality --> Module `WA` in lib/Algebra.v
+- *Conditional refinement.* --> `CondRefines` in iris/IPM.v
+- Example involving Rpt --> Section `CCR` in imp/example/Repeat.v
