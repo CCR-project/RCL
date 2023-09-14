@@ -544,7 +544,7 @@ Section MODSEM.
   (* Global Program Instance refines_Proper: @Proper (t -> t -> Prop) ((≡) ==> (≡) ==> impl) (⊑). *)
   (* Next Obligation. *)
   (*   ii. *)
-  (*   admit "should hold". *)
+  (*   *)
   (* Qed. *)
 
 End MODSEM.
