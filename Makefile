@@ -42,7 +42,7 @@ clean:
 	rm -f _CoqProject Makefile.coq Makefile.coq.conf #Makefile.coq-rsync Makefile.coq-rsync.conf
 
 
-### copied from iris-examples by YJ
+### copied from iris-examples by ANON
 # Install build-dependencies
 OPAMFILES=$(wildcard *.opam)
 BUILDDEPFILES=$(addsuffix -builddep.opam, $(addprefix builddep/,$(basename $(OPAMFILES))))

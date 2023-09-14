@@ -301,7 +301,7 @@ Section PROOF.
     }
   Qed.
 
-  (*** YJ: equiv_relaxed should not appear to the user. equiv should be sufficient. ***)
+  (*** ANON: equiv_relaxed should not appear to the user. equiv should be sufficient. ***)
   (* Lemma rpt0_core_mras *)
   (*   : *)
   (*   @equiv (@MRAS.car (MRA_to_MRAS (@Mod_MRA _))) *)
