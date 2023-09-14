@@ -36,9 +36,9 @@ Sec. 4 FOUNDATIONS OF RCL
 -- Set of modules --> `Own`
 -- The refines modality --> `Refines`
 -- The persistence modality --> `Pers`
--- The magic wand --> `wand`
-- Contents in Sec. 4.2, Sec. 4.3 --> Provided in iris/homomorphisms.v
--- For example, *MRA* --> Section `MRA`
+-- The magic wand --> `Wand`
+- Sec. 4.2, Definition of *MRAs --> Module `MRA` at lib/Algebra.v
+- Remaining contents in Sec. 4.2, Sec. 4.3 --> Provided in iris/homomorphisms.v
 
 Sec. 5 DERIVED PATTERNS AND THEIR APPLICATIONS
 - Sec. 5.1, Definition of *layered refinement*, rules of *layer calculus* (also Fig.3), and the example --> Section `CAL` in iris/IPM.v
