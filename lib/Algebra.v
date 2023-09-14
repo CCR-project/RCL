@@ -595,9 +595,8 @@ End SIMPLE.
 (***
 Now we consider adding WA.t to the scenario.
 It is completely possible to define WA.t for MRAS directly,
-it is much more convenient to have a metatheory that allows one to define WA.t for MRA and then translates it into MRAS.
-Doing so requires BarFacts (not BarFactsWeak) and also WA.Bar though.
-These axioms are straightforward to prove for our instances.
+but additionally provide a much more convenient metatheory that allows one to define WA.t for MRA and then translates it into MRAS.
+Doing so additionally requires BarFacts (not BarFactsWeak) and also WA.Bar, but these axioms are straightforward to prove for our instances.
 ***)
 
 Section RELAXED.
