@@ -37,7 +37,7 @@ Sec. 4 FOUNDATIONS OF RCL
 -- The refines modality --> `Refines`
 -- The persistence modality --> `Pers`
 -- The magic wand --> `Wand`
-- Sec. 4.2, Definition of *MRAs --> Module `MRA` at lib/Algebra.v
+- Sec. 4.2, Definition of *MRA* --> Module `MRA` at lib/Algebra.v
 - Remaining contents in Sec. 4.2, Sec. 4.3 --> Provided in iris/homomorphisms.v
 
 Sec. 5 DERIVED PATTERNS AND THEIR APPLICATIONS
