@@ -500,15 +500,6 @@ Section SIMMAIN.
     { ss. exists tt. eauto. }
   Qed.
 
-  Lemma focus_left_resum_itr
-        X (e: SEs X)
-    :
-    focus_left (resum_itr (trigger e)) = a <- focus_left (trigger e);; tau;; Ret a.
-  Proof.
-    rewrite resum_itr_event. rewrite focus_left_bind. grind.
-    ired_eq_l. grind. ired_eq_l. grind.
-  Qed.
-
   Lemma m2s_main_sim
     :
     ModSemPair.sim S_MAIN.mainMS ((RPT1.rptMS "putOnce" (cfunU_int PUT.putOnceF)) ⊕ M_MAIN.mainMS).
@@ -530,95 +521,50 @@ Section SIMMAIN.
       { exfalso. ss. }
       clear _ASSUME.
       steps. unfold_goal embed.
-
-      match goal with
-      | [ |- gpaco8 _ _ _ _ _ _ _ _ _ _ _ (_, ?t1)] =>
-          replace t1 with
-          (` r : Z <-
-                   (trigger (SyscallOut "print" (Any.upcast (Vint 2)) top1);;; tau;; Ret 2%Z);;
-    ` x0 : val <- focus_left (Ret (Vint r));;
-    ` x1 : Any.t <- focus_left (Ret (Any.upcast x0));;
-    ` x2 : Any.t <-
-    focus_left
-      (` vr : Any.t <- Ret x1;;
-       ` vr0 : val <- unwrapU (Any.downcast vr);;
-       ` vr1 : Any.t <-
-       (` varg : list val <- unwrapU (Any.downcast (Any.upcast [vr0]));;
-        ` vret : val <-
-        (` z : Z <-
-         unwrapU match varg with
-                 | [] => None
-                 | [a] => unint a
-                 | a :: _ :: _ => None
-                 end;;
-         ` vret : Z <-
-         (resum_itr (trigger (SyscallOut "print" (Any.upcast (Vint z)) top1);;; Ret 0%Z);;; Ret z);;
-         Ret (Vint vret));; Ret (Any.upcast vret));; Ret vr1);;
-    ` x3 : val <- focus_left (` vret0 : val <- unwrapU (Any.downcast x2);; Ret vret0);;
-    ` x4 : Any.t <- focus_left (Ret (Any.upcast x3));;
-    ` x5 : Any.t <- (tau;; Ret x4);;
-    focus_right (` vret : val <- unwrapU (Any.downcast x5);; Ret vret);;;
-    ` x7 : val <- focus_right (Ret (Vint 0));; focus_right (Ret (Any.upcast x7)))
-      end.
-      2:{ f_equal.
-          2:{ extensionality r. grind. f_equal. refl.
-
-        rewrite focus_left_bind. rewrite IRed.resum_itr_bind.
-      rewrite focus_left_bind.
-
-        rewrite focus_left_resum_itr.
-
-        apply IRed.bind_ext.
-
-        rewrite focus_left_bind. rewrite IRed.resum_itr_bind.
-      rewrite focus_left_bind.
-
-        grind. }
-
-
-      
-
-      rewrite bind_bind.
-
-      
-
-      unfold resum_itr.
-      steps. unfold resum. unfold ReSum_inr, ReSum_id. unfold resum, id_. unfold Id_IFun.
-      ired.
-      
-
-      rewrite resum_itr_event. rewrite IRed.resum_itr_event.
-      
-
-      steps. 
-
-IRed.resum_itr_event:
-  ∀ {E F : Type → Type} {PRF : E -< F} (R : Type) (i : E R),
-    resum_itr (trigger i) = ` r : R <- trigger i;; (tau;; Ret r)
-resum_itr_event:
-  ∀ [Esub E F : Type → Type] {H : Esub -< E} {H0 : E -< F} (R : Type) (i : Esub R),
-    resum_itr (trigger i) = ` r : R <- trigger (subevent R i);; (tau;; Ret r)
-      
-
-      replace (Vint (1 + 1)) with (Vint 2) in * by auto.
-      des. subst. destruct w.
       guclo guttC_spec. econs.
       2: refl.
-      { guclo lflagC_spec. econs. gfinal. right.
-        eapply sim_itree_fsubset. 2: eapply sim_itree_tgtr. ss. eapply self_sim_itree.
-        all: ss. i. split; i; des; subst; eauto.
+      2:{ apply eqit_bind.
+          2:{ match goal with | [ |- pointwise_relation _ _ ?x _] => instantiate (1:=x) end.
+              ii. refl.
+          }
+          { instantiate (1:= a <- focus_left (trigger (SyscallOut "print" (Any.upcast (Vint 2)) top1));; tau;; Ret a;;; Ret 2%Z).
+            rewrite focus_left_bind. rewrite IRed.resum_itr_bind. rewrite focus_left_bind.
+            rewrite bind_bind. etrans.
+            - replace
+                (focus_left (resum_itr (trigger (SyscallOut "print" (Any.upcast (Vint 2)) top1)));;; focus_left (resum_itr (Ret 0%Z));;; focus_left (Ret 2%Z))
+                with
+                (focus_left (trigger (SyscallOut "print" (Any.upcast (Vint 2)) top1));;; tau;; Ret 2%Z).
+              2:{ rewrite resum_itr_event. rewrite focus_left_bind. grind.
+                  ired_eq_r. grind. ired_eq_r. grind.
+              }
+              refl.
+            - ired_eq_l. ired_eq_r. apply eqit_bind. refl. ii. ired_eq_l. ired_eq_r. grind. refl.
+          }
       }
-      { ired_eq_r.
-        apply eqit_bind. apply Reflexive_eqit_eq. ii.
-        apply eqit_bind. apply Reflexive_eqit_eq. ii.
-        ired. ired_eq_l. ired_eq_r.
-        apply eqit_bind. apply Reflexive_eqit_eq. ii.
-        ired_eq_l. ired_eq_r. refl.
+      steps.
+      guclo guttC_spec. econs.
+      2: refl.
+      2:{ apply eqit_bind.
+          2:{ match goal with | [ |- pointwise_relation _ _ ?x _] => instantiate (1:=x) end.
+              ii. refl.
+          }
+          { instantiate (1:= a <- focus_left (trigger (SyscallOut "print" (Any.upcast (Vint 2)) top1));; Ret a).
+            replace
+    (focus_left
+       (ITree.trigger
+          (resum IFun ()%type
+                 (resum IFun ()%type (SyscallOut "print" (Any.upcast (Vint 2)) top1)))))
+              with
+              (focus_left (trigger (SyscallOut "print" (Any.upcast (Vint 2)) top1));;; Ret ()).
+            - ired_eq_l. ired_eq_r. apply eqit_bind. refl. ii. ired_eq_l. ired_eq_r. grind.
+              destruct a. refl.
+            - rewrite ! focus_left_eventE. grind. destruct x0. ss.
+          }
       }
+      steps.
     }
     { ss. exists tt. eauto. }
   Qed.
-
 
 End SIMMAIN.
 
@@ -633,7 +579,7 @@ Section PROOFMAIN.
     iIntros "#RPT". iPoseProof (rpt0_spec with "RPT") as "#SPEC". iSplit; auto.
   Qed.
 
-  Lemma rpt_succ_ref:
+  Lemma rpt_succ_rcl:
     OwnM SUCC.succM ∗ OwnM RPT0.rptM ⊢
          ( |==> (OwnM (RPT1.rptM "succ" (cfunU_int SUCC.succF)))) ∗ OwnM RPT0.rptM.
   Proof.
@@ -643,7 +589,7 @@ Section PROOFMAIN.
     iSplit; [iFrame | auto].
   Qed.
 
-  Lemma rpt_put_ref:
+  Lemma rpt_put_rcl:
     OwnM PUT.putM ∗ OwnM RPT0.rptM ⊢
          ( |==> (OwnM (RPT1.rptM "putOnce" (cfunU_int PUT.putOnceF)))) ∗ OwnM RPT0.rptM.
   Proof.
@@ -653,17 +599,52 @@ Section PROOFMAIN.
     iSplit; [iFrame | auto].
   Qed.
 
-
-
-
-
-
-  Theorem rpts_ref:
-    (RPT0.rptM ⊕ SUCC.succM ⊕ PUT.putM)
-      ⊑
-      (RPT1.rptM "succ" (cfunU_int SUCC.succF)) ⊕ (RPT1.rptM "putOnce" (cfunU_int PUT.putOnceF)).
+  Lemma t2m_main_ref:
+    ((RPT1.rptM "succ" (cfunU_int SUCC.succF)) ⊕ T_MAIN.mainM) ⊑ M_MAIN.mainM.
   Proof.
-    pose proof rpts_ref_iprop. do 2 setoid_rewrite <- own_sep in H.
+    eapply LSimMod. ss. ss. i. eapply ModSemPair.adequacy. apply t2m_main_sim.
+  Qed.
+
+  Lemma t2m_main_rcl:
+    OwnM (RPT1.rptM "succ" (cfunU_int SUCC.succF)) ∗ OwnM T_MAIN.mainM ⊢
+         ( |==> OwnM M_MAIN.mainM ).
+  Proof.
+    iIntros "[SUCC TMAIN]". iCombine "SUCC TMAIN" as "TM".
+    iStopProof. apply IPM.adequacy. apply t2m_main_ref.
+  Qed.
+
+  Lemma m2s_main_ref:
+    ((RPT1.rptM "putOnce" (cfunU_int PUT.putOnceF)) ⊕ M_MAIN.mainM) ⊑ S_MAIN.mainM.
+  Proof.
+    eapply LSimMod. ss. ss. i. eapply ModSemPair.adequacy. apply m2s_main_sim.
+  Qed.
+
+  Lemma m2s_main_rcl:
+    OwnM (RPT1.rptM "putOnce" (cfunU_int PUT.putOnceF)) ∗ OwnM M_MAIN.mainM ⊢
+         ( |==> OwnM S_MAIN.mainM ).
+  Proof.
+    iIntros "[PUT TMAIN]". iCombine "PUT TMAIN" as "TM".
+    iStopProof. apply IPM.adequacy. apply m2s_main_ref.
+  Qed.
+
+  Theorem main_rcl:
+    (OwnM SUCC.succM ∗ OwnM PUT.putM) ∗ (OwnM RPT0.rptM) ∗ (OwnM T_MAIN.mainM) ⊢
+                                     ( |==> OwnM S_MAIN.mainM ).
+  Proof.
+    iIntros "[[SUCC PUT] [RPT MAIN]]".
+    iPoseProof (verif_rpt_rcl with "RPT") as "[RPT RPT1]".
+    iPoseProof ("RPT1" with "SUCC") as "> SUCC".
+    iPoseProof (t2m_main_rcl with "[SUCC MAIN]") as "> MAIN". iFrame.
+    iPoseProof (verif_rpt_rcl with "RPT") as "[RPT RPT1]".
+    iPoseProof ("RPT1" with "PUT") as "> PUT".
+    iPoseProof (m2s_main_rcl with "[PUT MAIN]") as "> MAIN". iFrame.
+    iModIntro. iFrame.
+  Qed.
+
+  Theorem main_ref:
+    (SUCC.succM ⊕ PUT.putM) ⊕ RPT0.rptM ⊕ T_MAIN.mainM ⊑ S_MAIN.mainM.
+  Proof.
+    pose proof main_rcl. do 2 setoid_rewrite <- own_sep in H.
     eapply IPM.adequacy in H. rewrite oplus_assoc in H. eapply H.
   Qed.
 
