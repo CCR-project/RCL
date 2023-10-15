@@ -132,6 +132,13 @@ Section EMBED.
       _ <- (resum_itr (se z));;
       Ret (cp z).
 
+  Lemma red_embed se cp v:
+    (cfunU (cast_val (embed se cp)) (Any.upcast [Vint v])) =
+      ((cfunU (cast_val (fun z => resum_itr (se z))) (Any.upcast [Vint v]));;; Ret (Vint (cp v))↑).
+  Proof.
+    unfold cfunU, cast_val, embed. rewrite Any.upcast_downcast. grind.
+  Qed.
+
 End EMBED.
 
 Module SUCC.
@@ -370,7 +377,301 @@ Section PROOF.
 
 End PROOF.
 
+Module T_MAIN.
 
+  Definition mainF : list val -> itree Es val :=
+    fun varg =>
+      _ <- (pargs [] varg)?;;
+      a <- ccallU "rpt" [Vptr (inr "succ") 0; Vint 1; Vint 1];;
+      `_: val <- ccallU "rpt" [Vptr (inr "putOnce") 0; a; a];;
+      Ret (Vint 0).
+
+  Definition mainMS_ : ModSem._t :=
+    {|
+      ModSem.fnsems := [("main", cfunU mainF)];
+      ModSem.initial_st := tt↑;
+    |}.
+
+  Definition mainMS : ModSem.t := Algebra.just mainMS_.
+
+  Program Definition mainM : Mod.t :=
+    {|
+      Mod.get_modsem := fun _ => mainMS;
+      Mod.sk := Sk.unit;
+    |}.
+  Next Obligation. ss. Qed.
+  Next Obligation. ss. refl. Qed.
+
+End T_MAIN.
+
+Module M_MAIN.
+
+  Definition mainF : list val -> itree Es val :=
+    fun varg =>
+      _ <- (pargs [] varg)?;;
+      `_: val <- ccallU "rpt" [Vptr (inr "putOnce") 0; Vint 2; Vint 2];;
+      Ret (Vint 0).
+
+  Definition mainMS_ : ModSem._t :=
+    {|
+      ModSem.fnsems := [("main", cfunU mainF)];
+      ModSem.initial_st := tt↑;
+    |}.
+
+  Definition mainMS : ModSem.t := Algebra.just mainMS_.
+
+  Program Definition mainM : Mod.t :=
+    {|
+      Mod.get_modsem := fun _ => mainMS;
+      Mod.sk := Sk.unit;
+    |}.
+  Next Obligation. ss. Qed.
+  Next Obligation. ss. refl. Qed.
+
+End M_MAIN.
+
+Module S_MAIN.
+
+  Definition mainF : list val -> itree Es val :=
+    fun varg =>
+      _ <- (pargs [] varg)?;;
+      _ <- trigger (SyscallOut "print" ((Vint 2)↑) top1);;
+      _ <- trigger (SyscallOut "print" ((Vint 2)↑) top1);;
+      Ret (Vint 0).
+
+  Definition mainMS_ : ModSem._t :=
+    {|
+      ModSem.fnsems := [("main", cfunU mainF)];
+      ModSem.initial_st := tt↑;
+    |}.
+
+  Definition mainMS : ModSem.t := Algebra.just mainMS_.
+
+  Program Definition mainM : Mod.t :=
+    {|
+      Mod.get_modsem := fun _ => mainMS;
+      Mod.sk := Sk.unit;
+    |}.
+  Next Obligation. ss. Qed.
+  Next Obligation. ss. refl. Qed.
+
+End S_MAIN.
+
+Section SIMMAIN.
+
+  Import ModSemPair.
+
+  Lemma t2m_main_sim
+    :
+    ModSemPair.sim M_MAIN.mainMS ((RPT1.rptMS "succ" (cfunU_int SUCC.succF)) ⊕ T_MAIN.mainMS).
+  Proof.
+    Local Opaque String.eqb.
+    ss. eapply mk. eapply (@top2_PreOrder unit). instantiate (1:= (fun _ '(src, tgt) => exists tgt_l, tgt = Any.pair tgt_l src)).
+    { i. ss. des; clarify. exists (focus_right (T:=Any.t) ∘ cfunU T_MAIN.mainF). split.
+      { right. left. f_equal. }
+      ii. subst y. ginit.
+      unfold_goal M_MAIN.mainF. unfold_goal T_MAIN.mainF.
+      unfold_goal @cfunU.
+      steps.
+      unfold_goal @ccallU. steps.
+      { left. f_equal. }
+      steps.
+      unfold_goal RPT1.rptF. unfold_goal SUCC.succF.
+      unfold_goal @cfunU_int. unfold_goal @cast_val. unfold_goal @cfunU.
+      steps. force_r.
+      { exfalso. ss. }
+      clear _ASSUME. steps. unfold_goal embed. steps.
+      replace (Vint (1 + 1)) with (Vint 2) in * by auto.
+      des. subst. destruct w.
+      guclo guttC_spec. econs.
+      2: refl.
+      { guclo lflagC_spec. econs. gfinal. right.
+        eapply sim_itree_fsubset. 2: eapply sim_itree_tgtr. ss. eapply self_sim_itree.
+        all: ss. i. split; i; des; subst; eauto.
+      }
+      { ired_eq_r.
+        apply eqit_bind. apply Reflexive_eqit_eq. ii.
+        apply eqit_bind. apply Reflexive_eqit_eq. ii.
+        ired. ired_eq_l. ired_eq_r.
+        apply eqit_bind. apply Reflexive_eqit_eq. ii.
+        ired_eq_l. ired_eq_r. refl.
+      }
+    }
+    { ss. exists tt. eauto. }
+  Qed.
+
+  Lemma focus_left_resum_itr
+        X (e: SEs X)
+    :
+    focus_left (resum_itr (trigger e)) = a <- focus_left (trigger e);; tau;; Ret a.
+  Proof.
+    rewrite resum_itr_event. rewrite focus_left_bind. grind.
+    ired_eq_l. grind. ired_eq_l. grind.
+  Qed.
+
+  Lemma m2s_main_sim
+    :
+    ModSemPair.sim S_MAIN.mainMS ((RPT1.rptMS "putOnce" (cfunU_int PUT.putOnceF)) ⊕ M_MAIN.mainMS).
+  Proof.
+    Local Opaque String.eqb.
+    ss. eapply mk. eapply (@top2_PreOrder unit). instantiate (1:= (fun _ '(src, tgt) => exists tgt_l, tgt = Any.pair tgt_l src)).
+    { i. ss. des; clarify. exists (focus_right (T:=Any.t) ∘ cfunU M_MAIN.mainF). split.
+      { right. left. f_equal. }
+      ii. subst y. ginit.
+      unfold_goal S_MAIN.mainF. unfold_goal M_MAIN.mainF.
+      unfold_goal @cfunU.
+      steps.
+      unfold_goal @ccallU. steps.
+      { left. f_equal. }
+      steps.
+      unfold_goal RPT1.rptF. unfold_goal PUT.putOnceF.
+      unfold_goal @cfunU_int. unfold_goal @cast_val. unfold_goal @cfunU.
+      steps. force_r.
+      { exfalso. ss. }
+      clear _ASSUME.
+      steps. unfold_goal embed.
+
+      match goal with
+      | [ |- gpaco8 _ _ _ _ _ _ _ _ _ _ _ (_, ?t1)] =>
+          replace t1 with
+          (` r : Z <-
+                   (trigger (SyscallOut "print" (Any.upcast (Vint 2)) top1);;; tau;; Ret 2%Z);;
+    ` x0 : val <- focus_left (Ret (Vint r));;
+    ` x1 : Any.t <- focus_left (Ret (Any.upcast x0));;
+    ` x2 : Any.t <-
+    focus_left
+      (` vr : Any.t <- Ret x1;;
+       ` vr0 : val <- unwrapU (Any.downcast vr);;
+       ` vr1 : Any.t <-
+       (` varg : list val <- unwrapU (Any.downcast (Any.upcast [vr0]));;
+        ` vret : val <-
+        (` z : Z <-
+         unwrapU match varg with
+                 | [] => None
+                 | [a] => unint a
+                 | a :: _ :: _ => None
+                 end;;
+         ` vret : Z <-
+         (resum_itr (trigger (SyscallOut "print" (Any.upcast (Vint z)) top1);;; Ret 0%Z);;; Ret z);;
+         Ret (Vint vret));; Ret (Any.upcast vret));; Ret vr1);;
+    ` x3 : val <- focus_left (` vret0 : val <- unwrapU (Any.downcast x2);; Ret vret0);;
+    ` x4 : Any.t <- focus_left (Ret (Any.upcast x3));;
+    ` x5 : Any.t <- (tau;; Ret x4);;
+    focus_right (` vret : val <- unwrapU (Any.downcast x5);; Ret vret);;;
+    ` x7 : val <- focus_right (Ret (Vint 0));; focus_right (Ret (Any.upcast x7)))
+      end.
+      2:{ f_equal.
+          2:{ extensionality r. grind. f_equal. refl.
+
+        rewrite focus_left_bind. rewrite IRed.resum_itr_bind.
+      rewrite focus_left_bind.
+
+        rewrite focus_left_resum_itr.
+
+        apply IRed.bind_ext.
+
+        rewrite focus_left_bind. rewrite IRed.resum_itr_bind.
+      rewrite focus_left_bind.
+
+        grind. }
+
+
+      
+
+      rewrite bind_bind.
+
+      
+
+      unfold resum_itr.
+      steps. unfold resum. unfold ReSum_inr, ReSum_id. unfold resum, id_. unfold Id_IFun.
+      ired.
+      
+
+      rewrite resum_itr_event. rewrite IRed.resum_itr_event.
+      
+
+      steps. 
+
+IRed.resum_itr_event:
+  ∀ {E F : Type → Type} {PRF : E -< F} (R : Type) (i : E R),
+    resum_itr (trigger i) = ` r : R <- trigger i;; (tau;; Ret r)
+resum_itr_event:
+  ∀ [Esub E F : Type → Type] {H : Esub -< E} {H0 : E -< F} (R : Type) (i : Esub R),
+    resum_itr (trigger i) = ` r : R <- trigger (subevent R i);; (tau;; Ret r)
+      
+
+      replace (Vint (1 + 1)) with (Vint 2) in * by auto.
+      des. subst. destruct w.
+      guclo guttC_spec. econs.
+      2: refl.
+      { guclo lflagC_spec. econs. gfinal. right.
+        eapply sim_itree_fsubset. 2: eapply sim_itree_tgtr. ss. eapply self_sim_itree.
+        all: ss. i. split; i; des; subst; eauto.
+      }
+      { ired_eq_r.
+        apply eqit_bind. apply Reflexive_eqit_eq. ii.
+        apply eqit_bind. apply Reflexive_eqit_eq. ii.
+        ired. ired_eq_l. ired_eq_r.
+        apply eqit_bind. apply Reflexive_eqit_eq. ii.
+        ired_eq_l. ired_eq_r. refl.
+      }
+    }
+    { ss. exists tt. eauto. }
+  Qed.
+
+
+End SIMMAIN.
+
+
+
+Section PROOFMAIN.
+
+  Lemma verif_rpt_rcl:
+    OwnM (RPT0.rptM) ⊢
+         OwnM (RPT0.rptM) ∗ (∀ fn f, OwnM (ONE.oneM fn f) ==∗ OwnM (RPT1.rptM fn (cfunU_int f))).
+  Proof.
+    iIntros "#RPT". iPoseProof (rpt0_spec with "RPT") as "#SPEC". iSplit; auto.
+  Qed.
+
+  Lemma rpt_succ_ref:
+    OwnM SUCC.succM ∗ OwnM RPT0.rptM ⊢
+         ( |==> (OwnM (RPT1.rptM "succ" (cfunU_int SUCC.succF)))) ∗ OwnM RPT0.rptM.
+  Proof.
+    iIntros "[SUCC #RPT0]".
+    iPoseProof (rpt0_spec with "RPT0") as "#RPT0_SPEC".
+    iPoseProof ("RPT0_SPEC" with "SUCC") as "SUCCREF".
+    iSplit; [iFrame | auto].
+  Qed.
+
+  Lemma rpt_put_ref:
+    OwnM PUT.putM ∗ OwnM RPT0.rptM ⊢
+         ( |==> (OwnM (RPT1.rptM "putOnce" (cfunU_int PUT.putOnceF)))) ∗ OwnM RPT0.rptM.
+  Proof.
+    iIntros "[PUT #RPT0]".
+    iPoseProof (rpt0_spec with "RPT0") as "#RPT0_SPEC".
+    iPoseProof ("RPT0_SPEC" with "PUT") as "PUTREF".
+    iSplit; [iFrame | auto].
+  Qed.
+
+
+
+
+
+
+  Theorem rpts_ref:
+    (RPT0.rptM ⊕ SUCC.succM ⊕ PUT.putM)
+      ⊑
+      (RPT1.rptM "succ" (cfunU_int SUCC.succF)) ⊕ (RPT1.rptM "putOnce" (cfunU_int PUT.putOnceF)).
+  Proof.
+    pose proof rpts_ref_iprop. do 2 setoid_rewrite <- own_sep in H.
+    eapply IPM.adequacy in H. rewrite oplus_assoc in H. eapply H.
+  Qed.
+
+End PROOFMAIN.
+
+
+
+(** Examples for conditional refinement *)
 
 Notation "𝑊_{ a } b" := (Wrap (M:=(MRA_to_MRAS (@Mod_MRA Sk.gdefs))) a b) (at level 50).
 Notation "𝑀_{ a } b" := (Wrap2 (M:=(MRA_to_MRAS (@Mod_MRA Sk.gdefs))) a b) (at level 50).
@@ -415,13 +716,6 @@ Section EMBEDAUX.
   Lemma fzz_fun_iter_red f n x: fzz_fun_iter f (S n) x = fzz_fun_iter f n (f x).
   Proof. ss. Qed.
 
-
-  Lemma red_embed se cp v:
-    (cfunU (cast_val (embed se cp)) (Any.upcast [Vint v])) =
-      ((cfunU (cast_val (fun z => resum_itr (se z))) (Any.upcast [Vint v]));;; Ret (Vint (cp v))↑).
-  Proof.
-    unfold cfunU, cast_val, embed. rewrite Any.upcast_downcast. grind.
-  Qed.
 
   Import Red IRed.
 
