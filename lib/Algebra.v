@@ -19,8 +19,6 @@ Notation "a ⊑S b" := (ref_strong a b) (at level 50).
 
 Definition ref_both `{Ref T}: T -> T -> Prop := λ a b, a ⊑ b /\ b ⊑ a.
 
-(* Notation "⊒⊑" := ref_both (at level 70). *)
-(* Notation "a ⊒⊑ b" := (ref_both a b) (at level 70). *)
 Infix "⊒⊑" := ref_both (at level 70) : stdpp_scope.
 Notation "(⊒⊑)" := ref_both (only parsing) : stdpp_scope.
 Notation "( x ⊒⊑.)" := (ref_both x) (only parsing) : stdpp_scope.
@@ -239,23 +237,6 @@ Ltac upt :=
 
 Module MRA.
 
-  (* Module NU. *)
-
-  (* Class t: Type := { *)
-  (*   car:> Type; *)
-  (*   equiv:> Equiv car; *)
-  (*   oplus:> OPlus car; *)
-  (*   ref:> Ref car; *)
-  (*   bar:> Bar car; *)
-  (*   (* facts:> mixin car; *) *)
-  (*   equiv_facts:> EquivFacts (T:=car); *)
-  (*   ref_facts:> RefFacts (T:=car); *)
-  (*   oplus_facts:> OPlusFactsWeak (T:=car); *)
-  (*   bar_facts:> BarFactsWeak (T:=car); *)
-  (* }. *)
-
-  (* End NU. *)
-
   Class t: Type := {
     car:> Type;
     equiv:> Equiv car;
@@ -273,52 +254,7 @@ Module MRA.
     bar_intro: forall a, a ⊑ a ⊕ |a|;
   }.
 
-  (* Global Program Instance unitize (mra: NU.t): t := { *)
-  (*   car := pointed mra.(NU.car); *)
-  (* } *)
-  (* . *)
-  (* Next Obligation. *)
-  (*   econs; ss. *)
-  (*   - ii. upt. des_ifs; try refl. *)
-  (*   - ii. upt. des_ifs; ss. upt. sym; et. *)
-  (*   - ii. upt. des_ifs; ss. etrans; et. *)
-  (* Qed. *)
-  (* Next Obligation. *)
-  (*   econs; ss. *)
-  (*   - econs. *)
-  (*     + ii. upt. des_ifs; try refl. *)
-  (*     + ii. upt. des_ifs; try etrans; et. *)
-  (*   - ii. upt. des_ifs. eapply ref_oplus; et. *)
-  (*   - ii. upt. des_ifs. rewrite <- H. refl. *)
-  (* Qed. *)
-  (* Next Obligation. *)
-  (*   econs; ss. *)
-  (*   - ii. upt. des_ifs; try refl. eapply oplus_comm_weak. *)
-  (*   - ii. upt. des_ifs; try refl. eapply oplus_assoc_weak. *)
-  (*   - ii. upt. des_ifs; try refl. rewrite H. rewrite H0. refl. *)
-  (* Qed. *)
-  (* Next Obligation. *)
-  (*   econs; ss. *)
-  (*   - ii. upt. des_ifs; try refl. r. upt. esplits; eapply bar_idemp_weak. *)
-  (*   - ii. upt. des_ifs; try refl; r; upt; esplits; try refl; try eapply bar_oplus_weak. *)
-  (*   - ii. upt. des_ifs; try refl. eapply bar_Proper_weak; ss. *)
-  (* Qed. *)
-  (* Next Obligation. *)
-  (*   econs; ss. *)
-  (*   - ii. upt. des_ifs; try refl. *)
-  (*   - ii. upt. des_ifs; try refl. *)
-  (* Qed. *)
-
 End MRA.
-
-(* Global Instance eq_Equiv {T}: Equiv T | 100 := eq. *)
-(* Global Program Instance Eps_pointed_facts `{OPlus T}: EpsFacts (T:=pointed T). *)
-(* Next Obligation. *)
-(*   destruct a; ss. *)
-(* Qed. *)
-(* Next Obligation. *)
-(*   destruct a; ss. *)
-(* Qed. *)
 
 Class RefB (T: Type) := refb: T -> T -> Prop.
 Notation "⊑B" := refb (at level 50).
