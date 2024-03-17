@@ -420,21 +420,26 @@ Q: Do we need to define SMod?
   For that, resources on both sides should be shared.
 
 
-𝑊: SMod -> Mod
+𝑊: SMod -> Conds -> Mod
+Then, we should have "𝑊 A *_{Mod} 𝑊 B ⊑ 𝑊 (A *_{SMod} B)".
+
+
+Taking one step further, it could make sense to follow DimSum's idea.
 Mod =def= Mod with void1
 SMod =def= Mod with condE & mrE
 
-Then, we should have "𝑊 A *_{void1} 𝑊 B ⊑ 𝑊 (A *_{condE & mrE} B)".
-
 *)
+
+Notation Es' := (condE +' Es).
 
 Module SModSem.
 Section SMODSEM.
 
   Context `{Σ: GRA.t}.
 
-  Record t: Type := mk {
-    fnsems: list (gname * fspecbody);
+  Record _t: Type := mk {
+    (* fnsems: list (gname * fspecbody); *)
+    fnsems: alist string (Any.t -> itree Es' Any.t);
     initial_mr: Σ;
     initial_st: Any.t;
   }
