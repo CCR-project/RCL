@@ -90,8 +90,7 @@ Section WRAP.
   .
 
   Global Instance wrap_itree {R}: Wrap conds (itree Es R) :=
-    fun cs itr => interp (case_ (bif:=sum1) (case_ (wrap_h cs) trivial_Handler)
-                            trivial_Handler) itr
+    fun cs itr => interp (case_ (bif:=sum1) (wrap_h cs) trivial_Handler) itr
   .
 
   Global Instance wrap_ktree: Wrap conds (string * (Any.t -> itree Es Any.t)) :=
@@ -332,7 +331,7 @@ Proof.
   rewrite ! interp_interp.
   eapply eutt_interp; try refl.
   ii. unfold trivial_Handler.
-  destruct a; [destruct s|]; my_steps.
+  destruct a; [|destruct s]; my_steps.
   { destruct c; ss.
     my_steps.
     { unfold assume, guarantee, triggerUB, triggerNB. des_ifs; my_steps. }
@@ -350,7 +349,7 @@ Proof.
   i. unfold focus_right, wrap, wrap_itree.
   rewrite ! interp_interp.
   eapply eutt_interp; try refl.
-  ii. unfold trivial_Handler. destruct a; [destruct s|]; my_steps.
+  ii. unfold trivial_Handler. destruct a; [|destruct s]; my_steps.
   { destruct c; ss.
     my_steps.
     { unfold assume, guarantee, triggerUB, triggerNB. des_ifs; my_steps. }
@@ -372,7 +371,7 @@ Proof.
   etrans. 2: eapply interp_trigger_h.
   unfold wrap, wrap_itree.
   eapply eutt_interp. 2:refl.
-  ii. unfold trivial_Handler. destruct a; [destruct s|]; my_steps.
+  ii. unfold trivial_Handler. destruct a; [|destruct s]; my_steps.
   destruct c; ss.
   unfold guarantee, assume. des_ifs. my_steps.
 Qed.
@@ -419,7 +418,7 @@ Proof.
   - wreds. gstep. econs; auto.
   - pclearbot. wreds. gstep. econs. gfinal. left; eauto.
   - ss. pclearbot.
-    rewrite <- ! bind_trigger. resub. destruct e. destruct s.
+    rewrite <- ! bind_trigger. resub. destruct e; [|destruct s].
     + wreds. unfold wrap_h. wmy_steps. unfold guarantee. des_ifs; wmy_steps.
       * rewrite ! bind_trigger. gstep. econs. i. ss. wmy_steps.
         unfold assume. des_ifs; wreds.
@@ -511,7 +510,7 @@ Global Program Instance itree_WrapBar {R}: WrapBarCommute (T:=itree Es R) | 150.
 Next Obligation.
   ii. do 2 r. unfold wrap, wrap_itree. unfold bar, itree_Bar.
   rewrite ! interp_interp. eapply eutt_interp; try refl.
-  ii. unfold trivial_Handler. destruct a0; [destruct s0|]; ss.
+  ii. unfold trivial_Handler. destruct a0; [|destruct s0]; ss.
   { destruct c. my_steps.
     - unfold guarantee, assume, triggerUB, triggerNB. des_ifs; my_steps.
     - unfold guarantee, assume, triggerUB, triggerNB. des_ifs; my_steps.
@@ -535,8 +534,8 @@ Next Obligation.
     unfold map_snd in *. des_ifs. unfold wrap, wrap_ktree in *. ss. clarify. esplits; ss.
     i. unfold bar, ktree_Bar. unfold bar, itree_Bar.
     unfold guarantee, assume, triggerUB, triggerNB. des_ifs; my_steps.
-    { change (interp (case_ (case_ trivial_Handler core_h) trivial_Handler) (i x)) with ( |i x| ).
-      change (interp (case_ (case_ trivial_Handler core_h) trivial_Handler) (wrap_itree s (i x))) with ( |𝑤_{s} (i x)| ).
+    { change (interp (case_ trivial_Handler (case_ core_h trivial_Handler)) (i x)) with ( |i x| ).
+      change (interp (case_ trivial_Handler (case_ core_h trivial_Handler)) (wrap_itree s (i x))) with ( |𝑤_{s} (i x)| ).
       rewrite wrap_bar. refl.
     }
     des_ifs; my_steps.

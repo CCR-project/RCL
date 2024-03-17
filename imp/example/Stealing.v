@@ -14,7 +14,7 @@ Require Import ImpPrelude.
 Require Import Mem0.
 Require Import HTactics.
 
-Require Import IPM IPMAux.
+Require Import RCLIPM RCLIPMAux.
 
 Set Implicit Arguments.
 
@@ -529,7 +529,7 @@ Section PROOF.
 
   Lemma var_iprop: (OwnM (VAR0.varM ⊕ Mem)) ⊢ ( |==> ((OwnM (Mem ⊕ VAR1.varM)))).
   Proof.
-    apply IPM.adequacy. etrans. rewrite oplus_comm_weak. refl. apply var_ref.
+    apply RCLIPM.adequacy. etrans. rewrite oplus_comm_weak. refl. apply var_ref.
   Qed.
 
   Theorem var_fancy: (OwnM VAR0.varM) ⊢ (OwnM Mem) ==∗ ((OwnM Mem) ∗ (OwnM VAR1.varM)).

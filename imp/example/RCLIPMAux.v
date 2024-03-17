@@ -7,7 +7,7 @@ Require Import ModSem Mod ModSemFacts ModFacts.
 Require Import HTactics.
 Require Import String.
 
-Require Import IPM.
+Require Import RCLIPM.
 
 Set Implicit Arguments.
 

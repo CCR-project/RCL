@@ -1,5 +1,5 @@
 Require Import Algebra Coqlib.
-Require Import String IPM.
+Require Import String RCLIPM.
 Set Implicit Arguments.
 Open Scope string_scope.
 Open Scope list_scope.

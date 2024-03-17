@@ -95,7 +95,7 @@ Section FACTS.
         (e: callE T)
     :
       interp_Es p (trigger e) st0 =
-        tau;; '(st1, r) <- (interp_Es p (p _ e) st0);; tau;; Ret (st1, r)
+        tau;; '(st1, r) <- (interp_Es p (p _ e) st0);; Ret (st1, r)
   .
   Proof. unfold interp_Es, interp_pE. des_ifs. grind. Qed.
 
@@ -107,7 +107,7 @@ Section FACTS.
     :
       interp_Es p (trigger e) st0 =
       '(st1, r) <- handle_pE e st0;;
-      tau;; tau;; tau;;
+      tau;; tau;;
       Ret (st1, r)
   .
   Proof.
@@ -120,7 +120,7 @@ Section FACTS.
         T
         (e: eventE T)
     :
-      interp_Es p (trigger e) st0 = r <- trigger e;; tau;; tau;; tau;; Ret (st0, r)
+      interp_Es p (trigger e) st0 = r <- trigger e;; tau;; tau;; Ret (st0, r)
   .
   Proof.
     unfold interp_Es, interp_pE. grind.

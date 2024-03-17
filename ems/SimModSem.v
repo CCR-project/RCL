@@ -1246,7 +1246,7 @@ Proof.
     guclo sim_itree_indC_spec. econs.
     eapply sim_itree_progress_flag. gbase. auto.
   }
-  destruct e; [destruct s|].
+  destruct e; [|destruct s].
   { dependent destruction c. rewrite <- ! bind_trigger. gstep.
     eapply sim_itree_call; ss. ii. subst.
     eapply sim_itree_flag_down. gbase. auto.
@@ -1295,7 +1295,7 @@ Proof.
     (* guclo lbindC_spec. econs; eauto. *)
     (* { gfinal. right. eapply paco8_mon. { eapply self_sim_itree. } ii; ss. } *)
     (* ii. rr in SIM. des; subst. des_u. *)
-    destruct e; [destruct s|].
+    destruct e; [|destruct s].
     { destruct c. gstep. econs; ss; eauto. i. subst.
       guclo lflagC_spec. econs; ss.
       gbase. eapply CIH. pclearbot. eauto.
@@ -1728,8 +1728,12 @@ Proof.
         { gbase. eapply CIH. { instantiate (1:=w1). eauto. } }
         { i. ss. des_ifs. r in SIM1. des. subst.
           hexploit K; et. i. des. pclearbot.
-          steps. gbase. eapply CIH; ss.
-          eapply sim_itree_bot_flag_up. eauto.
+          guclo flagC_spec. econs.
+          3: { steps. gbase. eapply CIH; ss.
+               eapply sim_itree_bot_flag_up. eauto.
+          }
+          { instantiate (1:=false). cbn. eapply Ord.O_is_O. }
+          { instantiate (1:=false). cbn. eapply Ord.O_is_O. }
         }
       }
       { eapply Ord.S_is_S. }
@@ -1757,8 +1761,8 @@ Proof.
                          interp_Es (ModSem.prog ms_tgt) (k_tgt v) st1).
         eapply eqit_bind.
         { refl. }
-        ii. destruct a; ss. rewrite interp_Es_ret. ired_both.
-        rewrite tau_euttge. ired_both. refl.
+        ii. destruct a; ss. rewrite interp_Es_ret. ired_both. refl.
+        (* rewrite tau_euttge. ired_both. refl. *)
       }
       hexploit IHSIMF; et. intro T. rp; et. ired_both. grind.
     - ired_both. steps.

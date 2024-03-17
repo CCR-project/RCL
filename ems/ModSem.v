@@ -122,7 +122,7 @@ Proof.
   rewrite interp_interp.
   eapply eutt_interp; try refl.
   ii.
-  destruct a; [destruct s|]; ss.
+  destruct a; [|destruct s]; ss.
   { cbn. unfold trivial_Handler. rewrite interp_trigger. grind. resub. setoid_rewrite tau_eutt. grind. refl. }
   { cbn. unfold trivial_Handler. unfold core_h. unfold triggerUB. grind. rewrite ! interp_trigger. grind. f_equiv; ss. }
   { cbn. unfold trivial_Handler. rewrite interp_trigger. grind. resub. setoid_rewrite tau_eutt. grind. refl. }
@@ -481,7 +481,7 @@ Section MODSEM.
       i. unfold focus_left, Algebra.bar, ktree_Bar, Algebra.bar, itree_Bar. cbn.
       rewrite ! interp_interp. eapply eutt_interp; try refl. ii. ss.
       unfold trivial_Handler.
-      destruct a; [destruct s0|]; ss.
+      destruct a; [|destruct s0]; ss.
       { ired.  rewrite ! interp_trigger. grind. refl. }
       { ired.  unfold focus_left_h, core_h.
         des_ifs.
@@ -498,7 +498,7 @@ Section MODSEM.
       i. unfold focus_right, Algebra.bar, ktree_Bar, Algebra.bar, itree_Bar. cbn.
       rewrite ! interp_interp. eapply eutt_interp; try refl. ii. ss.
       unfold trivial_Handler.
-      destruct a; [destruct s0|]; ss.
+      destruct a; [|destruct s0]; ss.
       { ired.  rewrite ! interp_trigger. grind. refl. }
       { ired.  unfold focus_right_h, core_h.
         des_ifs.

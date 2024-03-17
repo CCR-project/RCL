@@ -13,7 +13,7 @@ Require Import SimModSem.
 Require Import ImpPrelude.
 Require Import HTactics.
 
-Require Import IPM IPMAux WrapMod WrapModSem.
+Require Import RCLIPM RCLIPMAux WrapMod WrapModSem.
 
 
 Set Implicit Arguments.
@@ -1047,7 +1047,7 @@ Section CCR.
     iPoseProof (wrap_own with "ONE") as "ONE".
     iCombine "RPT0 ONE" as "TGT". rewrite <- WA.morph_oplus.
     iApply wrap_own.
-    iStopProof. apply IPM.adequacy.
+    iStopProof. apply RCLIPM.adequacy.
     apply one_rpt_ccr_ref.
   Qed.
 

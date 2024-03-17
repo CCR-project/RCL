@@ -37,7 +37,7 @@ Proof.
   revert mrs_src mrs_tgt itr. ginit. gcofix CIH. i.
   ides itr; my_steps.
   + gstep. econs; et. gbase. eapply CIH.
-  + destruct e; [destruct s|].
+  + destruct e; [|destruct s].
     { destruct c; rewrite <- ! bind_trigger; resub. my_steps; gstep; econs; et; gbase; eapply CIH. }
     { destruct p; rewrite <- ! bind_trigger; resub; my_steps.
       - unfold core_h. unfold triggerUB. my_steps.
@@ -70,7 +70,7 @@ Next Obligation.
     ides itr; my_steps.
     + rr. esplits; ss; et.
     + gstep. econs; et. gbase. eapply CIH.
-    + destruct e; [destruct s|].
+    + destruct e; [|destruct s].
       { destruct c; rewrite <- ! bind_trigger; resub. my_steps; gstep; econs; et; gbase; eapply CIH. }
       { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
       { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
@@ -84,7 +84,7 @@ Next Obligation.
     ides itr; my_steps.
     + rr. esplits; ss; et.
     + gstep. econs; et. gbase. eapply CIH.
-    + destruct e; [destruct s|].
+    + destruct e; [|destruct s].
       { destruct c; rewrite <- ! bind_trigger; resub. my_steps; gstep; econs; et; gbase; eapply CIH. }
       { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
       { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
@@ -116,7 +116,7 @@ Next Obligation.
     ides itr; my_steps.
     + rr. esplits; ss; et.
     + gstep. econs; et. gbase. eapply CIH.
-    + destruct e; [destruct s|].
+    + destruct e; [|destruct s].
       { destruct c; rewrite <- ! bind_trigger; resub. my_red_both. (*** FIXME ***) rewrite focus_right_callE. my_steps.
         gstep; econs; et; gbase; eapply CIH. }
       { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
@@ -136,7 +136,7 @@ Next Obligation.
     ides itr; my_steps.
     + rr. esplits; ss; et.
     + gstep. econs; et. gbase. eapply CIH.
-    + destruct e; [destruct s|].
+    + destruct e; [|destruct s].
       { destruct c; rewrite <- ! bind_trigger; resub. my_red_both. (*** FIXME ***) rewrite focus_left_callE. my_steps.
         gstep; econs; et; gbase; eapply CIH. }
       { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
@@ -156,7 +156,7 @@ Next Obligation.
     ides itr; my_steps.
     + rr. esplits; ss; et.
     + gstep. econs; et. gbase. eapply CIH.
-    + destruct e; [destruct s|].
+    + destruct e; [|destruct s].
       { destruct c; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
       { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
       { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
@@ -287,7 +287,7 @@ Next Obligation.
       ides itr; my_steps.
       + rr. esplits; ss; et.
       + gstep. econs; et. gbase. eapply CIH.
-      + destruct e; [destruct s|].
+      + destruct e; [|destruct s].
         { destruct c; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
         { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
         { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
@@ -312,7 +312,7 @@ Next Obligation.
       ides itr0; my_steps.
       + rr. esplits; ss; et.
       + gstep. econs; et. gbase. eapply CIH.
-      + destruct e; [destruct s|].
+      + destruct e; [|destruct s].
         { destruct c; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
         { destruct p; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
         { destruct e; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
@@ -327,7 +327,7 @@ Next Obligation.
       ides itr0; my_steps.
       + rr. esplits; ss; et.
       + gstep. econs; et. gbase. eapply CIH.
-      + destruct e; [destruct s|].
+      + destruct e; [|destruct s].
         { destruct c; rewrite <- ! bind_trigger; resub; my_steps; gstep; econs; et; gbase; eapply CIH. }
         { destruct p; rewrite <- ! bind_trigger; resub; my_steps.
           - (*** FIXME ***) unfold core_h. unfold triggerUB. my_steps.
