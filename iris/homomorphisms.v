@@ -738,6 +738,30 @@ Section MRA.
     eapply ref_affine.
   Qed.
 
+  (* ra_validN_proper *)
+  Let valid_Proper: @Proper (A -> Prop) (equiv ==> impl) valid.
+    ii. do 2 r in H0. do 2 r. etrans; et. eapply ref_Proper.
+    { sym; et. }
+    { refl. }
+    refl.
+  Qed.
+
+  Local Existing Instance valid_Proper.
+
+  Lemma fupd_upd: ∀ t s, t ~~> s -> entails (own t) (upd (own s)).
+  Proof.
+    i. r in H. rr. i. rr in H0. des; subst. setoid_subst. specialize (H (fr ⋅ z)).
+    exploit H; et.
+    { rewrite assoc. rewrite comm. rewrite assoc. rewrite comm. erewrite comm with (x:=z); et. }
+    intros T. do 2 r in T. esplits.
+    { do 2 r. etrans; et. eapply ref_Proper.
+      { rewrite assoc. rewrite comm. rewrite assoc. rewrite comm. refl. }
+      { refl. }
+      refl.
+    }
+    r. exists z. rewrite comm. refl.
+  Qed.
+
   Theorem logic_elim: ∀ src, (entails (own tgt) (upd (own src))) -> tgt ⊑ src.
   Proof.
     i. rr in H. unfold own in H.
@@ -757,15 +781,6 @@ Section MRA.
     do 2 r. etrans; et. eapply ref_hcomp; try refl.
     etrans; try apply H.
     eapply incl_ref; et.
-  Qed.
-
-  (* ra_validN_proper *)
-  Goal @Proper (A -> Prop) (equiv ==> impl) valid.
-  Proof.
-    ii. do 2 r in H0. do 2 r. etrans; et. eapply ref_Proper.
-    { sym; et. }
-    { refl. }
-    refl.
   Qed.
 
   (* ra_valid_op_l *)
