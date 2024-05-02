@@ -5,9 +5,56 @@ Open Scope string_scope.
 Open Scope list_scope.
 
 
+Section IPM.
+Context `{M: MRAS.t}.
+Global Instance upd_elim_iupd I P Q
+       `{ElimModal _ True false false (IUpd I P) P Q R}
+  :
+  ElimModal True false false (#=> P) P Q R.
+Proof.
+  unfold ElimModal. i. iIntros "[H0 H1]".
+  iPoseProof (Upd_IUpd with "H0") as "> H0". iApply "H1". auto.
+Qed.
+
+Global Instance iupd_elim_upd I P Q b
+  :
+  ElimModal True b false (#=> P) P (IUpd I Q) (IUpd I Q).
+Proof.
+  unfold ElimModal. i. iIntros "[H0 H1]".
+  iPoseProof (Upd_IUpd with "H0") as "H0".
+  iIntros "H". iPoseProof ("H0" with "H") as "> [H0 H2]".
+  destruct b; ss.
+  { iPoseProof ("H2") as "# > H2". iPoseProof ("H1" with "H2") as "H".
+    iApply ("H" with "H0").
+  }
+  { iPoseProof ("H2") as "> H2". iPoseProof ("H1" with "H2") as "H".
+    iApply ("H" with "H0").
+  }
+Qed.
+Lemma IUpd_wand: forall I P Q, (P -∗ Q) -∗ (IUpd I P -∗ IUpd I Q).
+Proof.
+  ii. iIntros "A B".
+  iDestruct (IUpd_frame_r with "[A B]") as "H".
+  { iFrame. iAccu. }
+  iApply IUpd_mono.
+  2: { eauto. }
+  iIntros "[A B]". iApply "B"; eauto.
+Qed.
+Global Instance iupd_elim_iupd I P Q b
+  :
+  ElimModal True b false (IUpd I P) P (IUpd I Q) (IUpd I Q).
+Proof.
+  unfold ElimModal. i. iIntros "[H0 H1]".
+  destruct b; ss.
+  { iDestruct (IUpd_wand with "H1 H0") as "H". iApply IUpd_trans. ss. }
+  { iDestruct (IUpd_wand with "H1 H0") as "H". iApply IUpd_trans. ss. }
+Qed.
+End IPM.
+Ltac iDone := iFrame; eauto.
+
+
 
 Section TUTORIAL.
-
 Context `{M: MRAS.t}.
 (*** Section 3.1 ***)
 Goal ∀ (a0 a1 b0 b1 c0 c1: mProp),
@@ -202,7 +249,7 @@ Hypothesis TICKETLOCKPROOF: m0 ⊕ t0 ⊑ m0 ⊕ mt1.
 Hypothesis CLIENTPROOF: sch1 ⊕ (m0 ⊕ c0 ⊕ mt1) ⊑ sch1 ⊕ (m0 ⊕ cmt1).
 Let right_mono: ∀ (x y0 y1: M), y0 ⊑ y1 -> x ⊕ y0 ⊑ x ⊕ y1. Proof. i. rewrite H. refl. Qed.
 Let left_mono: ∀ (x y0 y1: M), y0 ⊑ y1 -> y0 ⊕ x ⊑ y1 ⊕ x. Proof. i. rewrite H. refl. Qed.
-(* 23 aux tactics, 3 main tactics *)
+(* 22 aux tactics, 3 main tactics *)
 Example FOS2: sch0 ⊕ m0 ⊕ c0 ⊕ t0 ⊑ sch1 ⊕ m0 ⊕ cmt1.
 Proof.
   erewrite SCHEDPROOF.
@@ -226,7 +273,7 @@ Proof.
   rewrite oplus_assoc.
   refl.
 Qed.
-(* 33 aux tactics, 3 main tactics *)
+(* 33 aux tactics, 2 main tactics *)
 Example TOGETHER: m0 ⊕ s0 ⊕ e0 ⊕ sch0 ⊕ c0 ⊕ t0 ⊑ m0 ⊕ s4 ⊕ e4 ⊕ sch1 ⊕ cmt1.
 Proof.
   etrans.
@@ -276,7 +323,6 @@ Hypothesis ECHO01PROOF: Own e1 ==∗ Own e2.
 Hypothesis ADEQUACYOPEN2: Own s5 ∗ Own e2 ==∗ (Own s6 ∗ Own e3).
 Hypothesis STACK32PROOF: Own s6 ==∗ Own s4.
 Hypothesis ECHOMONPROOF: Own e3 ==∗ Own e4.
-Ltac iDone := iFrame; eauto.
 (** 2 aux tactics, 12 main tactics **)
 (* Example CCRRCL: (Own m0) ∗ Own s0 ∗ Own e0 ==∗ (Own m0 ∗ Own s4 ∗ Own e4). *)
 Example CCRRCL: Own s0 ∗ Own e0 -∗ IUpd (Own m0) (Own s4 ∗ Own e4).
@@ -295,48 +341,6 @@ Proof.
   iDestruct (STACK32PROOF with "[$]") as ">?".
   iDestruct (ECHOMONPROOF with "[$]") as ">?".
   iDone.
-Qed.
-Global Instance upd_elim_iupd I P Q
-       `{ElimModal _ True false false (IUpd I P) P Q R}
-  :
-  ElimModal True false false (#=> P) P Q R.
-Proof.
-  unfold ElimModal. i. iIntros "[H0 H1]".
-  iPoseProof (Upd_IUpd with "H0") as "> H0". iApply "H1". auto.
-Qed.
-
-Global Instance iupd_elim_upd I P Q b
-  :
-  ElimModal True b false (#=> P) P (IUpd I Q) (IUpd I Q).
-Proof.
-  unfold ElimModal. i. iIntros "[H0 H1]".
-  iPoseProof (Upd_IUpd with "H0") as "H0".
-  iIntros "H". iPoseProof ("H0" with "H") as "> [H0 H2]".
-  destruct b; ss.
-  { iPoseProof ("H2") as "# > H2". iPoseProof ("H1" with "H2") as "H".
-    iApply ("H" with "H0").
-  }
-  { iPoseProof ("H2") as "> H2". iPoseProof ("H1" with "H2") as "H".
-    iApply ("H" with "H0").
-  }
-Qed.
-Lemma IUpd_wand: forall I P Q, (P -∗ Q) -∗ (IUpd I P -∗ IUpd I Q).
-Proof.
-  ii. iIntros "A B".
-  iDestruct (IUpd_frame_r with "[A B]") as "H".
-  { iFrame. iAccu. }
-  iApply IUpd_mono.
-  2: { eauto. }
-  iIntros "[A B]". iApply "B"; eauto.
-Qed.
-Global Instance iupd_elim_iupd I P Q b
-  :
-  ElimModal True b false (IUpd I P) P (IUpd I Q) (IUpd I Q).
-Proof.
-  unfold ElimModal. i. iIntros "[H0 H1]".
-  destruct b; ss.
-  { iDestruct (IUpd_wand with "H1 H0") as "H". iApply IUpd_trans. ss. }
-  { iDestruct (IUpd_wand with "H1 H0") as "H". iApply IUpd_trans. ss. }
 Qed.
 
 Variable sch0 sch1 c0 t0 mt1 cmt1: mProp.
