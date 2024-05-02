@@ -198,37 +198,35 @@ Qed.
 
 Variable sch0 sch1 c0 t0 mt1 cmt1: M.
 Hypothesis SCHEDPROOF: ∀ c, sch0 ⊕ c ⊑ sch1 ⊕ c.
-Hypothesis TICKETLOCKPROOF: m0 ⊕ t0 ⊑ mt1.
-Hypothesis CLIENTPROOF: sch1 ⊕ (m0 ⊕ c0 ⊕ mt1) ⊑ sch1 ⊕ cmt1.
+Hypothesis TICKETLOCKPROOF: m0 ⊕ t0 ⊑ m0 ⊕ mt1.
+Hypothesis CLIENTPROOF: sch1 ⊕ (m0 ⊕ c0 ⊕ mt1) ⊑ sch1 ⊕ (m0 ⊕ cmt1).
 Let right_mono: ∀ (x y0 y1: M), y0 ⊑ y1 -> x ⊕ y0 ⊑ x ⊕ y1. Proof. i. rewrite H. refl. Qed.
 Let left_mono: ∀ (x y0 y1: M), y0 ⊑ y1 -> y0 ⊕ x ⊑ y1 ⊕ x. Proof. i. rewrite H. refl. Qed.
-(* 4 aux tactics, 3 main tactics *)
-Example FOS: sch0 ⊕ ((m0 ⊕ c0) ⊕ (m0 ⊕ t0)) ⊑ sch1 ⊕ cmt1.
+(* 23 aux tactics, 3 main tactics *)
+Example FOS2: sch0 ⊕ m0 ⊕ c0 ⊕ t0 ⊑ sch1 ⊕ m0 ⊕ cmt1.
 Proof.
+  erewrite SCHEDPROOF.
   etrans.
-  { eapply SCHEDPROOF. }
+  { rewrite <- ! oplus_assoc.
+    eapply right_mono.
+    rewrite oplus_assoc.
+    rewrite oplus_comm.
+    rewrite oplus_assoc.
+    rewrite oplus_comm.
+    eapply right_mono.
+    rewrite oplus_comm.
+    eapply TICKETLOCKPROOF.
+  }
+  assert(T: (c0 ⊕ (m0 ⊕ mt1)) ⊑ (m0 ⊕ c0 ⊕ mt1)).
+  { rewrite oplus_assoc. rewrite oplus_comm. rewrite oplus_assoc. rewrite oplus_comm.
+    rewrite <- oplus_assoc. eapply right_mono. rewrite oplus_comm. refl. }
+  rewrite T.
   etrans.
-  { eapply right_mono. eapply right_mono. eapply TICKETLOCKPROOF. }
   { eapply CLIENTPROOF. }
-Qed.
-Hypothesis MEMSTEALPROOF: m0 ⊑ m0 ⊕ m0.
-(* 13 aux tactics, 2 main tactics *)
-Example FOS2: sch0 ⊕ m0 ⊕ c0 ⊕ t0 ⊑ sch1 ⊕ cmt1.
-Proof.
-  etrans; [|eapply FOS].
-  rewrite <- ! oplus_assoc.
-  eapply right_mono.
-  rewrite ! oplus_assoc.
-  etrans.
-  { eapply left_mono. eapply left_mono. eapply MEMSTEALPROOF. }
-  erewrite <- ! oplus_assoc.
-  eapply right_mono.
-  erewrite ! oplus_assoc.
-  eapply left_mono.
-  erewrite oplus_comm.
+  rewrite oplus_assoc.
   refl.
 Qed.
-(* 35 aux tactics, 3 main tactics *)
+(* 33 aux tactics, 3 main tactics *)
 Example TOGETHER: m0 ⊕ s0 ⊕ e0 ⊕ sch0 ⊕ c0 ⊕ t0 ⊑ m0 ⊕ s4 ⊕ e4 ⊕ sch1 ⊕ cmt1.
 Proof.
   etrans.
@@ -253,18 +251,12 @@ Proof.
   eapply right_mono.
   rewrite ! oplus_assoc.
   etrans.
-  { repeat eapply left_mono. eapply MEMSTEALPROOF. }
-  rewrite <- ! oplus_assoc.
+  { do 2 eapply left_mono. erewrite oplus_comm. refl. }
+  rewrite FOS2.
+  rewrite oplus_comm. rewrite oplus_assoc.
+  rewrite oplus_comm. rewrite <- oplus_assoc.
   eapply right_mono.
-  rewrite ! oplus_assoc.
-  etrans; [|eapply FOS2].
-  etrans.
-  { eapply left_mono.
-    eapply left_mono.
-    rewrite oplus_comm.
-    refl.
-  }
-  refl.
+  rewrite oplus_comm. refl.
 Qed.
 End CCRFOS.
 
@@ -284,11 +276,12 @@ Hypothesis ECHO01PROOF: Own e1 ==∗ Own e2.
 Hypothesis ADEQUACYOPEN2: Own s5 ∗ Own e2 ==∗ (Own s6 ∗ Own e3).
 Hypothesis STACK32PROOF: Own s6 ==∗ Own s4.
 Hypothesis ECHOMONPROOF: Own e3 ==∗ Own e4.
-Ltac iDone := iFrame; done.
+Ltac iDone := iFrame; eauto.
 (** 2 aux tactics, 12 main tactics **)
-Example CCRRCL: (Own m0) ∗ Own s0 ∗ Own e0 ==∗ (Own m0 ∗ Own s4 ∗ Own e4).
+(* Example CCRRCL: (Own m0) ∗ Own s0 ∗ Own e0 ==∗ (Own m0 ∗ Own s4 ∗ Own e4). *)
+Example CCRRCL: Own s0 ∗ Own e0 -∗ IUpd (Own m0) (Own s4 ∗ Own e4).
 Proof.
-  iIntros "[? [? ?]]".
+  iIntros "[? ?] ?".
   iDestruct (MEMOPENPROOF with "[$]") as ">?".
   iDestruct (STACKIMP0PROOF with "[$]") as ">?".
   iDestruct (STACK01PROOF with "[$]") as ">?".
@@ -303,36 +296,68 @@ Proof.
   iDestruct (ECHOMONPROOF with "[$]") as ">?".
   iDone.
 Qed.
+Global Instance upd_elim_iupd I P Q
+       `{ElimModal _ True false false (IUpd I P) P Q R}
+  :
+  ElimModal True false false (#=> P) P Q R.
+Proof.
+  unfold ElimModal. i. iIntros "[H0 H1]".
+  iPoseProof (Upd_IUpd with "H0") as "> H0". iApply "H1". auto.
+Qed.
+
+Global Instance iupd_elim_upd I P Q b
+  :
+  ElimModal True b false (#=> P) P (IUpd I Q) (IUpd I Q).
+Proof.
+  unfold ElimModal. i. iIntros "[H0 H1]".
+  iPoseProof (Upd_IUpd with "H0") as "H0".
+  iIntros "H". iPoseProof ("H0" with "H") as "> [H0 H2]".
+  destruct b; ss.
+  { iPoseProof ("H2") as "# > H2". iPoseProof ("H1" with "H2") as "H".
+    iApply ("H" with "H0").
+  }
+  { iPoseProof ("H2") as "> H2". iPoseProof ("H1" with "H2") as "H".
+    iApply ("H" with "H0").
+  }
+Qed.
+Lemma IUpd_wand: forall I P Q, (P -∗ Q) -∗ (IUpd I P -∗ IUpd I Q).
+Proof.
+  ii. iIntros "A B".
+  iDestruct (IUpd_frame_r with "[A B]") as "H".
+  { iFrame. iAccu. }
+  iApply IUpd_mono.
+  2: { eauto. }
+  iIntros "[A B]". iApply "B"; eauto.
+Qed.
+Global Instance iupd_elim_iupd I P Q b
+  :
+  ElimModal True b false (IUpd I P) P (IUpd I Q) (IUpd I Q).
+Proof.
+  unfold ElimModal. i. iIntros "[H0 H1]".
+  destruct b; ss.
+  { iDestruct (IUpd_wand with "H1 H0") as "H". iApply IUpd_trans. ss. }
+  { iDestruct (IUpd_wand with "H1 H0") as "H". iApply IUpd_trans. ss. }
+Qed.
 
 Variable sch0 sch1 c0 t0 mt1 cmt1: mProp.
 Hypothesis SCHEDPROOF: sch0 ==∗ sch1.
-Hypothesis TICKETLOCKPROOF: (Own m0) ∗ t0 ==∗ mt1.
-Hypothesis CLIENTPROOF: sch1 ∗ (Own m0 ∗ c0 ∗ mt1) ==∗ (sch1 ∗ cmt1).
+Hypothesis TICKETLOCKPROOF: t0 -∗ IUpd (Own m0) mt1.
+Hypothesis CLIENTPROOF: sch1 ∗ (c0 ∗ mt1) -∗ IUpd (Own m0) (sch1 ∗ cmt1).
 (* 2 aux tactics, 3 main tactics *)
-Example FOSRCL: sch0 ∗ ((Own m0 ∗ c0) ∗ (Own m0 ∗ t0)) ==∗ (sch1 ∗ cmt1).
+Example FOS2RCL: sch0 ∗ (c0 ∗ t0) -∗ IUpd (Own m0) (sch1 ∗ cmt1).
 Proof.
-  iIntros "[? [[? ?] [? ?]]]".
+  iIntros "[? [? ?]]".
   iDestruct (SCHEDPROOF with "[$]") as ">?".
   iDestruct (TICKETLOCKPROOF with "[$]") as ">?".
   iDestruct (CLIENTPROOF with "[$]") as ">?".
   iDone.
 Qed.
-Hypothesis MEMSTEALPROOF: Own m0 ==∗ (Own m0 ∗ Own m0).
 (* 2 aux tactics, 2 main tactics *)
-Example FOS2RCL: sch0 ∗ (Own m0 ∗ c0 ∗ t0) ==∗ sch1 ∗ cmt1.
+Example TOGETHERRCL: Own s0 ∗ Own e0 ∗ sch0 ∗ c0 ∗ t0 -∗ IUpd (Own m0) (Own s4 ∗ Own e4 ∗ sch1 ∗ cmt1).
 Proof.
-  iIntros "[? [? [? ?]]]".
-  iDestruct (MEMSTEALPROOF with "[$]") as ">[? ?]".
-  iApply FOSRCL.
-  iDone.
-Qed.
-(* 2 aux tactics, 3 main tactics *)
-Example TOGETHERRCL: Own m0 ∗ Own s0 ∗ Own e0 ∗ sch0 ∗ c0 ∗ t0 ==∗ Own m0 ∗ Own s4 ∗ Own e4 ∗ sch1 ∗ cmt1.
-Proof.
-  iIntros "[? [? [? [? [? ?]]]]]".
-  iDestruct (MEMSTEALPROOF with "[$]") as ">[? ?]".
+  iIntros "[? [? [? [? ?]]]]".
   iDestruct (FOS2RCL with "[$]") as ">[? ?]".
-  iDestruct (CCRRCL with "[$]") as ">[? [? ?]]".
+  iDestruct (CCRRCL with "[$]") as ">[? ?]".
   iDone.
 Qed.
 End CCRFOS_RCL.
