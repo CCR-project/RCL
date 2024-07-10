@@ -762,6 +762,17 @@ Section MRA.
     r. exists z. rewrite comm. refl.
   Qed.
 
+  Lemma upd_fupd: ∀ t s, entails (own t) (upd (own s)) -> t ~~> s.
+  Proof.
+    i. r in H. specialize (H t). hexploit1 H.
+    { r. exists ε. rewrite op_comm. rewrite unit_idl. refl. }
+    r in H. r. intro fr. specialize (H fr).
+    rewrite op_comm. intros T. specialize (H T). des. r in H0. clear T.
+    rewrite op_comm.
+    do 2 r. do 2 r in H. etrans; et. eapply ref_hcomp; try refl.
+    eapply incl_ref; ss.
+  Qed.
+
   Theorem logic_elim: ∀ src, (entails (own tgt) (upd (own src))) -> tgt ⊑ src.
   Proof.
     i. rr in H. unfold own in H.

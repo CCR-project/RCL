@@ -49,6 +49,11 @@ Proof.
   { iDestruct (IUpd_wand with "H1 H0") as "H". iApply IUpd_trans. ss. }
   { iDestruct (IUpd_wand with "H1 H0") as "H". iApply IUpd_trans. ss. }
 Qed.
+Global Instance from_modal_iupd I P:
+  FromModal True modality_id (IUpd I P) (IUpd I P) P.
+Proof.
+  ii; ss. iIntros. unfold IUpd. iFrame. eauto.
+Qed.
 End IPM.
 Ltac iDone := iFrame; eauto.
 
@@ -69,7 +74,6 @@ Proof.
     iDestruct (H1 with "[$]") as "$".
   }
 Qed.
-
 
 Goal forall a0 a1 b0 b1 c0 c1,
     a0 ⊑ a1 -> a1 ⊕ b0 ⊑ a1 ⊕ b1 -> a1 ⊕ c0 ⊑ a1 ⊕ c1 ->
@@ -144,7 +148,7 @@ Proof.
   }
 Qed.
 
-Goal forall a0 a1 b0 b1 c0 c1 d0 d1 e0 e1,
+Lemma abcd: forall a0 a1 b0 b1 c0 c1 d0 d1 e0 e1,
     a0 ⊑ a1 -> a1 ⊕ b0 ⊑ a1 ⊕ b1 -> a1 ⊕ c0 ⊑ a1 ⊕ c1 -> a1 ⊕ d0 ⊑ a1 ⊕ d1 -> a1 ⊕ e0 ⊑ a1 ⊕ e1 ->
     a0 ⊕ b0 ⊕ c0 ⊕ d0 ⊕ e0 ⊑ a1 ⊕ b1 ⊕ c1 ⊕ d1 ⊕ e1.
 Proof.
@@ -181,6 +185,41 @@ Proof.
   (*new*)  erewrite <- oplus_comm_weak with (a:=a1).
   rewrite H2.
   reflexivity.
+Qed.
+
+(*** Section 3.1, but with three more modules. ***)
+Goal ∀ (a0 a1 b0 b1 c0 c1 d0 d1 e0 e1 f0 f1: mProp),
+    (a0 ==∗ a1) -> ((a1 ∗ b0) ==∗ (a1 ∗ b1)) -> ((a1 ∗ c0) ==∗ (a1 ∗ c1)) -> ((a1 ∗ d0) ==∗ (a1 ∗ d1)) -> ((a1 ∗ e0) ==∗ (a1 ∗ e1)) -> ((a1 ∗ f0) ==∗ (a1 ∗ f1))
+    -> ((a0 ∗ b0 ∗ c0 ∗ d0 ∗ e0 ∗ f0) ==∗ (a1 ∗ b1 ∗ c1 ∗ d1 ∗ e1 ∗ f1))
+.
+Proof.
+  i.
+  {
+    iIntros "[? [? [? [? [? ?]]]]]".
+    iDestruct (H with "[$]") as ">?". iDestruct (H0 with "[$]") as ">[? $]".
+    iDestruct (H1 with "[$]") as ">[? $]". iDestruct (H2 with "[$]") as ">[? $]".
+    iDestruct (H3 with "[$]") as ">[? $]".
+    iDestruct (H4 with "[$]") as "$".
+  }
+Qed.
+
+Goal forall a0 a1 b0 b1 c0 c1 d0 d1 e0 e1 f0 f1,
+    a0 ⊑ a1 -> a1 ⊕ b0 ⊑ a1 ⊕ b1 -> a1 ⊕ c0 ⊑ a1 ⊕ c1 -> a1 ⊕ d0 ⊑ a1 ⊕ d1 -> a1 ⊕ e0 ⊑ a1 ⊕ e1 -> a1 ⊕ f0 ⊑ a1 ⊕ f1 ->
+    a0 ⊕ b0 ⊕ c0 ⊕ d0 ⊕ e0 ⊕ f0 ⊑ a1 ⊕ b1 ⊕ c1 ⊕ d1 ⊕ e1 ⊕ f1.
+Proof.
+  intros.
+  erewrite abcd with (a0:=a0) (a1:=a1); try eassumption.
+  erewrite oplus_comm_weak with (b:=f0).
+  erewrite ! oplus_assoc_weak2.
+  erewrite oplus_comm_weak with (b:=a1).
+  rewrite H4.
+
+  etrans.
+  2: { erewrite <- oplus_comm_weak with (a:=f1).
+       erewrite ! oplus_assoc_weak2.
+       refl. }
+  erewrite oplus_comm_weak with (b:=f1).
+  refl.
 Qed.
 
 (*** Here, m is the memory module ***)
@@ -365,5 +404,17 @@ Proof.
   iDone.
 Qed.
 End CCRFOS_RCL.
+
+
+(*** Section 7.2 ***)
+Goal ∀ (a1 b0 b1 c0 c1: mProp),
+    (b0 -∗ IUpd a1 b1) -> (c0 -∗ IUpd a1 c1) -> (b0 ∗ c0 -∗ IUpd a1 (b1 ∗ c1))
+.
+Proof.
+  i.
+  hexploit (bi.sep_mono _ _ _ _ H H0); eauto. intro T.
+  iIntros.
+  iDestruct (T with "[$]") as "[>? >?]". iModIntro; iFrame.
+Qed.
 
 End TUTORIAL.
